@@ -532,3 +532,17 @@ button { font-family: 'Inter', system-ui, sans-serif; }
 
 @keyframes spin-fast { to { transform: rotate(360deg); } }
 .animate-spin { animation: spin 1s linear infinite; display: inline-block; }
+/* ── SPOTLIGHT EFFECT ── */
+.spotlight-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+  will-change: background;
+}

@@ -1,5 +1,5 @@
 'use client'
-
+import SpotlightLayout from '@/components/SpotlightLayout'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { generateFingerprint } from '@/lib/fingerprint'
@@ -47,7 +47,7 @@ export default function SessionScreen({
         .from('table_sessions').select('*')
         .eq('session_token', storedToken)
         .eq('restaurant_id', restaurant.id)
-        .eq('is_active', true).single()
+        .eq('is_active', true).maybeSingle()
       if (session) {
         onSessionReady(session.session_token, session.customer_name)
         return
@@ -58,7 +58,7 @@ export default function SessionScreen({
       .from('table_sessions').select('*')
       .eq('restaurant_id', restaurant.id)
       .eq('table_number', tableNumber)
-      .eq('is_active', true).single()
+      .eq('is_active', true).maybeSingle()
 
     if (tableSession) {
       setExistingSession(tableSession.session_token)
@@ -127,16 +127,19 @@ export default function SessionScreen({
   // ── CHECKING ──
   if (checkingSession) {
     return (
+      <SpotlightLayout>
       <div className="checking-page">
         <div className="spinner" />
         <p className="t-caption">Checking your table...</p>
       </div>
+      </SpotlightLayout>
     )
   }
 
   // ── TABLE OCCUPIED ──
   if (existingSession) {
     return (
+      <SpotlightLayout>
       <div className="occupied-page">
         <div className="ambient-gold" style={{ width: 300, height: 300, top: -80, left: -80 }} />
         <div className="occupied-inner">
@@ -155,7 +158,7 @@ export default function SessionScreen({
           <p className="t-body" style={{ marginBottom: 32, textAlign: 'center' }}>
             This table has an active order under{' '}
             <strong style={{ color: 'var(--cream)' }}>{existingName}</strong>.
-            You'll be joined to their session.
+            You&apos;ll be joined to their session.
           </p>
           <button
             className="btn-primary"
@@ -169,12 +172,14 @@ export default function SessionScreen({
           </p>
         </div>
       </div>
+      </SpotlightLayout>
     )
   }
 
   // ── WELCOME ──
   if (step === 'welcome') {
     return (
+      <SpotlightLayout >
       <div className="session-page">
         <div className="ambient-gold" style={{ width: 400, height: 400, top: -120, left: -120 }} />
         <div className="ambient-emerald" style={{ width: 300, height: 300, bottom: -80, right: -80 }} />
@@ -225,6 +230,7 @@ export default function SessionScreen({
           </button>
         </div>
       </div>
+      </SpotlightLayout>
     )
   }
 
@@ -237,7 +243,7 @@ export default function SessionScreen({
     const hasSelections = Object.values(starterSelections).some((q) => q > 0)
 
     return (
-      <div className="starters-page">
+      <SpotlightLayout>      <div className="starters-page">
         <div className="starters-head">
           <p className="t-eyebrow" style={{ marginBottom: 8 }}>While you decide</p>
           <h2 className="t-heading" style={{ marginBottom: 8 }}>Something to start?</h2>
@@ -308,6 +314,7 @@ export default function SessionScreen({
           </button>
         </div>
       </div>
+      </SpotlightLayout>
     )
   }
 
