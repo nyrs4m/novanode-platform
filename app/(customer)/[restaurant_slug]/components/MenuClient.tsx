@@ -41,37 +41,110 @@ interface MenuClientProps {
 }
 type Signal = "call_waiter" | "napkins" | "water" | "bill";
 
-function BillSplitter({ total, currency }: { total: number; currency: string }) {
-  const [people, setPeople] = useState(2)
-  const perPerson = total / people
+function BillSplitter({
+  total,
+  currency,
+}: {
+  total: number;
+  currency: string;
+}) {
+  const [people, setPeople] = useState(2);
+  const perPerson = total / people;
 
   return (
-    <div style={{
-      background: 'var(--cream-06)',
-      border: '1px solid var(--cream-15)',
-      borderRadius: 16, padding: '16px',
-    }}>
-      <p className="t-eyebrow" style={{ marginBottom: 12, textAlign: 'center' }}>Split the Bill</p>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 14 }}>
+    <div
+      style={{
+        background: "var(--cream-06)",
+        border: "1px solid var(--cream-15)",
+        borderRadius: 16,
+        padding: "16px",
+      }}
+    >
+      <p
+        className="t-eyebrow"
+        style={{ marginBottom: 12, textAlign: "center" }}
+      >
+        Split the Bill
+      </p>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 20,
+          marginBottom: 14,
+        }}
+      >
         <button
-          onClick={() => setPeople(p => Math.max(1, p - 1))}
-          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gold-faint)', border: '1px solid var(--gold-dim)', color: 'var(--gold-glow)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >−</button>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: 'var(--cream)', fontWeight: 900, fontSize: 28, lineHeight: 1 }}>{people}</p>
-          <p className="t-caption">{people === 1 ? 'person' : 'people'}</p>
+          onClick={() => setPeople((p) => Math.max(1, p - 1))}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "var(--gold-faint)",
+            border: "1px solid var(--gold-dim)",
+            color: "var(--gold-glow)",
+            fontSize: 20,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          −
+        </button>
+        <div style={{ textAlign: "center" }}>
+          <p
+            style={{
+              color: "var(--cream)",
+              fontWeight: 900,
+              fontSize: 28,
+              lineHeight: 1,
+            }}
+          >
+            {people}
+          </p>
+          <p className="t-caption">{people === 1 ? "person" : "people"}</p>
         </div>
         <button
-          onClick={() => setPeople(p => p + 1)}
-          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gold-faint)', border: '1px solid var(--gold-dim)', color: 'var(--gold-glow)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >+</button>
+          onClick={() => setPeople((p) => p + 1)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "var(--gold-faint)",
+            border: "1px solid var(--gold-dim)",
+            color: "var(--gold-glow)",
+            fontSize: 20,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          +
+        </button>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gold-faint)', border: '1px solid var(--gold-dim)', borderRadius: 12, padding: '12px 16px' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "var(--gold-faint)",
+          border: "1px solid var(--gold-dim)",
+          borderRadius: 12,
+          padding: "12px 16px",
+        }}
+      >
         <span className="t-caption">Each person pays</span>
-        <span className="t-price" style={{ fontSize: 20 }}>{currency} {perPerson.toFixed(2)}</span>
+        <span className="t-price" style={{ fontSize: 20 }}>
+          {currency} {perPerson.toFixed(2)}
+        </span>
       </div>
     </div>
-  )
+  );
 }
 
 export default function MenuClient({
@@ -123,42 +196,20 @@ export default function MenuClient({
   }
 
   // Watch session for bill status changes
+  // Watch session for bill status + table closing
   useEffect(() => {
-    // Fetch all orders for this session
     async function fetchSessionOrders() {
       const { data } = await supabase
         .from("orders")
         .select("total_amount, items, is_starter_order, status")
         .eq("session_token", sessionToken)
         .neq("status", "Cancelled");
-      if (data) setAllOrders(data);
+      if (data) setAllOrders(data as typeof allOrders);
     }
     fetchSessionOrders();
 
-    // Watch session bill_status
     const channel = supabase
       .channel(`session-bill-${sessionToken}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "table_sessions",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        (payload) => {
-          const updated = payload.new as {
-            bill_status: string;
-            is_active: boolean;
-          };
-          setSessionBillStatus(updated.bill_status);
-          if (updated.bill_status === "presented") {
-            setShowBillPopup(true);
-            fetchSessionOrders();
-          }
-        },
-      )
-      // Also watch new orders to update running total
       .on(
         "postgres_changes",
         {
@@ -169,6 +220,30 @@ export default function MenuClient({
         },
         () => {
           fetchSessionOrders();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "table_sessions",
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        (payload) => {
+          const updated = payload.new as {
+            is_active: boolean;
+            bill_status: string;
+          };
+          setSessionBillStatus(updated.bill_status);
+          if (updated.bill_status === "presented") {
+            fetchSessionOrders();
+            setShowBillPopup(true);
+          }
+          if (!updated.is_active) {
+            localStorage.removeItem("nn_session_token");
+            setTimeout(() => window.location.reload(), 1500);
+          }
         },
       )
       .subscribe();

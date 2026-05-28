@@ -96,7 +96,9 @@ export default function OrderTracker({
   const prevStatusRef = useRef<Record<string, string>>({});
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
-
+  const runningTotal = orders
+    .filter((o) => o.status !== "Cancelled")
+    .reduce((s, o) => s + Number(o.total_amount), 0);
   useEffect(() => {
     supabaseRef.current = supabase;
   }, [supabase]);
@@ -187,6 +189,37 @@ export default function OrderTracker({
     return () => clearInterval(interval);
   }, [orders, expiredOrders]);
 
+  // Watch for table session closing
+  useEffect(() => {
+    const channel = supabase
+      .channel(`session-watch-${sessionToken}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "table_sessions",
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        (payload) => {
+          const updated = payload.new as {
+            is_active: boolean;
+            bill_status: string;
+          };
+          if (!updated.is_active) {
+            // Table closed — clear token and reload
+            localStorage.removeItem("nn_session_token");
+            window.location.reload();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionToken, supabase]);
+
   async function pressDelayBell(orderId: string) {
     if (bellPressed.has(orderId)) return;
     setBellPressed((p) => new Set([...p, orderId]));
@@ -261,7 +294,7 @@ export default function OrderTracker({
               Your Orders
             </p>
             <p className="t-eyebrow" style={{ fontSize: 9, marginTop: 2 }}>
-              {activeOrders.length} active
+              {activeOrders.length} active · {restaurant.currency} {orders.filter(o => o.status !== 'Cancelled').reduce((s, o) => s + Number(o.total_amount), 0).toFixed(2)} total
             </p>
           </div>
         </div>
