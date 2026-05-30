@@ -1,7 +1,8 @@
 "use client";
 import OrderTracker from "./OrderTracker";
+import ReceiptModal from "./ReceiptModal";
 import { playOrderConfirmed } from "@/lib/sounds";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -24,6 +25,12 @@ type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
 type DailySpecial = Tables<"daily_specials">;
+type SessionOrder = {
+  total_amount: number;
+  items: unknown;
+  is_starter_order: boolean | null;
+  status: string | null;
+};
 
 interface CartItem {
   item: MenuItem;
@@ -165,17 +172,13 @@ export default function MenuClient({
   const [sessionBillStatus, setSessionBillStatus] = useState<string | null>(
     null,
   );
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
   const [showBillPopup, setShowBillPopup] = useState(false);
-  const [allOrders, setAllOrders] = useState<
-    {
-      total_amount: number;
-      items: unknown;
-      is_starter_order: boolean | null;
-      status: string | null;
-    }[]
-  >([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [allOrders, setAllOrders] = useState<SessionOrder[]>([]);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const filtered = activeCategory
     ? menuItems.filter((i) => i.category_id === activeCategory)
@@ -195,18 +198,21 @@ export default function MenuClient({
     });
   }
 
+  const fetchSessionOrders = useCallback(async () => {
+    const { data } = await supabase
+      .from("orders")
+      .select("total_amount, items, is_starter_order, status")
+      .eq("session_token", sessionToken)
+      .neq("status", "Cancelled");
+    if (data) setAllOrders(data as SessionOrder[]);
+  }, [sessionToken, supabase]);
+
   // Watch session for bill status changes
   // Watch session for bill status + table closing
   useEffect(() => {
-    async function fetchSessionOrders() {
-      const { data } = await supabase
-        .from("orders")
-        .select("total_amount, items, is_starter_order, status")
-        .eq("session_token", sessionToken)
-        .neq("status", "Cancelled");
-      if (data) setAllOrders(data as typeof allOrders);
-    }
-    fetchSessionOrders();
+    const initialFetch = window.setTimeout(() => {
+      fetchSessionOrders();
+    }, 0);
 
     const channel = supabase
       .channel(`session-bill-${sessionToken}`)
@@ -227,19 +233,45 @@ export default function MenuClient({
         {
           event: "UPDATE",
           schema: "public",
-          table: "table_sessions",
+          table: "orders",
           filter: `session_token=eq.${sessionToken}`,
         },
-        (payload) => {
+        () => {
+          fetchSessionOrders();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "table_sessions",
+          filter: sessionId
+            ? `id=eq.${sessionId}`
+            : `session_token=eq.${sessionToken}`,
+        },
+        async (payload) => {
           const updated = payload.new as {
             is_active: boolean;
             bill_status: string;
           };
           setSessionBillStatus(updated.bill_status);
+
           if (updated.bill_status === "presented") {
             fetchSessionOrders();
             setShowBillPopup(true);
           }
+
+          if (updated.bill_status === "paid") {
+            const { data: staffData } = await supabase
+              .from("restaurant_staff")
+              .select("*")
+              .eq("restaurant_id", restaurant.id);
+            if (staffData) setStaffList(staffData);
+            setShowBillPopup(false);
+            setShowReceipt(true);
+          }
+
           if (!updated.is_active) {
             localStorage.removeItem("nn_session_token");
             setTimeout(() => window.location.reload(), 1500);
@@ -249,9 +281,72 @@ export default function MenuClient({
       .subscribe();
 
     return () => {
+      window.clearTimeout(initialFetch);
       supabase.removeChannel(channel);
     };
-  }, [sessionToken]);
+  }, [fetchSessionOrders, restaurant.id, sessionId, sessionToken, supabase]);
+
+  // Polling fallback in case realtime misses bill status changes.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (showReceipt) return;
+
+      const { data } = await supabase
+        .from("table_sessions")
+        .select("bill_status, is_active")
+        .eq("session_token", sessionToken)
+        .maybeSingle();
+
+      if (!data) return;
+
+      setSessionBillStatus(data.bill_status);
+
+      if (data.bill_status === "presented" && !showBillPopup) {
+        fetchSessionOrders();
+        setShowBillPopup(true);
+      }
+
+      if (data.bill_status === "paid" && !showReceipt) {
+        const { data: staffData } = await supabase
+          .from("restaurant_staff")
+          .select("*")
+          .eq("restaurant_id", restaurant.id);
+        if (staffData) setStaffList(staffData);
+        setShowBillPopup(false);
+        setShowReceipt(true);
+        clearInterval(interval);
+      }
+
+      if (!data.is_active) {
+        localStorage.removeItem("nn_session_token");
+        window.location.reload();
+      }
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [
+    fetchSessionOrders,
+    restaurant.id,
+    sessionToken,
+    showBillPopup,
+    showReceipt,
+    supabase,
+  ]);
+
+  useEffect(() => {
+    async function getSessionId() {
+      const { data } = await supabase
+        .from("table_sessions")
+        .select("id, bill_status, is_active")
+        .eq("session_token", sessionToken)
+        .maybeSingle();
+      if (data) {
+        setSessionId(data.id);
+        setSessionBillStatus(data.bill_status);
+      }
+    }
+    getSessionId();
+  }, [sessionToken, supabase]);
 
   function removeItem(id: string) {
     setOrder((prev) =>
@@ -955,6 +1050,21 @@ export default function MenuClient({
             >
               Payment is processed at the counter or with your waiter.
             </p>
+
+            {/* ── RECEIPT MODAL ── */}
+            {showReceipt && (
+              <ReceiptModal
+                restaurant={restaurant}
+                sessionToken={sessionToken}
+                tableNumber={tableNumber}
+                customerName={customerName}
+                orders={
+                  allOrders as Parameters<typeof ReceiptModal>[0]["orders"]
+                }
+                staff={staffList}
+                onClose={() => setShowReceipt(false)}
+              />
+            )}
 
             {/* Bill splitter */}
             <BillSplitter

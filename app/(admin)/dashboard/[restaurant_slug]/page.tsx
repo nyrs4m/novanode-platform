@@ -14,6 +14,23 @@ interface PageProps {
   params: Promise<{ restaurant_slug: string }>
 }
 
+function UnauthorizedPage({ restaurant_slug }: { restaurant_slug: string }) {
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1 className="t-heading">Access denied</h1>
+        <p className="t-body">
+          You are not authorized to view the dashboard for “{restaurant_slug}”.
+          Please sign in with a staff account for that restaurant.
+        </p>
+        <a className="btn-primary" href={`/login?next=/dashboard/${restaurant_slug}`}>
+          Sign in with a staff account
+        </a>
+      </div>
+    </div>
+  )
+}
+
 export default async function DashboardPage({ params }: PageProps) {
   const { restaurant_slug } = await params
   const supabase = await createClient()
@@ -34,9 +51,10 @@ export default async function DashboardPage({ params }: PageProps) {
     .select('*')
     .eq('user_id', user.id)
     .eq('restaurant_id', restaurant.id)
-    .single()
+    .limit(1)
+    .maybeSingle()
 
-  if (!staff) return notFound()
+  if (!staff) return <UnauthorizedPage restaurant_slug={restaurant_slug} />
 
   const today = new Date().toISOString().split('T')[0]
   const thisMonth = today.slice(0, 7)

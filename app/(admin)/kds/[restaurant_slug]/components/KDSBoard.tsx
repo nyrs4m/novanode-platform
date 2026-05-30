@@ -55,7 +55,7 @@ interface KDSBoardProps {
   todayCount: number;
 }
 
-type KDSTab = "orders" | "signals" | "stock" | "tables";
+type KDSTab = "orders" | "signals" | "stock" | "tables" | "ledger";
 const STATUS_FLOW = ["Pending", "Preparing", "Ready", "Served"] as const;
 type OrderStatus = (typeof STATUS_FLOW)[number];
 
@@ -215,6 +215,207 @@ function TimeEstimatePicker({
           <>Start Preparing</>
         )}
       </button>
+    </div>
+  );
+}
+
+function LedgerView({
+  restaurantId,
+  currency,
+  sessionFee,
+  supabase,
+}: {
+  restaurantId: string;
+  currency: string;
+  sessionFee: number;
+  supabase: ReturnType<typeof createClient>;
+}) {
+  const [ledger, setLedger] = useState<Tables<"daily_ledger"> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [closingTime, setClosingTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchLedger() {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase
+        .from("daily_ledger")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .eq("ledger_date", today)
+        .maybeSingle();
+      setLedger(data);
+      setLoading(false);
+    }
+    fetchLedger();
+
+    // Realtime ledger updates
+    const channel = supabase
+      .channel(`ledger-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "daily_ledger",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          setLedger(payload.new as Tables<"daily_ledger">);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId]);
+
+  const completedSessions = ledger?.completed_sessions ?? 0;
+  const totalOwed = ledger?.total_owed ?? 0;
+  const isPaid = ledger?.is_paid ?? false;
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 0" }}>
+        <div className="spinner" style={{ margin: "0 auto" }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Today's summary */}
+      <div
+        style={{
+          background: isPaid ? "rgba(16,185,129,0.08)" : "var(--surface)",
+          border: `1px solid ${isPaid ? "rgba(16,185,129,0.3)" : "var(--gold-dim)"}`,
+          borderRadius: 20,
+          padding: 20,
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <p className="t-eyebrow">Today&apos;s Ledger</p>
+          {isPaid ? (
+            <span
+              style={{
+                background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.3)",
+                color: "#34d399",
+                fontSize: 10,
+                fontWeight: 800,
+                padding: "3px 10px",
+                borderRadius: 50,
+              }}
+            >
+              PAID
+            </span>
+          ) : (
+            <span
+              style={{
+                background: "rgba(245,158,11,0.1)",
+                border: "1px solid var(--gold-dim)",
+                color: "var(--gold-glow)",
+                fontSize: 10,
+                fontWeight: 800,
+                padding: "3px 10px",
+                borderRadius: 50,
+              }}
+            >
+              UNPAID
+            </span>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          {[
+            { label: "Tables Served", value: String(completedSessions) },
+            {
+              label: "Fee Per Table",
+              value: `${currency} ${sessionFee.toFixed(2)}`,
+            },
+            {
+              label: "Total Owed",
+              value: `${currency} ${Number(totalOwed).toFixed(2)}`,
+            },
+            { label: "Date", value: new Date().toLocaleDateString() },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                background: "var(--cream-06)",
+                borderRadius: 12,
+                padding: "12px 14px",
+              }}
+            >
+              <p className="t-caption" style={{ marginBottom: 4 }}>
+                {item.label}
+              </p>
+              <p className="t-title" style={{ fontSize: 16 }}>
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {!isPaid && completedSessions > 0 && (
+          <div
+            style={{
+              background: "rgba(245,158,11,0.08)",
+              border: "1px solid var(--gold-dim)",
+              borderRadius: 12,
+              padding: "12px 14px",
+              marginBottom: 14,
+            }}
+          >
+            <p className="t-caption" style={{ marginBottom: 2 }}>
+              Amount Due to NovaNode
+            </p>
+            <p className="t-price" style={{ fontSize: 22 }}>
+              {currency} {Number(totalOwed).toFixed(2)}
+            </p>
+          </div>
+        )}
+
+        {completedSessions === 0 && (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <p className="t-body">No completed tables yet today</p>
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div
+        style={{
+          background: "var(--cream-06)",
+          border: "1px solid var(--cream-15)",
+          borderRadius: 14,
+          padding: "14px 16px",
+        }}
+      >
+        <p className="t-caption" style={{ lineHeight: 1.7 }}>
+          NovaNode charges{" "}
+          <strong style={{ color: "var(--gold-glow)" }}>
+            {currency} {sessionFee.toFixed(2)}
+          </strong>{" "}
+          per completed table session. Payment is collected daily. Your menu
+          remains active regardless of payment status.
+        </p>
+      </div>
     </div>
   );
 }
@@ -454,6 +655,11 @@ export default function KDSBoard({
       label: "Signals",
       icon: <Bell size={18} />,
       badge: activeSignals.length,
+    },
+    {
+      id: "ledger",
+      label: "Ledger",
+      icon: <DollarSign size={18} />,
     },
     { id: "stock", label: "Stock", icon: <Package size={18} /> },
     {
@@ -1104,6 +1310,16 @@ export default function KDSBoard({
           </div>
         )}
 
+        {/* LEDGER TAB */}
+        {activeTab === "ledger" && (
+          <LedgerView
+            restaurantId={restaurant.id}
+            currency={restaurant.currency ?? "GHS"}
+            sessionFee={Number(restaurant.session_fee ?? 1.0)}
+            supabase={supabase}
+          />
+        )}
+
         {/* TABLES TAB */}
         {activeTab === "tables" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1257,6 +1473,34 @@ export default function KDSBoard({
                                 .from("table_sessions")
                                 .update({ bill_status: "paid" })
                                 .eq("id", session.id);
+
+                              // Generate receipt server-side
+                              const sessionOrders = orders.filter(
+                                (o) =>
+                                  o.session_token === session.session_token &&
+                                  o.status !== "Cancelled",
+                              );
+                              const subtotal = sessionOrders.reduce(
+                                (s, o) => s + Number(o.total_amount),
+                                0,
+                              );
+                              const sessionFee = Number(
+                                restaurant.session_fee ?? 1.0,
+                              );
+
+                              await supabase.from("receipts").insert({
+                                restaurant_id: restaurant.id,
+                                session_token: session.session_token,
+                                table_number: session.table_number,
+                                customer_name: session.customer_name,
+                                items_breakdown: sessionOrders.map(
+                                  (o) => o.items,
+                                ),
+                                subtotal,
+                                session_fee: sessionFee,
+                                total: subtotal + sessionFee,
+                              });
+
                               setSessions((prev) =>
                                 prev.map((s) =>
                                   s.id === session.id
@@ -1312,7 +1556,37 @@ export default function KDSBoard({
                             </span>
                           </div>
                           <button
-                            onClick={() => closeTable(session.id)}
+                            onClick={async () => {
+                              try {
+                                // 1. Close the session
+                                await supabase
+                                  .from("table_sessions")
+                                  .update({
+                                    is_active: false,
+                                    status: "completed",
+                                    closed_at: new Date().toISOString(),
+                                  })
+                                  .eq("id", session.id);
+
+                                // 2. Increment daily ledger atomically
+                                await supabase.rpc("increment_daily_ledger", {
+                                  p_restaurant_id: restaurant.id,
+                                  p_session_fee: Number(
+                                    restaurant.session_fee ?? 1.0,
+                                  ),
+                                });
+
+                                // 3. Update local state
+                                setSessions((prev) =>
+                                  prev.filter((s) => s.id !== session.id),
+                                );
+                              } catch (err) {
+                                console.error("Close table error:", err);
+                                alert(
+                                  "Failed to close table. Please try again.",
+                                );
+                              }
+                            }}
                             style={{
                               width: "100%",
                               padding: "11px 16px",

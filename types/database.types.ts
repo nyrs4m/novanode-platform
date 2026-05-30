@@ -298,6 +298,9 @@ export type Database = {
           suspended_by: string | null;
           suspension_reason: string | null;
           whatsapp_api_key: string | null;
+          session_fee: number | null;
+          closing_time: string | null;
+          payment_overdue: boolean | null;
         };
         Insert: {
           created_at?: string | null;
@@ -311,6 +314,9 @@ export type Database = {
           suspended_by?: string | null;
           suspension_reason?: string | null;
           whatsapp_api_key?: string | null;
+          session_fee?: number | null;
+          closing_time?: string | null;
+          payment_overdue?: boolean | null;
         };
         Update: {
           created_at?: string | null;
@@ -324,6 +330,9 @@ export type Database = {
           suspended_by?: string | null;
           suspension_reason?: string | null;
           whatsapp_api_key?: string | null;
+          session_fee?: number | null;
+          closing_time?: string | null;
+          payment_overdue?: boolean | null;
         };
         Relationships: [];
       };
@@ -338,6 +347,8 @@ export type Database = {
           browser_fingerprint: string | null;
           last_seen_at: string | null;
           bill_status: string | null;
+          status: string | null;
+          closed_at: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -350,6 +361,8 @@ export type Database = {
           browser_fingerprint?: string | null;
           last_seen_at?: string | null;
           bill_status?: string | null;
+          status?: string | null;
+          closed_at?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -362,6 +375,8 @@ export type Database = {
           browser_fingerprint?: string | null;
           last_seen_at?: string | null;
           bill_status?: string | null;
+          status?: string | null;
+          closed_at?: string | null;
           created_at?: string | null;
         };
         Relationships: [
@@ -374,8 +389,6 @@ export type Database = {
           },
         ];
       };
-
-      
       waiter_signals: {
         Row: {
           id: string;
@@ -414,11 +427,157 @@ export type Database = {
           },
         ];
       };
+      daily_ledger: {
+        Row: {
+          id: string;
+          restaurant_id: string | null;
+          ledger_date: string;
+          completed_sessions: number | null;
+          session_fee: number;
+          total_owed: number | null;
+          is_paid: boolean | null;
+          paystack_reference: string | null;
+          paid_at: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id?: string | null;
+          ledger_date?: string;
+          completed_sessions?: number | null;
+          session_fee: number;
+          total_owed?: number | null;
+          is_paid?: boolean | null;
+          paystack_reference?: string | null;
+          paid_at?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string | null;
+          ledger_date?: string;
+          completed_sessions?: number | null;
+          session_fee?: number;
+          total_owed?: number | null;
+          is_paid?: boolean | null;
+          paystack_reference?: string | null;
+          paid_at?: string | null;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "daily_ledger_restaurant_id_fkey";
+            columns: ["restaurant_id"];
+            isOneToOne: false;
+            referencedRelation: "restaurants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      receipts: {
+        Row: {
+          id: string;
+          restaurant_id: string | null;
+          session_token: string;
+          table_number: string;
+          customer_name: string | null;
+          items_breakdown: Json;
+          subtotal: number;
+          session_fee: number;
+          total: number;
+          generated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id?: string | null;
+          session_token: string;
+          table_number: string;
+          customer_name?: string | null;
+          items_breakdown: Json;
+          subtotal: number;
+          session_fee: number;
+          total: number;
+          generated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string | null;
+          session_token?: string;
+          table_number?: string;
+          customer_name?: string | null;
+          items_breakdown?: Json;
+          subtotal?: number;
+          session_fee?: number;
+          total?: number;
+          generated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "receipts_restaurant_id_fkey";
+            columns: ["restaurant_id"];
+            isOneToOne: false;
+            referencedRelation: "restaurants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      order_feedback: {
+        Row: {
+          id: string;
+          restaurant_id: string | null;
+          session_token: string;
+          table_number: string;
+          customer_name: string | null;
+          rating: number | null;
+          review: string | null;
+          staff_id: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id?: string | null;
+          session_token: string;
+          table_number: string;
+          customer_name?: string | null;
+          rating?: number | null;
+          review?: string | null;
+          staff_id?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string | null;
+          session_token?: string;
+          table_number?: string;
+          customer_name?: string | null;
+          rating?: number | null;
+          review?: string | null;
+          staff_id?: string | null;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_feedback_restaurant_id_fkey";
+            columns: ["restaurant_id"];
+            isOneToOne: false;
+            referencedRelation: "restaurants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      increment_daily_ledger: {
+        Args: {
+          p_restaurant_id: string;
+          p_session_fee: number;
+        };
+        Returns: null;
+      };
+    } & {
       [_ in never]: never;
     };
     Enums: {

@@ -36,8 +36,9 @@ export default async function KDSPage({ params }: PageProps) {
   if (!staff) return notFound();
 
   // Fetch today's active orders
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date().toISOString().split("T")[0];
+  const todayStart = `${today}T00:00:00.000Z`;
+  const thisMonth = today.slice(0, 7);
 
   const { data: orders } = await supabase
     .from("orders")
@@ -45,7 +46,7 @@ export default async function KDSPage({ params }: PageProps) {
     .eq("restaurant_id", restaurant.id)
     .neq("status", "Completed")
     .neq("status", "Cancelled")
-    .gte("created_at", today.toISOString())
+    .gte("created_at", todayStart)
     .order("created_at", { ascending: true });
 
   // Fetch active sessions
@@ -73,16 +74,24 @@ export default async function KDSPage({ params }: PageProps) {
 
   // Today's quick stats
   const { data: todayOrders } = await supabase
-    .from("orders")
-    .select("total_amount, status")
-    .eq("restaurant_id", restaurant.id)
-    .eq("is_starter_order", false)
-    .eq("status", "Served")
-    .gte("created_at", today.toISOString());
+  .from('orders')
+  .select('total_amount, status, created_at, table_number, customer_name, items, session_token')
+  .eq('restaurant_id', restaurant.id)
+  .eq('is_starter_order', false)
+  .gte('created_at', todayStart);
 
-  const todayRevenue =
-    todayOrders?.reduce((s, o) => s + Number(o.total_amount), 0) ?? 0;
-  const todayCount = todayOrders?.length ?? 0;
+  const { data: monthOrders } = await supabase
+  .from('orders')
+  .select('total_amount, status')
+  .eq('restaurant_id', restaurant.id)
+  .eq('is_starter_order', false)
+  .gte('created_at', `${thisMonth}-01T00:00:00.000Z`)
+
+  const todayRevenue = todayOrders?.filter(o => o.status === 'Served')
+  .reduce((s, o) => s + Number(o.total_amount), 0) ?? 0
+const todayCount = todayOrders?.length ?? 0
+const monthRevenue = monthOrders?.reduce((s, o) => s + Number(o.total_amount), 0) ?? 0
+const monthCount = monthOrders?.length ?? 0
 
   return (
     <KDSBoard

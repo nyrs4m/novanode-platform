@@ -1,49 +1,69 @@
-'use client'
-
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+"use client";
+import QRGenerator from "./QRGenerator";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  BarChart2, ChefHat, Package, Users2,
-  Bell, DollarSign, ShoppingBag, Table2,
-  TrendingUp, ArrowUpRight, CheckCircle,
-  XCircle, Loader2, Utensils, Clock,
-  Calendar, Star, LogOut, Settings,
-  QrCode, UtensilsCrossed
-} from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+  BarChart2,
+  ChefHat,
+  Package,
+  Users2,
+  Bell,
+  DollarSign,
+  ShoppingBag,
+  Table2,
+  TrendingUp,
+  ArrowUpRight,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Utensils,
+  Clock,
+  Calendar,
+  Star,
+  LogOut,
+  QrCode,
+  UtensilsCrossed,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import type {
-  Tables, RestaurantStats,
-  MenuItemStats, PeakHourStats
-} from '@/types/database.types'
+  Tables,
+  RestaurantStats,
+  MenuItemStats,
+  PeakHourStats,
+} from "@/types/database.types";
 
-type Restaurant = Tables<'restaurants'>
-type Order = Tables<'orders'>
+type Restaurant = Tables<"restaurants">;
+type Order = Tables<"orders">;
 
 interface Props {
-  restaurant: Restaurant
-  staff: Tables<'restaurant_staff'>
-  dailyStats: RestaurantStats | null
-  monthlyStats: RestaurantStats[]
-  topItems: MenuItemStats[]
-  peakHours: PeakHourStats[]
-  recentOrders: Order[]
-  activeOrdersCount: number
-  activeTablesCount: number
-  signalsCount: number
+  restaurant: Restaurant;
+  staff: Tables<"restaurant_staff">;
+  dailyStats: RestaurantStats | null;
+  monthlyStats: RestaurantStats[];
+  topItems: MenuItemStats[];
+  peakHours: PeakHourStats[];
+  recentOrders: Order[];
+  activeOrdersCount: number;
+  activeTablesCount: number;
+  signalsCount: number;
 }
 
-type Tab = 'overview' | 'stats' | 'menu'
+type Tab = "overview" | "stats" | "menu";
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'Completed') return <CheckCircle size={14} className="status-done" />
-  if (status === 'Cancelled') return <XCircle size={14} className="status-cancel" />
-  return <Loader2 size={14} className="status-pending animate-spin" />
+  if (status === "Completed")
+    return <CheckCircle size={14} className="status-done" />;
+  if (status === "Cancelled")
+    return <XCircle size={14} className="status-cancel" />;
+  return <Loader2 size={14} className="status-pending animate-spin" />;
 }
 
 function StatusLabel({ status }: { status: string }) {
-  if (status === 'Completed') return <span className="status-done">{status}</span>
-  if (status === 'Cancelled') return <span className="status-cancel">{status}</span>
-  return <span className="status-pending">{status}</span>
+  if (status === "Completed")
+    return <span className="status-done">{status}</span>;
+  if (status === "Cancelled")
+    return <span className="status-cancel">{status}</span>;
+  return <span className="status-pending">{status}</span>;
 }
 
 export default function DashboardHome({
@@ -57,88 +77,128 @@ export default function DashboardHome({
   activeTablesCount,
   signalsCount,
 }: Props) {
-  const [tab, setTab] = useState<Tab>('overview')
-  const router = useRouter()
-  const supabase = createClient()
+  const [tab, setTab] = useState<Tab>("overview");
+  const router = useRouter();
+  const supabase = createClient();
 
-  const mRevenue = monthlyStats.reduce((s, r) => s + (r.gross_revenue ?? 0), 0)
-  const mOrders  = monthlyStats.reduce((s, r) => s + (r.total_orders ?? 0), 0)
-  const mTables  = monthlyStats.reduce((s, r) => s + (r.tables_served ?? 0), 0)
-  const mFees    = monthlyStats.reduce((s, r) => s + (r.total_platform_fees ?? 0), 0)
-  const dRevenue = dailyStats?.gross_revenue ?? 0
-  const dOrders  = dailyStats?.total_orders ?? 0
-  const dTables  = dailyStats?.tables_served ?? 0
+  const mRevenue = monthlyStats.reduce((s, r) => s + (r.gross_revenue ?? 0), 0);
+  const mOrders = monthlyStats.reduce((s, r) => s + (r.total_orders ?? 0), 0);
+  const mTables = monthlyStats.reduce((s, r) => s + (r.tables_served ?? 0), 0);
+  const mFees = monthlyStats.reduce(
+    (s, r) => s + (r.total_platform_fees ?? 0),
+    0,
+  );
+  const dRevenue = dailyStats?.gross_revenue ?? 0;
+  const dOrders = dailyStats?.total_orders ?? 0;
+  const dTables = dailyStats?.tables_served ?? 0;
 
-  const maxQty  = topItems[0]?.total_quantity ?? 1
-  const maxPeak = peakHours[0]?.order_count ?? 1
+  const maxQty = topItems[0]?.total_quantity ?? 1;
+  const maxPeak = peakHours[0]?.order_count ?? 1;
 
   async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    await supabase.auth.signOut();
+    router.push("/login");
   }
 
   const quickActions = [
     {
-      label: 'Kitchen Display',
-      desc: 'View & manage live orders',
+      label: "Kitchen Display",
+      desc: "View & manage live orders",
       icon: <ChefHat size={24} />,
       badge: activeOrdersCount,
       badgeUrgent: activeOrdersCount > 0,
       onClick: () => router.push(`/kds/${restaurant.slug}`),
-      color: 'var(--gold-glow)',
+      color: "var(--gold-glow)",
     },
     {
-      label: 'Active Tables',
-      desc: 'Manage seated customers',
+      label: "Menu Management",
+      desc: "Add & edit dishes, photos, prices",
+      icon: <UtensilsCrossed size={24} />,
+      badge: 0,
+      badgeUrgent: false,
+      onClick: () => router.push(`/dashboard/${restaurant.slug}/menu`),
+      color: "var(--gold-glow)",
+    },
+    {
+      label: "Active Tables",
+      desc: "Manage seated customers",
       icon: <Users2 size={24} />,
       badge: activeTablesCount,
       badgeUrgent: false,
       onClick: () => router.push(`/kds/${restaurant.slug}`),
-      color: '#60a5fa',
+      color: "#60a5fa",
     },
     {
-      label: 'Signals',
-      desc: 'Pending waiter requests',
+      label: "Signals",
+      desc: "Pending waiter requests",
       icon: <Bell size={24} />,
       badge: signalsCount,
       badgeUrgent: signalsCount > 0,
       onClick: () => router.push(`/kds/${restaurant.slug}`),
-      color: signalsCount > 0 ? 'var(--gold-glow)' : 'var(--cream-35)',
+      color: signalsCount > 0 ? "var(--gold-glow)" : "var(--cream-35)",
     },
     {
-      label: 'Menu & Stock',
-      desc: 'Toggle item availability',
+      label: "Menu & Stock",
+      desc: "Toggle item availability",
       icon: <Package size={24} />,
       badge: 0,
       badgeUrgent: false,
       onClick: () => router.push(`/kds/${restaurant.slug}`),
-      color: '#34d399',
+      color: "#34d399",
     },
-  ]
+  ];
 
   return (
     <div className="dash-page">
-      <div className="ambient-gold" style={{ position: 'fixed', width: 400, height: 400, top: -100, right: -100, zIndex: 0 }} />
-      <div className="ambient-emerald" style={{ position: 'fixed', width: 300, height: 300, bottom: -80, left: -80, zIndex: 0 }} />
+      <div
+        className="ambient-gold"
+        style={{
+          position: "fixed",
+          width: 400,
+          height: 400,
+          top: -100,
+          right: -100,
+          zIndex: 0,
+        }}
+      />
+      <div
+        className="ambient-emerald"
+        style={{
+          position: "fixed",
+          width: 300,
+          height: 300,
+          bottom: -80,
+          left: -80,
+          zIndex: 0,
+        }}
+      />
 
       {/* HEADER */}
       <header className="dash-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'var(--gold-faint)',
-            border: '1px solid var(--gold-dim)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--gold-glow)',
-          }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: "var(--gold-faint)",
+              border: "1px solid var(--gold-dim)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--gold-glow)",
+            }}
+          >
             <UtensilsCrossed size={20} />
           </div>
           <div>
-            <p className="t-title" style={{ fontSize: 16 }}>{restaurant.name}</p>
+            <p className="t-title" style={{ fontSize: 16 }}>
+              {restaurant.name}
+            </p>
             <p className="t-eyebrow">Restaurant Dashboard</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button className="btn-icon" onClick={handleLogout} title="Sign out">
             <LogOut size={18} />
           </button>
@@ -146,112 +206,218 @@ export default function DashboardHome({
       </header>
 
       {/* TABS */}
-      <div style={{
-        padding: '12px 20px',
-        display: 'flex', gap: 8,
-        borderBottom: '1px solid var(--gold-dim)',
-        background: 'rgba(2,44,34,0.6)',
-        position: 'sticky', top: 73, zIndex: 40,
-        overflowX: 'auto',
-      }} className="scrollbar-hide">
-        {([
-          { id: 'overview', label: 'Overview',   icon: <BarChart2 size={16} /> },
-          { id: 'stats',    label: 'Statistics', icon: <TrendingUp size={16} /> },
-          { id: 'menu',     label: 'Menu Items', icon: <Utensils size={16} /> },
-        ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => (
+      <div
+        style={{
+          padding: "12px 20px",
+          display: "flex",
+          gap: 8,
+          borderBottom: "1px solid var(--gold-dim)",
+          background: "rgba(2,44,34,0.6)",
+          position: "sticky",
+          top: 73,
+          zIndex: 40,
+          overflowX: "auto",
+        }}
+        className="scrollbar-hide"
+      >
+        {(
+          [
+            {
+              id: "overview",
+              label: "Overview",
+              icon: <BarChart2 size={16} />,
+            },
+            {
+              id: "stats",
+              label: "Statistics",
+              icon: <TrendingUp size={16} />,
+            },
+            { id: "menu", label: "Menu Items", icon: <Utensils size={16} /> },
+          ] as { id: Tab; label: string; icon: React.ReactNode }[]
+        ).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '9px 18px', borderRadius: 12,
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', flexShrink: 0,
-              border: tab === t.id ? 'none' : '1px solid var(--cream-15)',
-              background: tab === t.id
-                ? 'linear-gradient(135deg, var(--gold-glow), var(--gold))'
-                : 'var(--cream-06)',
-              color: tab === t.id ? '#1a0e00' : 'var(--cream-35)',
-              transition: 'all 0.2s',
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "9px 18px",
+              borderRadius: 12,
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              flexShrink: 0,
+              border: tab === t.id ? "none" : "1px solid var(--cream-15)",
+              background:
+                tab === t.id
+                  ? "linear-gradient(135deg, var(--gold-glow), var(--gold))"
+                  : "var(--cream-06)",
+              color: tab === t.id ? "#1a0e00" : "var(--cream-35)",
+              transition: "all 0.2s",
             }}
           >
-            {t.icon}{t.label}
+            {t.icon}
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div className="dash-content" style={{ position: 'relative', zIndex: 1 }}>
-
+      <div className="dash-content" style={{ position: "relative", zIndex: 1 }}>
         {/* ── OVERVIEW TAB ── */}
-        {tab === 'overview' && (
+        {tab === "overview" && (
           <div>
             {/* Today's Quick Stats */}
             <div className="dash-grid-2" style={{ marginBottom: 24 }}>
               {[
-                { label: "Today's Revenue", value: `${restaurant.currency} ${Number(dRevenue).toFixed(2)}`, sub: `${restaurant.currency} ${mRevenue.toFixed(2)} this month`, icon: <DollarSign size={20} />, up: true },
-                { label: "Today's Orders",  value: String(dOrders),  sub: `${mOrders} this month`,  icon: <ShoppingBag size={20} />, up: true },
-                { label: 'Tables Served',   value: String(dTables),  sub: `${mTables} this month`,  icon: <Table2 size={20} />,      up: false },
-                { label: 'Platform Fees',   value: `${restaurant.currency} ${mFees.toFixed(2)}`, sub: '2.5% per order', icon: <TrendingUp size={20} />, up: false },
+                {
+                  label: "Today's Revenue",
+                  value: `${restaurant.currency} ${Number(dRevenue).toFixed(2)}`,
+                  sub: `${restaurant.currency} ${mRevenue.toFixed(2)} this month`,
+                  icon: <DollarSign size={20} />,
+                  up: true,
+                },
+                {
+                  label: "Today's Orders",
+                  value: String(dOrders),
+                  sub: `${mOrders} this month`,
+                  icon: <ShoppingBag size={20} />,
+                  up: true,
+                },
+                {
+                  label: "Tables Served",
+                  value: String(dTables),
+                  sub: `${mTables} this month`,
+                  icon: <Table2 size={20} />,
+                  up: false,
+                },
+                {
+                  label: "Platform Fees",
+                  value: `${restaurant.currency} ${mFees.toFixed(2)}`,
+                  sub: "2.5% per order",
+                  icon: <TrendingUp size={20} />,
+                  up: false,
+                },
               ].map((card) => (
                 <div key={card.label} className="dash-stat-card">
                   <div className="dash-stat-glow" />
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: 11,
-                      background: 'var(--gold-faint)', border: '1px solid var(--gold-dim)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--gold-glow)',
-                    }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 11,
+                        background: "var(--gold-faint)",
+                        border: "1px solid var(--gold-dim)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--gold-glow)",
+                      }}
+                    >
                       {card.icon}
                     </div>
                     {card.up && <ArrowUpRight size={16} color="#34d399" />}
                   </div>
-                  <p className="t-heading" style={{ fontSize: 20, marginBottom: 4 }}>{card.value}</p>
-                  <p className="t-caption" style={{ marginBottom: 3 }}>{card.label}</p>
-                  <p className="t-eyebrow" style={{ fontSize: 10, opacity: 0.7 }}>{card.sub}</p>
+                  <p
+                    className="t-heading"
+                    style={{ fontSize: 20, marginBottom: 4 }}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="t-caption" style={{ marginBottom: 3 }}>
+                    {card.label}
+                  </p>
+                  <p
+                    className="t-eyebrow"
+                    style={{ fontSize: 10, opacity: 0.7 }}
+                  >
+                    {card.sub}
+                  </p>
                 </div>
               ))}
             </div>
 
             {/* Quick Actions */}
-            <p className="t-eyebrow" style={{ marginBottom: 14 }}>Quick Actions</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 28 }}>
+            <p className="t-eyebrow" style={{ marginBottom: 14 }}>
+              Quick Actions
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2,1fr)",
+                gap: 12,
+                marginBottom: 28,
+              }}
+            >
               {quickActions.map((action) => (
                 <button
                   key={action.label}
                   onClick={action.onClick}
                   style={{
-                    background: 'var(--surface)',
-                    border: `1px solid ${action.badgeUrgent ? 'var(--gold-dim)' : 'rgba(253,251,247,0.08)'}`,
-                    borderRadius: 18, padding: '18px 16px',
-                    cursor: 'pointer', textAlign: 'left',
-                    transition: 'all 0.2s ease',
-                    boxShadow: action.badgeUrgent ? 'var(--shadow-glow)' : 'var(--shadow-card)',
-                    position: 'relative',
-                    fontFamily: 'Inter, sans-serif',
+                    background: "var(--surface)",
+                    border: `1px solid ${action.badgeUrgent ? "var(--gold-dim)" : "rgba(253,251,247,0.08)"}`,
+                    borderRadius: 18,
+                    padding: "18px 16px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.2s ease",
+                    boxShadow: action.badgeUrgent
+                      ? "var(--shadow-glow)"
+                      : "var(--shadow-card)",
+                    position: "relative",
+                    fontFamily: "Inter, sans-serif",
                   }}
                 >
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 14,
-                    background: 'var(--gold-faint)', border: '1px solid var(--gold-dim)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: action.color, marginBottom: 12,
-                  }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      background: "var(--gold-faint)",
+                      border: "1px solid var(--gold-dim)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: action.color,
+                      marginBottom: 12,
+                    }}
+                  >
                     {action.icon}
                   </div>
-                  <p className="t-title" style={{ fontSize: 14, marginBottom: 4 }}>{action.label}</p>
+                  <p
+                    className="t-title"
+                    style={{ fontSize: 14, marginBottom: 4 }}
+                  >
+                    {action.label}
+                  </p>
                   <p className="t-caption">{action.desc}</p>
                   {action.badge > 0 && (
-                    <span style={{
-                      position: 'absolute', top: 14, right: 14,
-                      background: action.badgeUrgent
-                        ? 'linear-gradient(135deg, var(--gold-glow), var(--gold))'
-                        : 'var(--cream-06)',
-                      color: action.badgeUrgent ? '#1a0e00' : 'var(--cream-35)',
-                      borderRadius: 50, padding: '2px 8px',
-                      fontSize: 11, fontWeight: 900,
-                    }}>
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 14,
+                        right: 14,
+                        background: action.badgeUrgent
+                          ? "linear-gradient(135deg, var(--gold-glow), var(--gold))"
+                          : "var(--cream-06)",
+                        color: action.badgeUrgent
+                          ? "#1a0e00"
+                          : "var(--cream-35)",
+                        borderRadius: 50,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        fontWeight: 900,
+                      }}
+                    >
                       {action.badge}
                     </span>
                   )}
@@ -263,34 +429,58 @@ export default function DashboardHome({
             <div className="dash-section">
               <div className="dash-section-head">
                 <Calendar size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>Recent Orders</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Recent Orders
+                </span>
               </div>
               {recentOrders.length === 0 ? (
                 <div className="dash-empty">No orders yet today</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
                   {recentOrders.map((order) => (
                     <div key={order.id} className="order-row">
                       <div className="order-icon">
-                        <StatusIcon status={order.status ?? ''} />
+                        <StatusIcon status={order.status ?? ""} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
                           <span className="t-title" style={{ fontSize: 13 }}>
-                            {order.customer_name ?? 'Guest'}
+                            {order.customer_name ?? "Guest"}
                           </span>
                           <span className="t-price-sm">
-                            {restaurant.currency} {Number(order.total_amount).toFixed(2)}
+                            {restaurant.currency}{" "}
+                            {Number(order.total_amount).toFixed(2)}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
-                          <span className="t-caption">Table {order.table_number}</span>
-                          <span className="t-caption">·</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                            marginTop: 4,
+                          }}
+                        >
                           <span className="t-caption">
-                            {new Date(order.created_at ?? '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            Table {order.table_number}
                           </span>
                           <span className="t-caption">·</span>
-                          <StatusLabel status={order.status ?? ''} />
+                          <span className="t-caption">
+                            {new Date(
+                              order.created_at ?? "",
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <span className="t-caption">·</span>
+                          <StatusLabel status={order.status ?? ""} />
                         </div>
                       </div>
                     </div>
@@ -302,41 +492,80 @@ export default function DashboardHome({
         )}
 
         {/* ── STATS TAB ── */}
-        {tab === 'stats' && (
+        {tab === "stats" && (
           <div>
             {/* Top Dishes */}
             <div className="dash-section">
               <div className="dash-section-head">
                 <Utensils size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>Top Dishes This Month</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Top Dishes This Month
+                </span>
               </div>
               {topItems.length === 0 ? (
                 <div className="dash-empty">
-                  <Star size={28} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.25 }} />
+                  <Star
+                    size={28}
+                    style={{
+                      margin: "0 auto 10px",
+                      display: "block",
+                      opacity: 0.25,
+                    }}
+                  />
                   No orders recorded yet
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 14 }}
+                >
                   {topItems.map((item, i) => {
-                    const qty = item.total_quantity ?? 0
-                    const pct = (qty / Number(maxQty)) * 100
+                    const qty = item.total_quantity ?? 0;
+                    const pct = (qty / Number(maxQty)) * 100;
                     return (
-                      <div key={item.item_id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div className={`dash-rank ${i === 0 ? 'gold' : 'muted'}`}>{i + 1}</div>
+                      <div
+                        key={item.item_id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <div
+                          className={`dash-rank ${i === 0 ? "gold" : "muted"}`}
+                        >
+                          {i + 1}
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <span className="t-title" style={{ fontSize: 13 }}>{item.item_name}</span>
-                            <span className="t-eyebrow" style={{ fontSize: 11 }}>{qty}×</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              marginBottom: 6,
+                            }}
+                          >
+                            <span className="t-title" style={{ fontSize: 13 }}>
+                              {item.item_name}
+                            </span>
+                            <span
+                              className="t-eyebrow"
+                              style={{ fontSize: 11 }}
+                            >
+                              {qty}×
+                            </span>
                           </div>
                           <div className="bar-track">
-                            <div className={`bar-fill ${i > 0 ? 'dim' : ''}`} style={{ width: `${pct}%` }} />
+                            <div
+                              className={`bar-fill ${i > 0 ? "dim" : ""}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                         </div>
                         <span className="t-caption">
-                          {restaurant.currency} {Number(item.total_revenue).toFixed(0)}
+                          {restaurant.currency}{" "}
+                          {Number(item.total_revenue).toFixed(0)}
                         </span>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               )}
@@ -346,27 +575,48 @@ export default function DashboardHome({
             <div className="dash-section">
               <div className="dash-section-head">
                 <Clock size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>Peak Hours</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Peak Hours
+                </span>
               </div>
               {peakHours.length === 0 ? (
                 <div className="dash-empty">No data yet</div>
               ) : (
                 <div className="peak-grid">
                   {peakHours.map((h) => {
-                    const hour = Number(h.hour_of_day)
-                    const label = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`
-                    const pct = (Number(h.order_count) / Number(maxPeak)) * 100
+                    const hour = Number(h.hour_of_day);
+                    const label =
+                      hour === 0
+                        ? "12am"
+                        : hour < 12
+                          ? `${hour}am`
+                          : hour === 12
+                            ? "12pm"
+                            : `${hour - 12}pm`;
+                    const pct = (Number(h.order_count) / Number(maxPeak)) * 100;
                     return (
                       <div key={hour} className="peak-cell">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span className="t-price-sm" style={{ fontSize: 13 }}>{label}</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span className="t-price-sm" style={{ fontSize: 13 }}>
+                            {label}
+                          </span>
                           <span className="t-caption">{h.order_count}</span>
                         </div>
                         <div className="bar-track">
-                          <div className="bar-fill" style={{ width: `${pct}%` }} />
+                          <div
+                            className="bar-fill"
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               )}
@@ -376,23 +626,51 @@ export default function DashboardHome({
             <div className="dash-section">
               <div className="dash-section-head">
                 <TrendingUp size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>Monthly Summary</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Monthly Summary
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
                 {[
-                  { label: 'Total Revenue', value: `${restaurant.currency} ${mRevenue.toFixed(2)}` },
-                  { label: 'Total Orders', value: String(mOrders) },
-                  { label: 'Tables Served', value: String(mTables) },
-                  { label: 'Platform Fees', value: `${restaurant.currency} ${mFees.toFixed(2)}` },
-                  { label: 'Net Revenue', value: `${restaurant.currency} ${(mRevenue - mFees).toFixed(2)}` },
-                  { label: 'Avg Order Value', value: mOrders > 0 ? `${restaurant.currency} ${(mRevenue / mOrders).toFixed(2)}` : 'N/A' },
+                  {
+                    label: "Total Revenue",
+                    value: `${restaurant.currency} ${mRevenue.toFixed(2)}`,
+                  },
+                  { label: "Total Orders", value: String(mOrders) },
+                  { label: "Tables Served", value: String(mTables) },
+                  {
+                    label: "Platform Fees",
+                    value: `${restaurant.currency} ${mFees.toFixed(2)}`,
+                  },
+                  {
+                    label: "Net Revenue",
+                    value: `${restaurant.currency} ${(mRevenue - mFees).toFixed(2)}`,
+                  },
+                  {
+                    label: "Avg Order Value",
+                    value:
+                      mOrders > 0
+                        ? `${restaurant.currency} ${(mRevenue / mOrders).toFixed(2)}`
+                        : "N/A",
+                  },
                 ].map((row) => (
-                  <div key={row.label} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 16px', background: 'var(--surface-2)',
-                    border: '1px solid var(--cream-06)', borderRadius: 12,
-                  }}>
-                    <span className="t-body" style={{ fontSize: 13 }}>{row.label}</span>
+                  <div
+                    key={row.label}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "12px 16px",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--cream-06)",
+                      borderRadius: 12,
+                    }}
+                  >
+                    <span className="t-body" style={{ fontSize: 13 }}>
+                      {row.label}
+                    </span>
                     <span className="t-price-sm">{row.value}</span>
                   </div>
                 ))}
@@ -402,15 +680,18 @@ export default function DashboardHome({
         )}
 
         {/* ── MENU TAB ── */}
-        {tab === 'menu' && (
+        {tab === "menu" && (
           <div>
             <div className="dash-section">
               <div className="dash-section-head">
                 <Utensils size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>Menu Management</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Menu Management
+                </span>
               </div>
               <p className="t-body" style={{ marginBottom: 20 }}>
-                Full menu editing coming in the next update. For now manage stock availability from the Kitchen Display.
+                Full menu editing coming in the next update. For now manage
+                stock availability from the Kitchen Display.
               </p>
               <button
                 className="btn-primary"
@@ -420,49 +701,28 @@ export default function DashboardHome({
               </button>
             </div>
 
-            {/* QR Codes section placeholder */}
+            {/* QR Codes */}
             <div className="dash-section">
               <div className="dash-section-head">
                 <QrCode size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>QR Codes</span>
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  QR Codes
+                </span>
               </div>
-              <p className="t-body" style={{ marginBottom: 16 }}>
-                Generate QR codes for each table. Customers scan to access your digital menu instantly.
+              <p className="t-body" style={{ marginBottom: 20 }}>
+                Generate and print QR codes for each table. Customers scan to
+                access your digital menu instantly.
               </p>
-              <p className="t-caption" style={{ marginBottom: 20 }}>
-                Your menu URL: <strong style={{ color: 'var(--gold-glow)' }}>
-                  {typeof window !== 'undefined' ? window.location.origin : ''}/{restaurant.slug}?table=
-                </strong>
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[1,2,3,4,5].map((tableNum) => (
-                  <div key={tableNum} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'var(--surface-2)', border: '1px solid var(--cream-06)',
-                    borderRadius: 12, padding: '12px 16px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <QrCode size={16} color="var(--gold-glow)" />
-                      <span className="t-title" style={{ fontSize: 14 }}>Table {tableNum}</span>
-                    </div>
-                    <button
-                      className="btn-ghost"
-                      style={{ padding: '6px 14px', fontSize: 12 }}
-                      onClick={() => {
-                        const url = `${window.location.origin}/${restaurant.slug}?table=${tableNum}`
-                        navigator.clipboard.writeText(url)
-                      }}
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <QRGenerator
+                restaurant={restaurant}
+                baseUrl={
+                  typeof window !== "undefined" ? window.location.origin : ""
+                }
+              />
             </div>
           </div>
         )}
-
       </div>
     </div>
-  )
+  );
 }
