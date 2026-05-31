@@ -1,6 +1,6 @@
 'use client'
 import SpotlightLayout from '@/components/SpotlightLayout'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { generateFingerprint } from '@/lib/fingerprint'
 import { getStoredToken, storeToken, generateToken } from '@/lib/session'
@@ -31,12 +31,70 @@ export default function SessionScreen({
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   const [starterSelections, setStarterSelections] = useState<Record<string, number>>({})
+  const [liveStarters, setLiveStarters] = useState(starters)
   const [existingSession, setExistingSession] = useState<string | null>(null)
   const [existingName, setExistingName] = useState('')
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => { checkExistingSession() }, [])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`session-starters-${restaurant.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as Pick<MenuItem, 'id'>
+            setLiveStarters((prev) => prev.filter((item) => item.id !== deleted.id))
+            setStarterSelections((prev) => {
+              const next = { ...prev }
+              delete next[deleted.id]
+              return next
+            })
+            return
+          }
+
+          const updated = payload.new as MenuItem
+          if (!updated.is_starter) {
+            setLiveStarters((prev) => prev.filter((item) => item.id !== updated.id))
+            setStarterSelections((prev) => {
+              const next = { ...prev }
+              delete next[updated.id]
+              return next
+            })
+            return
+          }
+
+          setLiveStarters((prev) => {
+            if (prev.some((item) => item.id === updated.id)) {
+              return prev.map((item) => item.id === updated.id ? updated : item)
+            }
+            return [...prev, updated]
+          })
+
+          if (updated.is_available === false) {
+            setStarterSelections((prev) => {
+              const next = { ...prev }
+              delete next[updated.id]
+              return next
+            })
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [restaurant.id, supabase])
 
   async function checkExistingSession() {
     setCheckingSession(true)
@@ -85,7 +143,7 @@ export default function SessionScreen({
       }).select().single()
       if (error) { await checkExistingSession(); return }
       storeToken(token)
-      if (starters.length > 0) { setStep('starters') }
+      if (liveStarters.length > 0) { setStep('starters') }
       else { onSessionReady(token, customerName.trim()) }
     } catch { setNameError('Something went wrong. Please try again.') }
     finally { setLoading(false) }
@@ -96,8 +154,9 @@ export default function SessionScreen({
     const token = getStoredToken()!
     const selected = Object.entries(starterSelections)
       .filter(([, qty]) => qty > 0)
+      .filter(([id]) => liveStarters.some((s) => s.id === id && s.is_available !== false))
       .map(([id, quantity]) => {
-        const item = starters.find((s) => s.id === id)!
+        const item = liveStarters.find((s) => s.id === id)!
         return { id: item.id, name: item.name_en, price: item.price, quantity }
       })
     if (selected.length > 0) {
@@ -118,6 +177,9 @@ export default function SessionScreen({
   }
 
   function adjustStarter(id: string, delta: number) {
+    const item = liveStarters.find((s) => s.id === id)
+    if (delta > 0 && item?.is_available === false) return
+
     setStarterSelections((prev) => {
       const next = Math.max(0, (prev[id] ?? 0) + delta)
       return { ...prev, [id]: next }
@@ -237,7 +299,7 @@ export default function SessionScreen({
   // ── STARTERS ──
   if (step === 'starters') {
     const starterTotal = Object.entries(starterSelections).reduce((sum, [id, qty]) => {
-      const item = starters.find((s) => s.id === id)
+      const item = liveStarters.find((s) => s.id === id)
       return sum + (item ? item.price * qty : 0)
     }, 0)
     const hasSelections = Object.values(starterSelections).some((q) => q > 0)
@@ -251,12 +313,18 @@ export default function SessionScreen({
         </div>
 
         <div className="starters-list">
-          {starters.map((item) => {
+          {liveStarters.map((item) => {
             const qty = starterSelections[item.id] ?? 0
+            const unavailable = item.is_available === false
             return (
-              <div key={item.id} className={`starter-row ${qty > 0 ? 'selected' : ''}`}>
+              <div key={item.id} className={`starter-row ${qty > 0 ? 'selected' : ''} ${unavailable ? 'unavailable' : ''}`}>
                 <div className="starter-thumb">
                   <img src={item.image_url} alt={item.name_en} />
+                  {unavailable && (
+                    <div className="sold-overlay">
+                      <span className="badge-red">Sold Out</span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="t-title" style={{ fontSize: 15, marginBottom: 3 }}>{item.name_en}</p>
@@ -268,7 +336,9 @@ export default function SessionScreen({
                   <p className="t-price-sm">{restaurant.currency} {item.price.toFixed(2)}</p>
                 </div>
                 <div style={{ flexShrink: 0 }}>
-                  {qty > 0 ? (
+                  {unavailable ? (
+                    <span className="t-caption">Unavailable</span>
+                  ) : qty > 0 ? (
                     <div className="qty-control">
                       <button className="qty-btn" onClick={() => adjustStarter(item.id, -1)}>
                         <Minus size={14} />

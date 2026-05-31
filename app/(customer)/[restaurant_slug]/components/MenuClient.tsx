@@ -164,6 +164,7 @@ export default function MenuClient({
   tableNumber,
 }: MenuClientProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [liveMenuItems, setLiveMenuItems] = useState(menuItems);
   const [order, setOrder] = useState<CartItem[]>([]);
   const [showOrder, setShowOrder] = useState(false);
   const [sentSignals, setSentSignals] = useState<Signal[]>([]);
@@ -181,13 +182,15 @@ export default function MenuClient({
   const supabase = useMemo(() => createClient(), []);
 
   const filtered = activeCategory
-    ? menuItems.filter((i) => i.category_id === activeCategory)
-    : menuItems;
+    ? liveMenuItems.filter((i) => i.category_id === activeCategory)
+    : liveMenuItems;
 
   const total = order.reduce((s, ci) => s + ci.item.price * ci.quantity, 0);
   const count = order.reduce((s, ci) => s + ci.quantity, 0);
 
   function addItem(item: MenuItem) {
+    if (item.is_available === false) return;
+
     setOrder((prev) => {
       const ex = prev.find((ci) => ci.item.id === item.id);
       if (ex)
@@ -263,6 +266,7 @@ export default function MenuClient({
           }
 
           if (updated.bill_status === "paid") {
+            await fetchSessionOrders();
             const { data: staffData } = await supabase
               .from("restaurant_staff")
               .select("*")
@@ -307,6 +311,7 @@ export default function MenuClient({
       }
 
       if (data.bill_status === "paid" && !showReceipt) {
+        await fetchSessionOrders();
         const { data: staffData } = await supabase
           .from("restaurant_staff")
           .select("*")
@@ -347,6 +352,57 @@ export default function MenuClient({
     }
     getSessionId();
   }, [sessionToken, supabase]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`customer-menu-${restaurant.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "menu_items",
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const deleted = payload.old as Pick<MenuItem, "id">;
+            setLiveMenuItems((prev) =>
+              prev.filter((item) => item.id !== deleted.id),
+            );
+            setOrder((prev) =>
+              prev.filter((cartItem) => cartItem.item.id !== deleted.id),
+            );
+            return;
+          }
+
+          const updated = payload.new as MenuItem;
+          setLiveMenuItems((prev) => {
+            if (prev.some((item) => item.id === updated.id)) {
+              return prev.map((item) =>
+                item.id === updated.id ? updated : item,
+              );
+            }
+            return [...prev, updated];
+          });
+
+          setOrder((prev) =>
+            updated.is_available === false
+              ? prev.filter((cartItem) => cartItem.item.id !== updated.id)
+              : prev.map((cartItem) =>
+                  cartItem.item.id === updated.id
+                    ? { ...cartItem, item: updated }
+                    : cartItem,
+                ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurant.id, supabase]);
 
   function removeItem(id: string) {
     setOrder((prev) =>
@@ -609,15 +665,24 @@ export default function MenuClient({
 
             if (isHero)
               return (
-                <div key={item.id} className="hero-card">
+                <div
+                  key={item.id}
+                  className={`hero-card ${unavailable ? "unavailable" : ""}`}
+                >
                   <img src={item.image_url} alt={item.name_en} />
                   <div className="hero-overlay" />
-                  <span
-                    className="badge-gold"
-                    style={{ position: "absolute", top: 16, left: 16 }}
-                  >
-                    Chef&apos;s Pick
-                  </span>
+                  {unavailable ? (
+                    <div className="sold-overlay">
+                      <span className="badge-red">Sold Out</span>
+                    </div>
+                  ) : (
+                    <span
+                      className="badge-gold"
+                      style={{ position: "absolute", top: 16, left: 16 }}
+                    >
+                      Chef&apos;s Pick
+                    </span>
+                  )}
                   <div className="hero-body">
                     <p className="t-eyebrow" style={{ marginBottom: 6 }}>
                       {categories.find((c) => c.id === item.category_id)
@@ -646,7 +711,15 @@ export default function MenuClient({
                         <p className="t-caption">{restaurant.currency}</p>
                       </div>
                     </div>
-                    {inOrder ? (
+                    {unavailable ? (
+                      <button
+                        className="btn-add btn-add-full"
+                        disabled
+                        style={{ marginTop: 14, opacity: 0.75 }}
+                      >
+                        Unavailable
+                      </button>
+                    ) : inOrder ? (
                       <div className="qty-control" style={{ marginTop: 14 }}>
                         <button
                           className="qty-btn"
@@ -1051,21 +1124,6 @@ export default function MenuClient({
               Payment is processed at the counter or with your waiter.
             </p>
 
-            {/* ── RECEIPT MODAL ── */}
-            {showReceipt && (
-              <ReceiptModal
-                restaurant={restaurant}
-                sessionToken={sessionToken}
-                tableNumber={tableNumber}
-                customerName={customerName}
-                orders={
-                  allOrders as Parameters<typeof ReceiptModal>[0]["orders"]
-                }
-                staff={staffList}
-                onClose={() => setShowReceipt(false)}
-              />
-            )}
-
             {/* Bill splitter */}
             <BillSplitter
               total={allOrders.reduce((s, o) => s + Number(o.total_amount), 0)}
@@ -1081,6 +1139,19 @@ export default function MenuClient({
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── RECEIPT MODAL ── */}
+      {showReceipt && (
+        <ReceiptModal
+          restaurant={restaurant}
+          sessionToken={sessionToken}
+          tableNumber={tableNumber}
+          customerName={customerName}
+          orders={allOrders as Parameters<typeof ReceiptModal>[0]["orders"]}
+          staff={staffList}
+          onClose={() => setShowReceipt(false)}
+        />
       )}
     </div>
   );

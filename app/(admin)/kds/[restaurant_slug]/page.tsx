@@ -38,60 +38,56 @@ export default async function KDSPage({ params }: PageProps) {
   // Fetch today's active orders
   const today = new Date().toISOString().split("T")[0];
   const todayStart = `${today}T00:00:00.000Z`;
-  const thisMonth = today.slice(0, 7);
+  const tomorrowStartDate = new Date(todayStart);
+  tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
+  const tomorrowStart = tomorrowStartDate.toISOString();
 
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("restaurant_id", restaurant.id)
-    .neq("status", "Completed")
-    .neq("status", "Cancelled")
-    .gte("created_at", todayStart)
-    .order("created_at", { ascending: true });
+  const [
+    { data: orders },
+    { data: sessions },
+    { data: signals },
+    { data: menuItems },
+    { data: todayOrders },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .neq("status", "Completed")
+      .neq("status", "Cancelled")
+      .gte("created_at", todayStart)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("table_sessions")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("waiter_signals")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_resolved", false)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("menu_items")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .order("name_en"),
+    supabase
+      .from("orders")
+      .select("total_amount, status")
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_starter_order", false)
+      .gte("created_at", todayStart)
+      .lt("created_at", tomorrowStart),
+  ]);
 
-  // Fetch active sessions
-  const { data: sessions } = await supabase
-    .from("table_sessions")
-    .select("*")
-    .eq("restaurant_id", restaurant.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
-
-  // Fetch unresolved signals
-  const { data: signals } = await supabase
-    .from("waiter_signals")
-    .select("*")
-    .eq("restaurant_id", restaurant.id)
-    .eq("is_resolved", false)
-    .order("created_at", { ascending: true });
-
-  // Fetch menu items for out-of-stock toggle
-  const { data: menuItems } = await supabase
-    .from("menu_items")
-    .select("*")
-    .eq("restaurant_id", restaurant.id)
-    .order("name_en");
-
-  // Today's quick stats
-  const { data: todayOrders } = await supabase
-  .from('orders')
-  .select('total_amount, status, created_at, table_number, customer_name, items, session_token')
-  .eq('restaurant_id', restaurant.id)
-  .eq('is_starter_order', false)
-  .gte('created_at', todayStart);
-
-  const { data: monthOrders } = await supabase
-  .from('orders')
-  .select('total_amount, status')
-  .eq('restaurant_id', restaurant.id)
-  .eq('is_starter_order', false)
-  .gte('created_at', `${thisMonth}-01T00:00:00.000Z`)
-
-  const todayRevenue = todayOrders?.filter(o => o.status === 'Served')
-  .reduce((s, o) => s + Number(o.total_amount), 0) ?? 0
-const todayCount = todayOrders?.length ?? 0
-const monthRevenue = monthOrders?.reduce((s, o) => s + Number(o.total_amount), 0) ?? 0
-const monthCount = monthOrders?.length ?? 0
+  const todayRevenue =
+    todayOrders
+      ?.filter((o) => o.status === "Served")
+      .reduce((s, o) => s + Number(o.total_amount), 0) ?? 0;
+  const todayCount = todayOrders?.length ?? 0;
 
   return (
     <KDSBoard

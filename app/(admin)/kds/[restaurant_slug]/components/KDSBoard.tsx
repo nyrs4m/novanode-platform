@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -231,22 +231,42 @@ function LedgerView({
   supabase: ReturnType<typeof createClient>;
 }) {
   const [ledger, setLedger] = useState<Tables<"daily_ledger"> | null>(null);
+  const [completedSessionCount, setCompletedSessionCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [closingTime, setClosingTime] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchLedger() {
-      const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase
+  const fetchLedger = useCallback(async () => {
+    const today = new Date().toISOString().split("T")[0];
+    const todayStart = `${today}T00:00:00.000Z`;
+    const tomorrowStartDate = new Date(todayStart);
+    tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
+    const tomorrowStart = tomorrowStartDate.toISOString();
+
+    const [{ data }, { count }] = await Promise.all([
+      supabase
         .from("daily_ledger")
         .select("*")
         .eq("restaurant_id", restaurantId)
         .eq("ledger_date", today)
-        .maybeSingle();
-      setLedger(data);
-      setLoading(false);
-    }
-    fetchLedger();
+        .maybeSingle(),
+      supabase
+        .from("table_sessions")
+        .select("*", { count: "exact", head: true })
+        .eq("restaurant_id", restaurantId)
+        .eq("status", "completed")
+        .gte("closed_at", todayStart)
+        .lt("closed_at", tomorrowStart),
+    ]);
+
+    setLedger(data);
+    setCompletedSessionCount(count ?? 0);
+    setLoading(false);
+  }, [restaurantId, supabase]);
+
+  useEffect(() => {
+    const initialFetch = window.setTimeout(() => {
+      fetchLedger();
+    }, 0);
 
     // Realtime ledger updates
     const channel = supabase
@@ -263,15 +283,34 @@ function LedgerView({
           setLedger(payload.new as Tables<"daily_ledger">);
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "table_sessions",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => {
+          fetchLedger();
+        },
+      )
       .subscribe();
 
     return () => {
+      window.clearTimeout(initialFetch);
       supabase.removeChannel(channel);
     };
-  }, [restaurantId]);
+  }, [fetchLedger, restaurantId, supabase]);
 
-  const completedSessions = ledger?.completed_sessions ?? 0;
-  const totalOwed = ledger?.total_owed ?? 0;
+  const completedSessions = Math.max(
+    ledger?.completed_sessions ?? 0,
+    completedSessionCount,
+  );
+  const totalOwed = Math.max(
+    Number(ledger?.total_owed ?? 0),
+    completedSessions * sessionFee,
+  );
   const isPaid = ledger?.is_paid ?? false;
 
   if (loading) {
@@ -438,8 +477,7 @@ export default function KDSBoard({
   const [revenue, setRevenue] = useState(todayRevenue);
   const [orderCount, setOrderCount] = useState(todayCount);
 
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+  const supabase = useMemo(() => createClient(), []);
 
   async function updateOrderStatus(orderId: string, newStatus: string) {
     setUpdatingOrder(orderId);
@@ -629,7 +667,7 @@ export default function KDSBoard({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [restaurant.id]);
+  }, [restaurant.id, supabase]);
 
   const pendingOrders = orders.filter((o) => o.status === "Pending");
   const preparingOrders = orders.filter((o) => o.status === "Preparing");
@@ -1559,7 +1597,7 @@ export default function KDSBoard({
                             onClick={async () => {
                               try {
                                 // 1. Close the session
-                                await supabase
+                                const { error: closeError } = await supabase
                                   .from("table_sessions")
                                   .update({
                                     is_active: false,
@@ -1567,14 +1605,22 @@ export default function KDSBoard({
                                     closed_at: new Date().toISOString(),
                                   })
                                   .eq("id", session.id);
+                                if (closeError) throw closeError;
 
                                 // 2. Increment daily ledger atomically
-                                await supabase.rpc("increment_daily_ledger", {
-                                  p_restaurant_id: restaurant.id,
-                                  p_session_fee: Number(
-                                    restaurant.session_fee ?? 1.0,
-                                  ),
-                                });
+                                const { error: ledgerError } =
+                                  await supabase.rpc("increment_daily_ledger", {
+                                    p_restaurant_id: restaurant.id,
+                                    p_session_fee: Number(
+                                      restaurant.session_fee ?? 1.0,
+                                    ),
+                                  });
+                                if (ledgerError) {
+                                  console.warn(
+                                    "Daily ledger increment failed:",
+                                    ledgerError,
+                                  );
+                                }
 
                                 // 3. Update local state
                                 setSessions((prev) =>

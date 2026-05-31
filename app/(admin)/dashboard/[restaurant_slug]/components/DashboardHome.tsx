@@ -45,6 +45,9 @@ interface Props {
   recentOrders: Order[];
   activeOrdersCount: number;
   activeTablesCount: number;
+  todayRevenue: number;
+  tablesServedToday: number;
+  tablesServedMonth: number;
   signalsCount: number;
 }
 
@@ -75,6 +78,9 @@ export default function DashboardHome({
   recentOrders,
   activeOrdersCount,
   activeTablesCount,
+  todayRevenue,
+  tablesServedToday,
+  tablesServedMonth,
   signalsCount,
 }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -83,14 +89,14 @@ export default function DashboardHome({
 
   const mRevenue = monthlyStats.reduce((s, r) => s + (r.gross_revenue ?? 0), 0);
   const mOrders = monthlyStats.reduce((s, r) => s + (r.total_orders ?? 0), 0);
-  const mTables = monthlyStats.reduce((s, r) => s + (r.tables_served ?? 0), 0);
+  const mTables = tablesServedMonth;
   const mFees = monthlyStats.reduce(
     (s, r) => s + (r.total_platform_fees ?? 0),
     0,
   );
-  const dRevenue = dailyStats?.gross_revenue ?? 0;
+  const dRevenue = todayRevenue;
   const dOrders = dailyStats?.total_orders ?? 0;
-  const dTables = dailyStats?.tables_served ?? 0;
+  const dTables = tablesServedToday;
 
   const maxQty = topItems[0]?.total_quantity ?? 1;
   const maxPeak = peakHours[0]?.order_count ?? 1;
@@ -523,7 +529,7 @@ export default function DashboardHome({
                     const pct = (qty / Number(maxQty)) * 100;
                     return (
                       <div
-                        key={item.item_id}
+                        key={`${item.item_id}-${item.order_date ?? item.order_month ?? i}`}
                         style={{
                           display: "flex",
                           alignItems: "center",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -94,14 +94,10 @@ export default function OrderTracker({
   const [expiredOrders, setExpiredOrders] = useState<Set<string>>(new Set());
   const [bellPressed, setBellPressed] = useState<Set<string>>(new Set());
   const prevStatusRef = useRef<Record<string, string>>({});
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+  const supabase = useMemo(() => createClient(), []);
   const runningTotal = orders
     .filter((o) => o.status !== "Cancelled")
     .reduce((s, o) => s + Number(o.total_amount), 0);
-  useEffect(() => {
-    supabaseRef.current = supabase;
-  }, [supabase]);
   const fetchOrders = useCallback(async () => {
     const { data } = await supabase
       .from("orders")
@@ -117,7 +113,10 @@ export default function OrderTracker({
   }, [sessionToken, supabase]);
 
   useEffect(() => {
-    fetchOrders();
+    const initialFetch = window.setTimeout(() => {
+      fetchOrders();
+    }, 0);
+    return () => window.clearTimeout(initialFetch);
   }, [fetchOrders]);
 
   // Realtime subscription
