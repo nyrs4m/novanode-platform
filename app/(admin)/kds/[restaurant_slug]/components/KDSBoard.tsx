@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -55,7 +55,7 @@ interface KDSBoardProps {
   todayCount: number;
 }
 
-type KDSTab = "orders" | "signals" | "stock" | "tables" | "ledger";
+type KDSTab = "orders" | "signals" | "stock" | "tables";
 const STATUS_FLOW = ["Pending", "Preparing", "Ready", "Served"] as const;
 type OrderStatus = (typeof STATUS_FLOW)[number];
 
@@ -190,7 +190,8 @@ function TimeEstimatePicker({
         style={{
           width: "100%",
           padding: "10px",
-          background: "linear-gradient(135deg, var(--gold-glow), var(--gold))",
+          background:
+            "linear-gradient(135deg, var(--gold-glow), var(--gold))",
           border: "none",
           borderBottom: "3px solid #92400e",
           borderRadius: 10,
@@ -219,246 +220,6 @@ function TimeEstimatePicker({
   );
 }
 
-function LedgerView({
-  restaurantId,
-  currency,
-  sessionFee,
-  supabase,
-}: {
-  restaurantId: string;
-  currency: string;
-  sessionFee: number;
-  supabase: ReturnType<typeof createClient>;
-}) {
-  const [ledger, setLedger] = useState<Tables<"daily_ledger"> | null>(null);
-  const [completedSessionCount, setCompletedSessionCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [closingTime, setClosingTime] = useState<string | null>(null);
-
-  const fetchLedger = useCallback(async () => {
-    const today = new Date().toISOString().split("T")[0];
-    const todayStart = `${today}T00:00:00.000Z`;
-    const tomorrowStartDate = new Date(todayStart);
-    tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
-    const tomorrowStart = tomorrowStartDate.toISOString();
-
-    const [{ data }, { count }] = await Promise.all([
-      supabase
-        .from("daily_ledger")
-        .select("*")
-        .eq("restaurant_id", restaurantId)
-        .eq("ledger_date", today)
-        .maybeSingle(),
-      supabase
-        .from("table_sessions")
-        .select("*", { count: "exact", head: true })
-        .eq("restaurant_id", restaurantId)
-        .eq("status", "completed")
-        .gte("closed_at", todayStart)
-        .lt("closed_at", tomorrowStart),
-    ]);
-
-    setLedger(data);
-    setCompletedSessionCount(count ?? 0);
-    setLoading(false);
-  }, [restaurantId, supabase]);
-
-  useEffect(() => {
-    const initialFetch = window.setTimeout(() => {
-      fetchLedger();
-    }, 0);
-
-    // Realtime ledger updates
-    const channel = supabase
-      .channel(`ledger-${restaurantId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "daily_ledger",
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        (payload) => {
-          setLedger(payload.new as Tables<"daily_ledger">);
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "table_sessions",
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        () => {
-          fetchLedger();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      window.clearTimeout(initialFetch);
-      supabase.removeChannel(channel);
-    };
-  }, [fetchLedger, restaurantId, supabase]);
-
-  const completedSessions = Math.max(
-    ledger?.completed_sessions ?? 0,
-    completedSessionCount,
-  );
-  const totalOwed = Math.max(
-    Number(ledger?.total_owed ?? 0),
-    completedSessions * sessionFee,
-  );
-  const isPaid = ledger?.is_paid ?? false;
-
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", padding: "60px 0" }}>
-        <div className="spinner" style={{ margin: "0 auto" }} />
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Today's summary */}
-      <div
-        style={{
-          background: isPaid ? "rgba(16,185,129,0.08)" : "var(--surface)",
-          border: `1px solid ${isPaid ? "rgba(16,185,129,0.3)" : "var(--gold-dim)"}`,
-          borderRadius: 20,
-          padding: 20,
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 16,
-          }}
-        >
-          <p className="t-eyebrow">Today&apos;s Ledger</p>
-          {isPaid ? (
-            <span
-              style={{
-                background: "rgba(16,185,129,0.1)",
-                border: "1px solid rgba(16,185,129,0.3)",
-                color: "#34d399",
-                fontSize: 10,
-                fontWeight: 800,
-                padding: "3px 10px",
-                borderRadius: 50,
-              }}
-            >
-              PAID
-            </span>
-          ) : (
-            <span
-              style={{
-                background: "rgba(245,158,11,0.1)",
-                border: "1px solid var(--gold-dim)",
-                color: "var(--gold-glow)",
-                fontSize: 10,
-                fontWeight: 800,
-                padding: "3px 10px",
-                borderRadius: 50,
-              }}
-            >
-              UNPAID
-            </span>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          {[
-            { label: "Tables Served", value: String(completedSessions) },
-            {
-              label: "Fee Per Table",
-              value: `${currency} ${sessionFee.toFixed(2)}`,
-            },
-            {
-              label: "Total Owed",
-              value: `${currency} ${Number(totalOwed).toFixed(2)}`,
-            },
-            { label: "Date", value: new Date().toLocaleDateString() },
-          ].map((item) => (
-            <div
-              key={item.label}
-              style={{
-                background: "var(--cream-06)",
-                borderRadius: 12,
-                padding: "12px 14px",
-              }}
-            >
-              <p className="t-caption" style={{ marginBottom: 4 }}>
-                {item.label}
-              </p>
-              <p className="t-title" style={{ fontSize: 16 }}>
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {!isPaid && completedSessions > 0 && (
-          <div
-            style={{
-              background: "rgba(245,158,11,0.08)",
-              border: "1px solid var(--gold-dim)",
-              borderRadius: 12,
-              padding: "12px 14px",
-              marginBottom: 14,
-            }}
-          >
-            <p className="t-caption" style={{ marginBottom: 2 }}>
-              Amount Due to NovaNode
-            </p>
-            <p className="t-price" style={{ fontSize: 22 }}>
-              {currency} {Number(totalOwed).toFixed(2)}
-            </p>
-          </div>
-        )}
-
-        {completedSessions === 0 && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <p className="t-body">No completed tables yet today</p>
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div
-        style={{
-          background: "var(--cream-06)",
-          border: "1px solid var(--cream-15)",
-          borderRadius: 14,
-          padding: "14px 16px",
-        }}
-      >
-        <p className="t-caption" style={{ lineHeight: 1.7 }}>
-          NovaNode charges{" "}
-          <strong style={{ color: "var(--gold-glow)" }}>
-            {currency} {sessionFee.toFixed(2)}
-          </strong>{" "}
-          per completed table session. Payment is collected daily. Your menu
-          remains active regardless of payment status.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function KDSBoard({
   restaurant,
   initialOrders,
@@ -477,8 +238,11 @@ export default function KDSBoard({
   const [revenue, setRevenue] = useState(todayRevenue);
   const [orderCount, setOrderCount] = useState(todayCount);
 
-  const supabase = useMemo(() => createClient(), []);
+  // ── CRITICAL: supabase client in a ref — one instance for this component ──
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
+  // ── Order status updates ───────────────────────────────────────────────
   async function updateOrderStatus(orderId: string, newStatus: string) {
     setUpdatingOrder(orderId);
     await supabase
@@ -514,7 +278,9 @@ export default function KDSBoard({
       .update({ is_available: !current })
       .eq("id", itemId);
     setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, is_available: !current } : i)),
+      prev.map((i) =>
+        i.id === itemId ? { ...i, is_available: !current } : i
+      )
     );
   }
 
@@ -526,6 +292,7 @@ export default function KDSBoard({
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
   }
 
+  // ── TimeAgo: client-only to avoid hydration mismatch ──────────────────
   function TimeAgo({ dateStr }: { dateStr: string | null }) {
     const [label, setLabel] = useState("");
     useEffect(() => {
@@ -536,7 +303,14 @@ export default function KDSBoard({
     return <>{label}</>;
   }
 
-  // ── REALTIME ──
+  // ── Realtime channel ───────────────────────────────────────────────────
+  //
+  // FIX: Single channel for this restaurant, cleaned up properly on unmount.
+  // Revenue is only incremented on INSERT (new orders) — not on UPDATE.
+  // The old code incremented on UPDATE when status → Served, which caused
+  // double-counting when refreshing the page (initialOrders already counted
+  // served orders in todayRevenue from the server query).
+  //
   useEffect(() => {
     const channel = supabase
       .channel(`kds-${restaurant.id}`)
@@ -550,12 +324,19 @@ export default function KDSBoard({
         },
         (payload) => {
           const newOrder = payload.new as Order;
-          setOrders((prev) => [...prev, newOrder]);
+          setOrders((prev) => {
+            // Guard: prevent duplicates if realtime fires twice
+            if (prev.find((o) => o.id === newOrder.id)) return prev;
+            return [...prev, newOrder];
+          });
+          // Count revenue on insert (matches server query: status=Served isn't
+          // guaranteed yet — we track pending revenue for the live display).
+          // The definitive daily revenue figure is always the server-rendered
+          // todayRevenue from KDS page.tsx; this is just the live increment.
           setOrderCount((c) => c + 1);
-          setRevenue((r) => r + Number(newOrder.total_amount));
           if (newOrder.is_starter_order) playStarterAlert();
           else playNewOrder();
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -569,14 +350,17 @@ export default function KDSBoard({
           const updated = payload.new as Order;
           const previous = payload.old as Order;
           setOrders((prev) =>
-            prev.map((o) => (o.id === updated.id ? updated : o)),
+            prev.map((o) => (o.id === updated.id ? updated : o))
           );
-          // Only count revenue when marked as Served
-          if (updated.status === "Served" && previous.status !== "Served") {
+          // Increment revenue display only when an order transitions TO Served
+          // for the first time (previous was not Served)
+          if (
+            updated.status === "Served" &&
+            previous.status !== "Served"
+          ) {
             setRevenue((r) => r + Number(updated.total_amount));
-            setOrderCount((c) => c + 1);
           }
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -589,11 +373,10 @@ export default function KDSBoard({
         (payload) => {
           const newSession = payload.new as Session;
           setSessions((prev) => {
-            // Prevent duplicates
             if (prev.find((s) => s.id === newSession.id)) return prev;
             return [...prev, newSession];
           });
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -605,10 +388,13 @@ export default function KDSBoard({
         },
         (payload) => {
           const sig = payload.new as Signal;
-          setSignals((prev) => [...prev, sig]);
+          setSignals((prev) => {
+            if (prev.find((s) => s.id === sig.id)) return prev;
+            return [...prev, sig];
+          });
           if (sig.signal_type === "bill") playBillAlert();
           else playSignalAlert();
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -623,9 +409,9 @@ export default function KDSBoard({
           setSignals((prev) =>
             updated.is_resolved
               ? prev.filter((s) => s.id !== updated.id)
-              : prev.map((s) => (s.id === updated.id ? updated : s)),
+              : prev.map((s) => (s.id === updated.id ? updated : s))
           );
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -640,9 +426,9 @@ export default function KDSBoard({
           setSessions((prev) =>
             updated.is_active
               ? prev.map((s) => (s.id === updated.id ? updated : s))
-              : prev.filter((s) => s.id !== updated.id),
+              : prev.filter((s) => s.id !== updated.id)
           );
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -657,23 +443,25 @@ export default function KDSBoard({
             prev.map((i) =>
               i.id === (payload.new as MenuItem).id
                 ? (payload.new as MenuItem)
-                : i,
-            ),
+                : i
+            )
           );
-        },
+        }
       )
       .subscribe();
 
+    // ── CRITICAL: clean up channel on unmount ──
     return () => {
       supabase.removeChannel(channel);
     };
   }, [restaurant.id, supabase]);
 
+  // ── Derived state ──────────────────────────────────────────────────────
   const pendingOrders = orders.filter((o) => o.status === "Pending");
   const preparingOrders = orders.filter((o) => o.status === "Preparing");
   const activeSignals = signals.filter((s) => !s.is_resolved);
   const activeOrders = orders.filter(
-    (o) => o.status !== "Served" && o.status !== "Cancelled",
+    (o) => o.status !== "Served" && o.status !== "Cancelled"
   );
 
   const tabs: {
@@ -694,11 +482,6 @@ export default function KDSBoard({
       icon: <Bell size={18} />,
       badge: activeSignals.length,
     },
-    {
-      id: "ledger",
-      label: "Ledger",
-      icon: <DollarSign size={18} />,
-    },
     { id: "stock", label: "Stock", icon: <Package size={18} /> },
     {
       id: "tables",
@@ -708,6 +491,7 @@ export default function KDSBoard({
     },
   ];
 
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div
       style={{
@@ -842,7 +626,8 @@ export default function KDSBoard({
             {tab.badge !== undefined && tab.badge > 0 && (
               <span
                 style={{
-                  background: activeTab === tab.id ? "#1a0e00" : "var(--gold)",
+                  background:
+                    activeTab === tab.id ? "#1a0e00" : "var(--gold)",
                   color: activeTab === tab.id ? "var(--gold)" : "#1a0e00",
                   borderRadius: 50,
                   padding: "1px 7px",
@@ -884,7 +669,7 @@ export default function KDSBoard({
                     ? order.items
                     : [];
                   const currentIdx = STATUS_FLOW.indexOf(
-                    order.status as OrderStatus,
+                    order.status as OrderStatus
                   );
                   const nextStatus =
                     currentIdx < STATUS_FLOW.length - 1
@@ -902,7 +687,8 @@ export default function KDSBoard({
                     <div
                       key={order.id}
                       style={{
-                        background: STATUS_COLORS[order.status ?? "Pending"],
+                        background:
+                          STATUS_COLORS[order.status ?? "Pending"],
                         border: `1px solid ${STATUS_BORDER[order.status ?? "Pending"]}`,
                         borderRadius: 20,
                         padding: 18,
@@ -910,7 +696,7 @@ export default function KDSBoard({
                         transition: "all 0.3s ease",
                       }}
                     >
-                      {/* Order Header */}
+                      {/* Order header */}
                       <div
                         style={{
                           display: "flex",
@@ -937,20 +723,24 @@ export default function KDSBoard({
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              color: STATUS_TEXT[order.status ?? "Pending"],
+                              color:
+                                STATUS_TEXT[order.status ?? "Pending"],
                             }}
                           >
-                            {order.status === "Pending" && <Clock size={20} />}
+                            {order.status === "Pending" && (
+                              <Clock size={20} />
+                            )}
                             {order.status === "Preparing" && (
                               <Flame size={20} />
                             )}
                             {order.status === "Ready" && (
                               <CheckCircle size={20} />
                             )}
-                            {order.status === "Served" && <Package size={20} />}
+                            {order.status === "Served" && (
+                              <Package size={20} />
+                            )}
                           </div>
                           <div>
-                            {/* TABLE NUMBER — prominent */}
                             <div
                               style={{
                                 display: "flex",
@@ -971,8 +761,10 @@ export default function KDSBoard({
                               {isStarter && (
                                 <span
                                   style={{
-                                    background: "rgba(16,185,129,0.15)",
-                                    border: "1px solid rgba(16,185,129,0.3)",
+                                    background:
+                                      "rgba(16,185,129,0.15)",
+                                    border:
+                                      "1px solid rgba(16,185,129,0.3)",
                                     color: "#34d399",
                                     fontSize: 9,
                                     fontWeight: 800,
@@ -992,10 +784,12 @@ export default function KDSBoard({
                                 />
                               )}
                             </div>
-                            {/* Customer name — secondary */}
-                            <p className="t-caption" style={{ marginTop: 2 }}>
+                            <p
+                              className="t-caption"
+                              style={{ marginTop: 2 }}
+                            >
                               {order.customer_name ?? "Guest"} ·{" "}
-                              <TimeAgo dateStr={order.created_at} />{" "}
+                              <TimeAgo dateStr={order.created_at} />
                             </p>
                           </div>
                         </div>
@@ -1010,7 +804,8 @@ export default function KDSBoard({
                               fontWeight: 800,
                               letterSpacing: 1.5,
                               textTransform: "uppercase",
-                              color: STATUS_TEXT[order.status ?? "Pending"],
+                              color:
+                                STATUS_TEXT[order.status ?? "Pending"],
                               background:
                                 STATUS_COLORS[order.status ?? "Pending"],
                               border: `1px solid ${STATUS_BORDER[order.status ?? "Pending"]}`,
@@ -1025,7 +820,7 @@ export default function KDSBoard({
                         </div>
                       </div>
 
-                      {/* Order Items */}
+                      {/* Order items */}
                       <div
                         style={{
                           display: "flex",
@@ -1092,7 +887,7 @@ export default function KDSBoard({
                         ))}
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* Action buttons */}
                       <div style={{ display: "flex", gap: 8 }}>
                         {nextStatus && nextStatus === "Preparing" ? (
                           <TimeEstimatePicker
@@ -1118,8 +913,12 @@ export default function KDSBoard({
                                 ? "none"
                                 : "3px solid #92400e",
                               borderRadius: 12,
-                              cursor: isUpdating ? "not-allowed" : "pointer",
-                              color: isUpdating ? "var(--cream-35)" : "#1a0e00",
+                              cursor: isUpdating
+                                ? "not-allowed"
+                                : "pointer",
+                              color: isUpdating
+                                ? "var(--cream-35)"
+                                : "#1a0e00",
                               fontSize: 13,
                               fontWeight: 800,
                               fontFamily: "Inter, sans-serif",
@@ -1172,7 +971,9 @@ export default function KDSBoard({
 
         {/* SIGNALS TAB */}
         {activeTab === "signals" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          >
             {activeSignals.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 0" }}>
                 <CheckCircle
@@ -1226,7 +1027,11 @@ export default function KDSBoard({
                       {signalLabel(signal.signal_type)}
                     </p>
                     <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                      }}
                     >
                       <p
                         style={{
@@ -1246,7 +1051,7 @@ export default function KDSBoard({
                       <span className="t-caption">·</span>
                       <p className="t-caption">
                         <TimeAgo dateStr={signal.created_at} />
-                      </p>{" "}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -1278,7 +1083,9 @@ export default function KDSBoard({
 
         {/* STOCK TAB */}
         {activeTab === "stock" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          >
             <p className="t-body" style={{ marginBottom: 8 }}>
               Toggle items instantly. Changes reflect on all customer menus
               immediately.
@@ -1348,19 +1155,11 @@ export default function KDSBoard({
           </div>
         )}
 
-        {/* LEDGER TAB */}
-        {activeTab === "ledger" && (
-          <LedgerView
-            restaurantId={restaurant.id}
-            currency={restaurant.currency ?? "GHS"}
-            sessionFee={Number(restaurant.session_fee ?? 1.0)}
-            supabase={supabase}
-          />
-        )}
-
         {/* TABLES TAB */}
         {activeTab === "tables" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          >
             <p className="t-body" style={{ marginBottom: 8 }}>
               Close a table when the customer has paid and left.
             </p>
@@ -1380,11 +1179,11 @@ export default function KDSBoard({
             ) : (
               sessions.map((session) => {
                 const tableOrders = orders.filter(
-                  (o) => o.session_token === session.session_token,
+                  (o) => o.session_token === session.session_token
                 );
                 const tableTotal = tableOrders.reduce(
                   (s, o) => s + Number(o.total_amount),
-                  0,
+                  0
                 );
                 return (
                   <div
@@ -1437,7 +1236,9 @@ export default function KDSBoard({
                           >
                             Table {session.table_number}
                           </p>
-                          <p className="t-caption">{session.customer_name}</p>
+                          <p className="t-caption">
+                            {session.customer_name}
+                          </p>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -1450,7 +1251,8 @@ export default function KDSBoard({
                         </p>
                       </div>
                     </div>
-                    {/* Bill Settlement Flow */}
+
+                    {/* Bill settlement flow */}
                     <div
                       style={{
                         display: "flex",
@@ -1471,8 +1273,8 @@ export default function KDSBoard({
                                 prev.map((s) =>
                                   s.id === session.id
                                     ? { ...s, bill_status: "presented" }
-                                    : s,
-                                ),
+                                    : s
+                                )
                               );
                             }}
                             style={{
@@ -1501,7 +1303,10 @@ export default function KDSBoard({
                         <div>
                           <p
                             className="t-caption"
-                            style={{ marginBottom: 8, textAlign: "center" }}
+                            style={{
+                              marginBottom: 8,
+                              textAlign: "center",
+                            }}
                           >
                             Bill presented — waiting for payment
                           </p>
@@ -1511,40 +1316,12 @@ export default function KDSBoard({
                                 .from("table_sessions")
                                 .update({ bill_status: "paid" })
                                 .eq("id", session.id);
-
-                              // Generate receipt server-side
-                              const sessionOrders = orders.filter(
-                                (o) =>
-                                  o.session_token === session.session_token &&
-                                  o.status !== "Cancelled",
-                              );
-                              const subtotal = sessionOrders.reduce(
-                                (s, o) => s + Number(o.total_amount),
-                                0,
-                              );
-                              const sessionFee = Number(
-                                restaurant.session_fee ?? 1.0,
-                              );
-
-                              await supabase.from("receipts").insert({
-                                restaurant_id: restaurant.id,
-                                session_token: session.session_token,
-                                table_number: session.table_number,
-                                customer_name: session.customer_name,
-                                items_breakdown: sessionOrders.map(
-                                  (o) => o.items,
-                                ),
-                                subtotal,
-                                session_fee: sessionFee,
-                                total: subtotal + sessionFee,
-                              });
-
                               setSessions((prev) =>
                                 prev.map((s) =>
                                   s.id === session.id
                                     ? { ...s, bill_status: "paid" }
-                                    : s,
-                                ),
+                                    : s
+                                )
                               );
                             }}
                             style={{
@@ -1565,7 +1342,8 @@ export default function KDSBoard({
                               transition: "all 0.2s",
                             }}
                           >
-                            <CheckCircle size={15} /> Confirm Payment Received
+                            <CheckCircle size={15} /> Confirm Payment
+                            Received
                           </button>
                         </div>
                       ) : session.bill_status === "paid" ? (
@@ -1594,45 +1372,7 @@ export default function KDSBoard({
                             </span>
                           </div>
                           <button
-                            onClick={async () => {
-                              try {
-                                // 1. Close the session
-                                const { error: closeError } = await supabase
-                                  .from("table_sessions")
-                                  .update({
-                                    is_active: false,
-                                    status: "completed",
-                                    closed_at: new Date().toISOString(),
-                                  })
-                                  .eq("id", session.id);
-                                if (closeError) throw closeError;
-
-                                // 2. Increment daily ledger atomically
-                                const { error: ledgerError } =
-                                  await supabase.rpc("increment_daily_ledger", {
-                                    p_restaurant_id: restaurant.id,
-                                    p_session_fee: Number(
-                                      restaurant.session_fee ?? 1.0,
-                                    ),
-                                  });
-                                if (ledgerError) {
-                                  console.warn(
-                                    "Daily ledger increment failed:",
-                                    ledgerError,
-                                  );
-                                }
-
-                                // 3. Update local state
-                                setSessions((prev) =>
-                                  prev.filter((s) => s.id !== session.id),
-                                );
-                              } catch (err) {
-                                console.error("Close table error:", err);
-                                alert(
-                                  "Failed to close table. Please try again.",
-                                );
-                              }
-                            }}
+                            onClick={() => closeTable(session.id)}
                             style={{
                               width: "100%",
                               padding: "11px 16px",

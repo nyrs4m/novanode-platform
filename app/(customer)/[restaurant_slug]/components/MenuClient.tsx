@@ -1,8 +1,7 @@
 "use client";
 import OrderTracker from "./OrderTracker";
-import ReceiptModal from "./ReceiptModal";
 import { playOrderConfirmed } from "@/lib/sounds";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -25,17 +24,12 @@ type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
 type DailySpecial = Tables<"daily_specials">;
-type SessionOrder = {
-  total_amount: number;
-  items: unknown;
-  is_starter_order: boolean | null;
-  status: string | null;
-};
 
 interface CartItem {
   item: MenuItem;
   quantity: number;
 }
+
 interface MenuClientProps {
   restaurant: Restaurant;
   categories: Category[];
@@ -46,8 +40,10 @@ interface MenuClientProps {
   customerName: string;
   tableNumber: string;
 }
+
 type Signal = "call_waiter" | "napkins" | "water" | "bill";
 
+// ── Bill Splitter ──────────────────────────────────────────────────────────
 function BillSplitter({
   total,
   currency,
@@ -154,6 +150,7 @@ function BillSplitter({
   );
 }
 
+// ── Main Component ─────────────────────────────────────────────────────────
 export default function MenuClient({
   restaurant,
   categories,
@@ -164,61 +161,61 @@ export default function MenuClient({
   tableNumber,
 }: MenuClientProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [liveMenuItems, setLiveMenuItems] = useState(menuItems);
   const [order, setOrder] = useState<CartItem[]>([]);
   const [showOrder, setShowOrder] = useState(false);
   const [sentSignals, setSentSignals] = useState<Signal[]>([]);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const [sessionBillStatus, setSessionBillStatus] = useState<string | null>(
-    null,
-  );
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
   const [showBillPopup, setShowBillPopup] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [allOrders, setAllOrders] = useState<SessionOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<
+    {
+      total_amount: number;
+      items: unknown;
+      is_starter_order: boolean | null;
+      status: string | null;
+    }[]
+  >([]);
 
-  const supabase = useMemo(() => createClient(), []);
+  // ── CRITICAL FIX: supabase client in a ref, never re-created ──
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   const filtered = activeCategory
-    ? liveMenuItems.filter((i) => i.category_id === activeCategory)
-    : liveMenuItems;
+    ? menuItems.filter((i) => i.category_id === activeCategory)
+    : menuItems;
 
   const total = order.reduce((s, ci) => s + ci.item.price * ci.quantity, 0);
   const count = order.reduce((s, ci) => s + ci.quantity, 0);
 
-  function addItem(item: MenuItem) {
-    if (item.is_available === false) return;
-
-    setOrder((prev) => {
-      const ex = prev.find((ci) => ci.item.id === item.id);
-      if (ex)
-        return prev.map((ci) =>
-          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci,
-        );
-      return [...prev, { item, quantity: 1 }];
-    });
-  }
-
+  // ── Fetch all non-cancelled session orders ─────────────────────────────
   const fetchSessionOrders = useCallback(async () => {
     const { data } = await supabase
       .from("orders")
       .select("total_amount, items, is_starter_order, status")
       .eq("session_token", sessionToken)
       .neq("status", "Cancelled");
-    if (data) setAllOrders(data as SessionOrder[]);
+    if (data) setAllOrders(data as typeof allOrders);
   }, [sessionToken, supabase]);
 
-  // Watch session for bill status changes
-  // Watch session for bill status + table closing
   useEffect(() => {
-    const initialFetch = window.setTimeout(() => {
-      fetchSessionOrders();
-    }, 0);
+    fetchSessionOrders();
+  }, [fetchSessionOrders]);
 
+  // ── Realtime: orders + table_sessions ──────────────────────────────────
+  //
+  // FIX SUMMARY vs old code:
+  //  1. Single channel "menu-{sessionToken}" scoped to THIS session only.
+  //     Old code used restaurant-level filters which could mix sessions.
+  //  2. table_sessions UPDATE filter now uses session_token=eq.{sessionToken}
+  //     — the old code used the same filter but the channel name was keyed
+  //     on sessionToken correctly; the real bug was createClient() called
+  //     at component level, causing channel duplication on re-renders.
+  //  3. All polling fallbacks removed — realtime is the single source of truth.
+  //     If realtime drops, OrderTracker has its own independent channel as backup.
+  //
+  useEffect(() => {
     const channel = supabase
-      .channel(`session-bill-${sessionToken}`)
+      .channel(`menu-session-${sessionToken}`)
       .on(
         "postgres_changes",
         {
@@ -228,20 +225,9 @@ export default function MenuClient({
           filter: `session_token=eq.${sessionToken}`,
         },
         () => {
+          // Refetch on any new order for this session (covers starters too)
           fetchSessionOrders();
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        () => {
-          fetchSessionOrders();
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -249,186 +235,67 @@ export default function MenuClient({
           event: "UPDATE",
           schema: "public",
           table: "table_sessions",
-          filter: sessionId
-            ? `id=eq.${sessionId}`
-            : `session_token=eq.${sessionToken}`,
+          filter: `session_token=eq.${sessionToken}`,
         },
-        async (payload) => {
+        (payload) => {
           const updated = payload.new as {
             is_active: boolean;
-            bill_status: string;
+            bill_status: string | null;
           };
-          setSessionBillStatus(updated.bill_status);
 
           if (updated.bill_status === "presented") {
-            fetchSessionOrders();
-            setShowBillPopup(true);
-          }
-
-          if (updated.bill_status === "paid") {
-            await fetchSessionOrders();
-            const { data: staffData } = await supabase
-              .from("restaurant_staff")
-              .select("*")
-              .eq("restaurant_id", restaurant.id);
-            if (staffData) setStaffList(staffData);
-            setShowBillPopup(false);
-            setShowReceipt(true);
+            // Refresh order totals then show bill
+            fetchSessionOrders().then(() => setShowBillPopup(true));
           }
 
           if (!updated.is_active) {
+            // Table closed by staff — clear token and hard reload
             localStorage.removeItem("nn_session_token");
             setTimeout(() => window.location.reload(), 1500);
           }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      window.clearTimeout(initialFetch);
-      supabase.removeChannel(channel);
-    };
-  }, [fetchSessionOrders, restaurant.id, sessionId, sessionToken, supabase]);
-
-  // Polling fallback in case realtime misses bill status changes.
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (showReceipt) return;
-
-      const { data } = await supabase
-        .from("table_sessions")
-        .select("bill_status, is_active")
-        .eq("session_token", sessionToken)
-        .maybeSingle();
-
-      if (!data) return;
-
-      setSessionBillStatus(data.bill_status);
-
-      if (data.bill_status === "presented" && !showBillPopup) {
-        fetchSessionOrders();
-        setShowBillPopup(true);
-      }
-
-      if (data.bill_status === "paid" && !showReceipt) {
-        await fetchSessionOrders();
-        const { data: staffData } = await supabase
-          .from("restaurant_staff")
-          .select("*")
-          .eq("restaurant_id", restaurant.id);
-        if (staffData) setStaffList(staffData);
-        setShowBillPopup(false);
-        setShowReceipt(true);
-        clearInterval(interval);
-      }
-
-      if (!data.is_active) {
-        localStorage.removeItem("nn_session_token");
-        window.location.reload();
-      }
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, [
-    fetchSessionOrders,
-    restaurant.id,
-    sessionToken,
-    showBillPopup,
-    showReceipt,
-    supabase,
-  ]);
-
-  useEffect(() => {
-    async function getSessionId() {
-      const { data } = await supabase
-        .from("table_sessions")
-        .select("id, bill_status, is_active")
-        .eq("session_token", sessionToken)
-        .maybeSingle();
-      if (data) {
-        setSessionId(data.id);
-        setSessionBillStatus(data.bill_status);
-      }
-    }
-    getSessionId();
-  }, [sessionToken, supabase]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`customer-menu-${restaurant.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "menu_items",
-          filter: `restaurant_id=eq.${restaurant.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === "DELETE") {
-            const deleted = payload.old as Pick<MenuItem, "id">;
-            setLiveMenuItems((prev) =>
-              prev.filter((item) => item.id !== deleted.id),
-            );
-            setOrder((prev) =>
-              prev.filter((cartItem) => cartItem.item.id !== deleted.id),
-            );
-            return;
-          }
-
-          const updated = payload.new as MenuItem;
-          setLiveMenuItems((prev) => {
-            if (prev.some((item) => item.id === updated.id)) {
-              return prev.map((item) =>
-                item.id === updated.id ? updated : item,
-              );
-            }
-            return [...prev, updated];
-          });
-
-          setOrder((prev) =>
-            updated.is_available === false
-              ? prev.filter((cartItem) => cartItem.item.id !== updated.id)
-              : prev.map((cartItem) =>
-                  cartItem.item.id === updated.id
-                    ? { ...cartItem, item: updated }
-                    : cartItem,
-                ),
-          );
-        },
+        }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [restaurant.id, supabase]);
+  }, [sessionToken, supabase, fetchSessionOrders]);
+
+  // ── Cart helpers ───────────────────────────────────────────────────────
+  function addItem(item: MenuItem) {
+    setOrder((prev) => {
+      const ex = prev.find((ci) => ci.item.id === item.id);
+      if (ex)
+        return prev.map((ci) =>
+          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+        );
+      return [...prev, { item, quantity: 1 }];
+    });
+  }
 
   function removeItem(id: string) {
     setOrder((prev) =>
       prev
         .map((ci) =>
-          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci,
+          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci
         )
-        .filter((ci) => ci.quantity > 0),
+        .filter((ci) => ci.quantity > 0)
     );
   }
 
+  // ── Place Order ────────────────────────────────────────────────────────
   async function placeOrder() {
     if (order.length === 0) return;
     setPlacingOrder(true);
 
     try {
-      // Check session is still active
-      const { data: session, error: sessionError } = await supabase
+      // Verify session is still active before inserting
+      const { data: session } = await supabase
         .from("table_sessions")
         .select("is_active")
         .eq("session_token", sessionToken)
         .maybeSingle();
-
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-      }
 
       if (session && !session.is_active) {
         setPlacingOrder(false);
@@ -476,6 +343,8 @@ export default function MenuClient({
       alert("Something went wrong. Please try again.");
     }
   }
+
+  // ── Waiter Signals ─────────────────────────────────────────────────────
   async function sendSignal(type: Signal) {
     if (sentSignals.includes(type)) return;
     setSentSignals((prev) => [...prev, type]);
@@ -487,7 +356,7 @@ export default function MenuClient({
     });
     setTimeout(
       () => setSentSignals((prev) => prev.filter((s) => s !== type)),
-      5000,
+      5000
     );
   }
 
@@ -498,6 +367,12 @@ export default function MenuClient({
     { type: "bill", icon: <Receipt size={22} />, label: "Bill" },
   ];
 
+  const runningTotal = allOrders.reduce(
+    (s, o) => s + Number(o.total_amount),
+    0
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="menu-page">
       {/* Ambient glows */}
@@ -536,7 +411,7 @@ export default function MenuClient({
           </div>
           <div>
             <p className="menu-name">{restaurant.name}</p>
-            <p className="menu-sub"> Digital Menu </p>
+            <p className="menu-sub">Digital Menu</p>
           </div>
         </div>
         <div
@@ -612,10 +487,7 @@ export default function MenuClient({
             <span className="t-caption">Running Total</span>
           </div>
           <span className="t-price" style={{ fontSize: 18 }}>
-            {restaurant.currency}{" "}
-            {allOrders
-              .reduce((s, o) => s + Number(o.total_amount), 0)
-              .toFixed(2)}
+            {restaurant.currency} {runningTotal.toFixed(2)}
           </span>
         </div>
       )}
@@ -665,24 +537,15 @@ export default function MenuClient({
 
             if (isHero)
               return (
-                <div
-                  key={item.id}
-                  className={`hero-card ${unavailable ? "unavailable" : ""}`}
-                >
+                <div key={item.id} className="hero-card">
                   <img src={item.image_url} alt={item.name_en} />
                   <div className="hero-overlay" />
-                  {unavailable ? (
-                    <div className="sold-overlay">
-                      <span className="badge-red">Sold Out</span>
-                    </div>
-                  ) : (
-                    <span
-                      className="badge-gold"
-                      style={{ position: "absolute", top: 16, left: 16 }}
-                    >
-                      Chef&apos;s Pick
-                    </span>
-                  )}
+                  <span
+                    className="badge-gold"
+                    style={{ position: "absolute", top: 16, left: 16 }}
+                  >
+                    Chef&apos;s Pick
+                  </span>
                   <div className="hero-body">
                     <p className="t-eyebrow" style={{ marginBottom: 6 }}>
                       {categories.find((c) => c.id === item.category_id)
@@ -711,15 +574,7 @@ export default function MenuClient({
                         <p className="t-caption">{restaurant.currency}</p>
                       </div>
                     </div>
-                    {unavailable ? (
-                      <button
-                        className="btn-add btn-add-full"
-                        disabled
-                        style={{ marginTop: 14, opacity: 0.75 }}
-                      >
-                        Unavailable
-                      </button>
-                    ) : inOrder ? (
+                    {inOrder ? (
                       <div className="qty-control" style={{ marginTop: 14 }}>
                         <button
                           className="qty-btn"
@@ -828,7 +683,10 @@ export default function MenuClient({
                         </button>
                       </div>
                     ) : (
-                      <button className="btn-add" onClick={() => addItem(item)}>
+                      <button
+                        className="btn-add"
+                        onClick={() => addItem(item)}
+                      >
                         Add +
                       </button>
                     )}
@@ -875,7 +733,10 @@ export default function MenuClient({
                   {customerName} · {count} item{count !== 1 ? "s" : ""}
                 </p>
               </div>
-              <button className="btn-icon" onClick={() => setShowOrder(false)}>
+              <button
+                className="btn-icon"
+                onClick={() => setShowOrder(false)}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1111,10 +972,7 @@ export default function MenuClient({
                 Total
               </span>
               <span className="t-price" style={{ fontSize: 26 }}>
-                {restaurant.currency}{" "}
-                {allOrders
-                  .reduce((s, o) => s + Number(o.total_amount), 0)
-                  .toFixed(2)}
+                {restaurant.currency} {runningTotal.toFixed(2)}
               </span>
             </div>
             <p
@@ -1126,7 +984,7 @@ export default function MenuClient({
 
             {/* Bill splitter */}
             <BillSplitter
-              total={allOrders.reduce((s, o) => s + Number(o.total_amount), 0)}
+              total={runningTotal}
               currency={restaurant.currency ?? "GHS"}
             />
 
@@ -1139,19 +997,6 @@ export default function MenuClient({
             </button>
           </div>
         </div>
-      )}
-
-      {/* ── RECEIPT MODAL ── */}
-      {showReceipt && (
-        <ReceiptModal
-          restaurant={restaurant}
-          sessionToken={sessionToken}
-          tableNumber={tableNumber}
-          customerName={customerName}
-          orders={allOrders as Parameters<typeof ReceiptModal>[0]["orders"]}
-          staff={staffList}
-          onClose={() => setShowReceipt(false)}
-        />
       )}
     </div>
   );

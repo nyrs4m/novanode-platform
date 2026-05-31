@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -93,17 +93,21 @@ export default function OrderTracker({
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   const [expiredOrders, setExpiredOrders] = useState<Set<string>>(new Set());
   const [bellPressed, setBellPressed] = useState<Set<string>>(new Set());
+
   const prevStatusRef = useRef<Record<string, string>>({});
-  const supabase = useMemo(() => createClient(), []);
-  const runningTotal = orders
-    .filter((o) => o.status !== "Cancelled")
-    .reduce((s, o) => s + Number(o.total_amount), 0);
+
+  // ── CRITICAL FIX: supabase in a ref — never recreated on re-render ──
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
+
+  // ── Fetch orders for this session ──────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     const { data } = await supabase
       .from("orders")
       .select("*")
       .eq("session_token", sessionToken)
       .order("created_at", { ascending: false });
+
     if (data) {
       setOrders(data as TrackedOrder[]);
       data.forEach((o) => {
@@ -113,13 +117,18 @@ export default function OrderTracker({
   }, [sessionToken, supabase]);
 
   useEffect(() => {
-    const initialFetch = window.setTimeout(() => {
-      fetchOrders();
-    }, 0);
-    return () => window.clearTimeout(initialFetch);
+    fetchOrders();
   }, [fetchOrders]);
 
-  // Realtime subscription
+  // ── Realtime: order status changes for this session ────────────────────
+  //
+  // NOTE: We use a separate channel name "tracker-{sessionToken}" so it
+  // coexists with the "menu-session-{sessionToken}" channel in MenuClient
+  // without collision. Both channels are scoped to the same session_token
+  // but serve different purposes (tracker = status updates, menu = bill/close).
+  //
+  // We do NOT re-listen for table_sessions here — MenuClient owns that.
+  //
   useEffect(() => {
     const channel = supabase
       .channel(`tracker-${sessionToken}`)
@@ -146,7 +155,7 @@ export default function OrderTracker({
             if (updated.status === "Ready") playOrderReady();
             prevStatusRef.current[updated.id] = updated.status ?? "";
           }
-        },
+        }
       )
       .subscribe();
 
@@ -155,7 +164,7 @@ export default function OrderTracker({
     };
   }, [sessionToken, supabase]);
 
-  // Countdown timer
+  // ── Countdown timer (1s tick) ──────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdowns((prev) => {
@@ -167,11 +176,12 @@ export default function OrderTracker({
             order.preparation_started_at
           ) {
             const elapsed =
-              (Date.now() - new Date(order.preparation_started_at).getTime()) /
+              (Date.now() -
+                new Date(order.preparation_started_at).getTime()) /
               1000;
             const remaining = Math.max(
               0,
-              order.estimated_minutes * 60 - elapsed,
+              order.estimated_minutes * 60 - elapsed
             );
             next[order.id] = remaining;
 
@@ -188,37 +198,7 @@ export default function OrderTracker({
     return () => clearInterval(interval);
   }, [orders, expiredOrders]);
 
-  // Watch for table session closing
-  useEffect(() => {
-    const channel = supabase
-      .channel(`session-watch-${sessionToken}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "table_sessions",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        (payload) => {
-          const updated = payload.new as {
-            is_active: boolean;
-            bill_status: string;
-          };
-          if (!updated.is_active) {
-            // Table closed — clear token and reload
-            localStorage.removeItem("nn_session_token");
-            window.location.reload();
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [sessionToken, supabase]);
-
+  // ── Bell: call waiter when order is late or ready ──────────────────────
   async function pressDelayBell(orderId: string) {
     if (bellPressed.has(orderId)) return;
     setBellPressed((p) => new Set([...p, orderId]));
@@ -257,7 +237,7 @@ export default function OrderTracker({
         animation: "fadeUp 0.4s ease",
       }}
     >
-      {/* Header */}
+      {/* Header / collapse toggle */}
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
@@ -293,7 +273,13 @@ export default function OrderTracker({
               Your Orders
             </p>
             <p className="t-eyebrow" style={{ fontSize: 9, marginTop: 2 }}>
-              {activeOrders.length} active · {restaurant.currency} {orders.filter(o => o.status !== 'Cancelled').reduce((s, o) => s + Number(o.total_amount), 0).toFixed(2)} total
+              {activeOrders.length} active ·{" "}
+              {restaurant.currency}{" "}
+              {orders
+                .filter((o) => o.status !== "Cancelled")
+                .reduce((s, o) => s + Number(o.total_amount), 0)
+                .toFixed(2)}{" "}
+              total
             </p>
           </div>
         </div>
@@ -336,7 +322,7 @@ export default function OrderTracker({
                   opacity: isCancelled ? 0.6 : 1,
                 }}
               >
-                {/* Status Row */}
+                {/* Status row */}
                 <div
                   style={{
                     display: "flex",
@@ -493,7 +479,7 @@ export default function OrderTracker({
                     </div>
                   )}
 
-                {/* Ready Banner */}
+                {/* Ready banner */}
                 {isReady && (
                   <div
                     style={{
@@ -521,7 +507,7 @@ export default function OrderTracker({
                   </div>
                 )}
 
-                {/* Bell Button */}
+                {/* Bell button */}
                 {(isExpired || isReady) && !isCancelled && (
                   <button
                     onClick={() => pressDelayBell(order.id)}
@@ -538,7 +524,9 @@ export default function OrderTracker({
                         : "3px solid #92400e",
                       borderRadius: 12,
                       cursor: bellUsed ? "not-allowed" : "pointer",
-                      color: bellUsed ? "var(--cream-35)" : "var(--gold-glow)",
+                      color: bellUsed
+                        ? "var(--cream-35)"
+                        : "var(--gold-glow)",
                       fontSize: 13,
                       fontWeight: 800,
                       fontFamily: "Inter, sans-serif",
