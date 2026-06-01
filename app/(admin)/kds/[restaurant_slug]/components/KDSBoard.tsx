@@ -190,8 +190,7 @@ function TimeEstimatePicker({
         style={{
           width: "100%",
           padding: "10px",
-          background:
-            "linear-gradient(135deg, var(--gold-glow), var(--gold))",
+          background: "linear-gradient(135deg, var(--gold-glow), var(--gold))",
           border: "none",
           borderBottom: "3px solid #92400e",
           borderRadius: 10,
@@ -240,12 +239,11 @@ export default function KDSBoard({
 
   // ── CRITICAL: supabase client in a ref — one instance for this component ──
   const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
 
   // ── Order status updates ───────────────────────────────────────────────
   async function updateOrderStatus(orderId: string, newStatus: string) {
     setUpdatingOrder(orderId);
-    await supabase
+    await supabaseRef.current
       .from("orders")
       .update({ status: newStatus })
       .eq("id", orderId);
@@ -254,7 +252,7 @@ export default function KDSBoard({
 
   async function updateOrderStatusWithTime(orderId: string, minutes: number) {
     setUpdatingOrder(orderId);
-    await supabase
+    await supabaseRef.current
       .from("orders")
       .update({
         status: "Preparing",
@@ -266,26 +264,24 @@ export default function KDSBoard({
   }
 
   async function resolveSignal(signalId: string) {
-    await supabase
+    await supabaseRef.current
       .from("waiter_signals")
       .update({ is_resolved: true })
       .eq("id", signalId);
   }
 
   async function toggleStock(itemId: string, current: boolean) {
-    await supabase
+    await supabaseRef.current
       .from("menu_items")
       .update({ is_available: !current })
       .eq("id", itemId);
     setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId ? { ...i, is_available: !current } : i
-      )
+      prev.map((i) => (i.id === itemId ? { ...i, is_available: !current } : i)),
     );
   }
 
   async function closeTable(sessionId: string) {
-    await supabase
+    await supabaseRef.current
       .from("table_sessions")
       .update({ is_active: false })
       .eq("id", sessionId);
@@ -312,7 +308,7 @@ export default function KDSBoard({
   // served orders in todayRevenue from the server query).
   //
   useEffect(() => {
-    const channel = supabase
+    const channel = supabaseRef.current
       .channel(`kds-${restaurant.id}`)
       .on(
         "postgres_changes",
@@ -336,7 +332,7 @@ export default function KDSBoard({
           setOrderCount((c) => c + 1);
           if (newOrder.is_starter_order) playStarterAlert();
           else playNewOrder();
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -350,17 +346,14 @@ export default function KDSBoard({
           const updated = payload.new as Order;
           const previous = payload.old as Order;
           setOrders((prev) =>
-            prev.map((o) => (o.id === updated.id ? updated : o))
+            prev.map((o) => (o.id === updated.id ? updated : o)),
           );
           // Increment revenue display only when an order transitions TO Served
           // for the first time (previous was not Served)
-          if (
-            updated.status === "Served" &&
-            previous.status !== "Served"
-          ) {
+          if (updated.status === "Served" && previous.status !== "Served") {
             setRevenue((r) => r + Number(updated.total_amount));
           }
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -376,7 +369,7 @@ export default function KDSBoard({
             if (prev.find((s) => s.id === newSession.id)) return prev;
             return [...prev, newSession];
           });
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -394,7 +387,7 @@ export default function KDSBoard({
           });
           if (sig.signal_type === "bill") playBillAlert();
           else playSignalAlert();
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -409,9 +402,9 @@ export default function KDSBoard({
           setSignals((prev) =>
             updated.is_resolved
               ? prev.filter((s) => s.id !== updated.id)
-              : prev.map((s) => (s.id === updated.id ? updated : s))
+              : prev.map((s) => (s.id === updated.id ? updated : s)),
           );
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -426,9 +419,9 @@ export default function KDSBoard({
           setSessions((prev) =>
             updated.is_active
               ? prev.map((s) => (s.id === updated.id ? updated : s))
-              : prev.filter((s) => s.id !== updated.id)
+              : prev.filter((s) => s.id !== updated.id),
           );
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -443,25 +436,25 @@ export default function KDSBoard({
             prev.map((i) =>
               i.id === (payload.new as MenuItem).id
                 ? (payload.new as MenuItem)
-                : i
-            )
+                : i,
+            ),
           );
-        }
+        },
       )
       .subscribe();
 
     // ── CRITICAL: clean up channel on unmount ──
     return () => {
-      supabase.removeChannel(channel);
+      supabaseRef.current.removeChannel(channel);
     };
-  }, [restaurant.id, supabase]);
+  }, [restaurant.id]);
 
   // ── Derived state ──────────────────────────────────────────────────────
   const pendingOrders = orders.filter((o) => o.status === "Pending");
   const preparingOrders = orders.filter((o) => o.status === "Preparing");
   const activeSignals = signals.filter((s) => !s.is_resolved);
   const activeOrders = orders.filter(
-    (o) => o.status !== "Served" && o.status !== "Cancelled"
+    (o) => o.status !== "Served" && o.status !== "Cancelled",
   );
 
   const tabs: {
@@ -626,8 +619,7 @@ export default function KDSBoard({
             {tab.badge !== undefined && tab.badge > 0 && (
               <span
                 style={{
-                  background:
-                    activeTab === tab.id ? "#1a0e00" : "var(--gold)",
+                  background: activeTab === tab.id ? "#1a0e00" : "var(--gold)",
                   color: activeTab === tab.id ? "var(--gold)" : "#1a0e00",
                   borderRadius: 50,
                   padding: "1px 7px",
@@ -669,7 +661,7 @@ export default function KDSBoard({
                     ? order.items
                     : [];
                   const currentIdx = STATUS_FLOW.indexOf(
-                    order.status as OrderStatus
+                    order.status as OrderStatus,
                   );
                   const nextStatus =
                     currentIdx < STATUS_FLOW.length - 1
@@ -687,8 +679,7 @@ export default function KDSBoard({
                     <div
                       key={order.id}
                       style={{
-                        background:
-                          STATUS_COLORS[order.status ?? "Pending"],
+                        background: STATUS_COLORS[order.status ?? "Pending"],
                         border: `1px solid ${STATUS_BORDER[order.status ?? "Pending"]}`,
                         borderRadius: 20,
                         padding: 18,
@@ -723,22 +714,17 @@ export default function KDSBoard({
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              color:
-                                STATUS_TEXT[order.status ?? "Pending"],
+                              color: STATUS_TEXT[order.status ?? "Pending"],
                             }}
                           >
-                            {order.status === "Pending" && (
-                              <Clock size={20} />
-                            )}
+                            {order.status === "Pending" && <Clock size={20} />}
                             {order.status === "Preparing" && (
                               <Flame size={20} />
                             )}
                             {order.status === "Ready" && (
                               <CheckCircle size={20} />
                             )}
-                            {order.status === "Served" && (
-                              <Package size={20} />
-                            )}
+                            {order.status === "Served" && <Package size={20} />}
                           </div>
                           <div>
                             <div
@@ -761,10 +747,8 @@ export default function KDSBoard({
                               {isStarter && (
                                 <span
                                   style={{
-                                    background:
-                                      "rgba(16,185,129,0.15)",
-                                    border:
-                                      "1px solid rgba(16,185,129,0.3)",
+                                    background: "rgba(16,185,129,0.15)",
+                                    border: "1px solid rgba(16,185,129,0.3)",
                                     color: "#34d399",
                                     fontSize: 9,
                                     fontWeight: 800,
@@ -784,10 +768,7 @@ export default function KDSBoard({
                                 />
                               )}
                             </div>
-                            <p
-                              className="t-caption"
-                              style={{ marginTop: 2 }}
-                            >
+                            <p className="t-caption" style={{ marginTop: 2 }}>
                               {order.customer_name ?? "Guest"} ·{" "}
                               <TimeAgo dateStr={order.created_at} />
                             </p>
@@ -804,8 +785,7 @@ export default function KDSBoard({
                               fontWeight: 800,
                               letterSpacing: 1.5,
                               textTransform: "uppercase",
-                              color:
-                                STATUS_TEXT[order.status ?? "Pending"],
+                              color: STATUS_TEXT[order.status ?? "Pending"],
                               background:
                                 STATUS_COLORS[order.status ?? "Pending"],
                               border: `1px solid ${STATUS_BORDER[order.status ?? "Pending"]}`,
@@ -913,12 +893,8 @@ export default function KDSBoard({
                                 ? "none"
                                 : "3px solid #92400e",
                               borderRadius: 12,
-                              cursor: isUpdating
-                                ? "not-allowed"
-                                : "pointer",
-                              color: isUpdating
-                                ? "var(--cream-35)"
-                                : "#1a0e00",
+                              cursor: isUpdating ? "not-allowed" : "pointer",
+                              color: isUpdating ? "var(--cream-35)" : "#1a0e00",
                               fontSize: 13,
                               fontWeight: 800,
                               fontFamily: "Inter, sans-serif",
@@ -971,9 +947,7 @@ export default function KDSBoard({
 
         {/* SIGNALS TAB */}
         {activeTab === "signals" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 12 }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {activeSignals.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 0" }}>
                 <CheckCircle
@@ -1083,9 +1057,7 @@ export default function KDSBoard({
 
         {/* STOCK TAB */}
         {activeTab === "stock" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 10 }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p className="t-body" style={{ marginBottom: 8 }}>
               Toggle items instantly. Changes reflect on all customer menus
               immediately.
@@ -1157,9 +1129,7 @@ export default function KDSBoard({
 
         {/* TABLES TAB */}
         {activeTab === "tables" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 12 }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <p className="t-body" style={{ marginBottom: 8 }}>
               Close a table when the customer has paid and left.
             </p>
@@ -1179,11 +1149,13 @@ export default function KDSBoard({
             ) : (
               sessions.map((session) => {
                 const tableOrders = orders.filter(
-                  (o) => o.session_token === session.session_token
+                  (o) =>
+                    o.session_token === session.session_token &&
+                    o.status !== "Cancelled",
                 );
                 const tableTotal = tableOrders.reduce(
                   (s, o) => s + Number(o.total_amount),
-                  0
+                  0,
                 );
                 return (
                   <div
@@ -1236,9 +1208,7 @@ export default function KDSBoard({
                           >
                             Table {session.table_number}
                           </p>
-                          <p className="t-caption">
-                            {session.customer_name}
-                          </p>
+                          <p className="t-caption">{session.customer_name}</p>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -1265,7 +1235,7 @@ export default function KDSBoard({
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             onClick={async () => {
-                              await supabase
+                              await supabaseRef.current
                                 .from("table_sessions")
                                 .update({ bill_status: "presented" })
                                 .eq("id", session.id);
@@ -1273,8 +1243,8 @@ export default function KDSBoard({
                                 prev.map((s) =>
                                   s.id === session.id
                                     ? { ...s, bill_status: "presented" }
-                                    : s
-                                )
+                                    : s,
+                                ),
                               );
                             }}
                             style={{
@@ -1312,7 +1282,7 @@ export default function KDSBoard({
                           </p>
                           <button
                             onClick={async () => {
-                              await supabase
+                              await supabaseRef.current
                                 .from("table_sessions")
                                 .update({ bill_status: "paid" })
                                 .eq("id", session.id);
@@ -1320,8 +1290,8 @@ export default function KDSBoard({
                                 prev.map((s) =>
                                   s.id === session.id
                                     ? { ...s, bill_status: "paid" }
-                                    : s
-                                )
+                                    : s,
+                                ),
                               );
                             }}
                             style={{
@@ -1342,8 +1312,7 @@ export default function KDSBoard({
                               transition: "all 0.2s",
                             }}
                           >
-                            <CheckCircle size={15} /> Confirm Payment
-                            Received
+                            <CheckCircle size={15} /> Confirm Payment Received
                           </button>
                         </div>
                       ) : session.bill_status === "paid" ? (

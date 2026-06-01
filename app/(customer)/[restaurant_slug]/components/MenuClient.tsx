@@ -3,6 +3,7 @@ import OrderTracker from "./OrderTracker";
 import { playOrderConfirmed } from "@/lib/sounds";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ReceiptModal from "./ReceiptModal";
 import { Tables } from "@/types/database.types";
 import {
   ShoppingBag,
@@ -167,6 +168,9 @@ export default function MenuClient({
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [showBillPopup, setShowBillPopup] = useState(false);
+  const [billLocked, setBillLocked] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
   const [allOrders, setAllOrders] = useState<
     {
       total_amount: number;
@@ -197,23 +201,17 @@ export default function MenuClient({
     if (data) setAllOrders(data as typeof allOrders);
   }, [sessionToken, supabase]);
 
-  useEffect(() => {
-    fetchSessionOrders();
-  }, [fetchSessionOrders]);
 
-  // ── Realtime: orders + table_sessions ──────────────────────────────────
-  //
-  // FIX SUMMARY vs old code:
-  //  1. Single channel "menu-{sessionToken}" scoped to THIS session only.
-  //     Old code used restaurant-level filters which could mix sessions.
-  //  2. table_sessions UPDATE filter now uses session_token=eq.{sessionToken}
-  //     — the old code used the same filter but the channel name was keyed
-  //     on sessionToken correctly; the real bug was createClient() called
-  //     at component level, causing channel duplication on re-renders.
-  //  3. All polling fallbacks removed — realtime is the single source of truth.
-  //     If realtime drops, OrderTracker has its own independent channel as backup.
-  //
   useEffect(() => {
+    // Fetch staff for receipt feedback selector
+    supabase
+      .from("restaurant_staff")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .then(({ data }) => {
+        if (data) setStaffList(data as Tables<"restaurant_staff">[]);
+      });
+
     const channel = supabase
       .channel(`menu-session-${sessionToken}`)
       .on(
@@ -224,10 +222,17 @@ export default function MenuClient({
           table: "orders",
           filter: `session_token=eq.${sessionToken}`,
         },
-        () => {
-          // Refetch on any new order for this session (covers starters too)
-          fetchSessionOrders();
-        }
+        () => fetchSessionOrders(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        () => fetchSessionOrders(),
       )
       .on(
         "postgres_changes",
@@ -244,23 +249,27 @@ export default function MenuClient({
           };
 
           if (updated.bill_status === "presented") {
-            // Refresh order totals then show bill
             fetchSessionOrders().then(() => setShowBillPopup(true));
+            setBillLocked(true);
+          }
+
+          if (updated.bill_status === "paid") {
+            setShowBillPopup(false);
+            fetchSessionOrders().then(() => setShowReceipt(true));
           }
 
           if (!updated.is_active) {
-            // Table closed by staff — clear token and hard reload
             localStorage.removeItem("nn_session_token");
             setTimeout(() => window.location.reload(), 1500);
           }
-        }
+        },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionToken, supabase, fetchSessionOrders]);
+  }, [sessionToken, supabase, fetchSessionOrders, restaurant.id]);
 
   // ── Cart helpers ───────────────────────────────────────────────────────
   function addItem(item: MenuItem) {
@@ -268,7 +277,7 @@ export default function MenuClient({
       const ex = prev.find((ci) => ci.item.id === item.id);
       if (ex)
         return prev.map((ci) =>
-          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci,
         );
       return [...prev, { item, quantity: 1 }];
     });
@@ -278,9 +287,9 @@ export default function MenuClient({
     setOrder((prev) =>
       prev
         .map((ci) =>
-          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci
+          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci,
         )
-        .filter((ci) => ci.quantity > 0)
+        .filter((ci) => ci.quantity > 0),
     );
   }
 
@@ -356,7 +365,7 @@ export default function MenuClient({
     });
     setTimeout(
       () => setSentSignals((prev) => prev.filter((s) => s !== type)),
-      5000
+      5000,
     );
   }
 
@@ -369,8 +378,12 @@ export default function MenuClient({
 
   const runningTotal = allOrders.reduce(
     (s, o) => s + Number(o.total_amount),
-    0
+    0,
   );
+  const sessionFee = Number(
+    (restaurant as Restaurant & { session_fee?: number }).session_fee ?? 2,
+  );
+  const grandTotal = runningTotal + sessionFee;
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -590,7 +603,7 @@ export default function MenuClient({
                         </span>
                         <button
                           className="qty-btn"
-                          onClick={() => addItem(item)}
+                          onClick={() => {if (!billLocked) addItem(item);}}
                         >
                           <Plus size={16} />
                         </button>
@@ -598,7 +611,7 @@ export default function MenuClient({
                     ) : (
                       <button
                         className="btn-add btn-add-full"
-                        onClick={() => addItem(item)}
+                        onClick={() => {if (!billLocked) addItem(item);}}
                       >
                         + Add to Order
                       </button>
@@ -677,16 +690,13 @@ export default function MenuClient({
                         </span>
                         <button
                           className="qty-btn"
-                          onClick={() => addItem(item)}
+                          onClick={() => { if (!billLocked) addItem(item); }}
                         >
                           <Plus size={13} />
                         </button>
                       </div>
                     ) : (
-                      <button
-                        className="btn-add"
-                        onClick={() => addItem(item)}
-                      >
+                      <button className="btn-add" onClick={() => addItem(item)}>
                         Add +
                       </button>
                     )}
@@ -733,10 +743,7 @@ export default function MenuClient({
                   {customerName} · {count} item{count !== 1 ? "s" : ""}
                 </p>
               </div>
-              <button
-                className="btn-icon"
-                onClick={() => setShowOrder(false)}
-              >
+              <button className="btn-icon" onClick={() => setShowOrder(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -814,7 +821,7 @@ export default function MenuClient({
               <button
                 className="btn-primary"
                 onClick={placeOrder}
-                disabled={placingOrder || orderSuccess}
+                disabled={placingOrder || orderSuccess || billLocked}
               >
                 {orderSuccess ? (
                   <>
@@ -963,17 +970,56 @@ export default function MenuClient({
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                flexDirection: "column",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
-              <span className="t-title" style={{ fontSize: 16 }}>
-                Total
-              </span>
-              <span className="t-price" style={{ fontSize: 26 }}>
-                {restaurant.currency} {runningTotal.toFixed(2)}
-              </span>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="t-body">Subtotal</span>
+                <span className="t-body">
+                  {restaurant.currency} {runningTotal.toFixed(2)}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span
+                  style={{
+                    color: "var(--gold-glow)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Digital Service Fee
+                </span>
+                <span
+                  style={{
+                    color: "var(--gold-glow)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {restaurant.currency} {sessionFee.toFixed(2)}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  background: "var(--gold-faint)",
+                  border: "1px solid var(--gold-dim)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  marginTop: 4,
+                }}
+              >
+                <span className="t-title" style={{ fontSize: 16 }}>
+                  Total
+                </span>
+                <span className="t-price" style={{ fontSize: 26 }}>
+                  {restaurant.currency} {grandTotal.toFixed(2)}
+                </span>
+              </div>
             </div>
             <p
               className="t-caption"
@@ -984,19 +1030,34 @@ export default function MenuClient({
 
             {/* Bill splitter */}
             <BillSplitter
-              total={runningTotal}
+              total={grandTotal}
               currency={restaurant.currency ?? "GHS"}
             />
 
-            <button
-              className="btn-primary"
-              style={{ marginTop: 20 }}
-              onClick={() => setShowBillPopup(false)}
-            >
-              Got it
-            </button>
+             <div style={{ marginTop: 20, textAlign: "center", padding: "14px", background: "var(--cream-06)", border: "1px solid var(--cream-15)", borderRadius: 14 }}>
+             <p className="t-caption">Waiting for payment confirmation from staff...</p>
+             <p className="t-eyebrow" style={{ marginTop: 6, fontSize: 10 }}>Your receipt will appear automatically</p>
+           </div>
           </div>
         </div>
+      )}
+
+      {showReceipt && (
+        <ReceiptModal
+          restaurant={restaurant}
+          sessionToken={sessionToken}
+          tableNumber={tableNumber}
+          customerName={customerName}
+          orders={allOrders.map((o) => ({
+            items: Array.isArray(o.items)
+              ? (o.items as { name: string; quantity: number; price: number }[])
+              : [],
+            total_amount: Number(o.total_amount),
+            is_starter_order: o.is_starter_order,
+          }))}
+          staff={staffList}
+          onClose={() => setShowReceipt(false)}
+        />
       )}
     </div>
   );

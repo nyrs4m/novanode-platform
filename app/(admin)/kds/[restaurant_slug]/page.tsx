@@ -21,7 +21,7 @@ export default async function KDSPage({ params }: PageProps) {
     .from("restaurants")
     .select("*")
     .eq("slug", restaurant_slug)
-    .single();
+    .maybeSingle();
 
   if (!restaurant) return notFound();
 
@@ -31,7 +31,7 @@ export default async function KDSPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .eq("restaurant_id", restaurant.id)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!staff) return notFound();
 

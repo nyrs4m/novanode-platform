@@ -1,0 +1,5931 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "DashboardHome.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L1",
+      "id": "components_dashboardhome",
+      "community": 0,
+      "norm_label": "dashboardhome.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L19",
+      "id": "components_dashboardhome_restaurant",
+      "community": 0,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Order",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L20",
+      "id": "components_dashboardhome_order",
+      "community": 0,
+      "norm_label": "order"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L21",
+      "id": "components_dashboardhome_session",
+      "community": 0,
+      "norm_label": "session"
+    },
+    {
+      "label": "Props",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L23",
+      "id": "components_dashboardhome_props",
+      "community": 0,
+      "norm_label": "props"
+    },
+    {
+      "label": "Tab",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L36",
+      "id": "components_dashboardhome_tab",
+      "community": 0,
+      "norm_label": "tab"
+    },
+    {
+      "label": "StatusIcon()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L38",
+      "id": "components_dashboardhome_statusicon",
+      "community": 0,
+      "norm_label": "statusicon()"
+    },
+    {
+      "label": "StatusLabel()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L44",
+      "id": "components_dashboardhome_statuslabel",
+      "community": 0,
+      "norm_label": "statuslabel()"
+    },
+    {
+      "label": "DashboardHome()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L50",
+      "id": "components_dashboardhome_dashboardhome",
+      "community": 0,
+      "norm_label": "dashboardhome()"
+    },
+    {
+      "label": "QRGenerator.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L1",
+      "id": "components_qrgenerator",
+      "community": 1,
+      "norm_label": "qrgenerator.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L9",
+      "id": "components_qrgenerator_restaurant",
+      "community": 1,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "QRGeneratorProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L11",
+      "id": "components_qrgenerator_qrgeneratorprops",
+      "community": 1,
+      "norm_label": "qrgeneratorprops"
+    },
+    {
+      "label": "TableQR",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L16",
+      "id": "components_qrgenerator_tableqr",
+      "community": 1,
+      "norm_label": "tableqr"
+    },
+    {
+      "label": "QRGenerator()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L21",
+      "id": "components_qrgenerator_qrgenerator",
+      "community": 1,
+      "norm_label": "qrgenerator()"
+    },
+    {
+      "label": "StatsDashboard.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L1",
+      "id": "components_statsdashboard",
+      "community": 0,
+      "norm_label": "statsdashboard.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L12",
+      "id": "components_statsdashboard_restaurant",
+      "community": 0,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Order",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L13",
+      "id": "components_statsdashboard_order",
+      "community": 0,
+      "norm_label": "order"
+    },
+    {
+      "label": "Period",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L14",
+      "id": "components_statsdashboard_period",
+      "community": 0,
+      "norm_label": "period"
+    },
+    {
+      "label": "StatsProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L16",
+      "id": "components_statsdashboard_statsprops",
+      "community": 0,
+      "norm_label": "statsprops"
+    },
+    {
+      "label": "StatusIcon()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L25",
+      "id": "components_statsdashboard_statusicon",
+      "community": 0,
+      "norm_label": "statusicon()"
+    },
+    {
+      "label": "StatusLabel()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L31",
+      "id": "components_statsdashboard_statuslabel",
+      "community": 0,
+      "norm_label": "statuslabel()"
+    },
+    {
+      "label": "StatsDashboard()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L37",
+      "id": "components_statsdashboard_statsdashboard",
+      "community": 0,
+      "norm_label": "statsdashboard()"
+    },
+    {
+      "label": "MenuManager.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L1",
+      "id": "components_menumanager",
+      "community": 10,
+      "norm_label": "menumanager.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L14",
+      "id": "components_menumanager_restaurant",
+      "community": 10,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Category",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L15",
+      "id": "components_menumanager_category",
+      "community": 10,
+      "norm_label": "category"
+    },
+    {
+      "label": "MenuItem",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L16",
+      "id": "components_menumanager_menuitem",
+      "community": 10,
+      "norm_label": "menuitem"
+    },
+    {
+      "label": "MenuManagerProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L18",
+      "id": "components_menumanager_menumanagerprops",
+      "community": 10,
+      "norm_label": "menumanagerprops"
+    },
+    {
+      "label": "View",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L24",
+      "id": "components_menumanager_view",
+      "community": 10,
+      "norm_label": "view"
+    },
+    {
+      "label": "MenuManager()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L26",
+      "id": "components_menumanager_menumanager",
+      "community": 10,
+      "norm_label": "menumanager()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L1",
+      "id": "menu_page",
+      "community": 8,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "PageProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L5",
+      "id": "menu_page_pageprops",
+      "community": 8,
+      "norm_label": "pageprops"
+    },
+    {
+      "label": "MenuPage()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L9",
+      "id": "menu_page_menupage",
+      "community": 8,
+      "norm_label": "menupage()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "id": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "community": 0,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "Order",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L11",
+      "id": "restaurant_slug_page_order",
+      "community": 0,
+      "norm_label": "order"
+    },
+    {
+      "label": "PageProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L13",
+      "id": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "community": 0,
+      "norm_label": "pageprops"
+    },
+    {
+      "label": "DashboardPage()",
+      "file_type": "code",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L17",
+      "id": "restaurant_slug_page_dashboardpage",
+      "community": 0,
+      "norm_label": "dashboardpage()"
+    },
+    {
+      "label": "KDSBoard.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L1",
+      "id": "components_kdsboard",
+      "community": 6,
+      "norm_label": "kdsboard.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L33",
+      "id": "components_kdsboard_restaurant",
+      "community": 6,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Order",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L34",
+      "id": "components_kdsboard_order",
+      "community": 6,
+      "norm_label": "order"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L35",
+      "id": "components_kdsboard_session",
+      "community": 6,
+      "norm_label": "session"
+    },
+    {
+      "label": "MenuItem",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L36",
+      "id": "components_kdsboard_menuitem",
+      "community": 6,
+      "norm_label": "menuitem"
+    },
+    {
+      "label": "Signal",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L38",
+      "id": "components_kdsboard_signal",
+      "community": 6,
+      "norm_label": "signal"
+    },
+    {
+      "label": "KDSBoardProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L48",
+      "id": "components_kdsboard_kdsboardprops",
+      "community": 6,
+      "norm_label": "kdsboardprops"
+    },
+    {
+      "label": "KDSTab",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L58",
+      "id": "components_kdsboard_kdstab",
+      "community": 6,
+      "norm_label": "kdstab"
+    },
+    {
+      "label": "STATUS_FLOW",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L59",
+      "id": "components_kdsboard_status_flow",
+      "community": 6,
+      "norm_label": "status_flow"
+    },
+    {
+      "label": "OrderStatus",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L60",
+      "id": "components_kdsboard_orderstatus",
+      "community": 6,
+      "norm_label": "orderstatus"
+    },
+    {
+      "label": "STATUS_COLORS",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L62",
+      "id": "components_kdsboard_status_colors",
+      "community": 6,
+      "norm_label": "status_colors"
+    },
+    {
+      "label": "STATUS_BORDER",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L68",
+      "id": "components_kdsboard_status_border",
+      "community": 6,
+      "norm_label": "status_border"
+    },
+    {
+      "label": "STATUS_TEXT",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L74",
+      "id": "components_kdsboard_status_text",
+      "community": 6,
+      "norm_label": "status_text"
+    },
+    {
+      "label": "timeAgo()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L81",
+      "id": "components_kdsboard_timeago",
+      "community": 6,
+      "norm_label": "timeago()"
+    },
+    {
+      "label": "signalIcon()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L89",
+      "id": "components_kdsboard_signalicon",
+      "community": 6,
+      "norm_label": "signalicon()"
+    },
+    {
+      "label": "signalLabel()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L104",
+      "id": "components_kdsboard_signallabel",
+      "community": 6,
+      "norm_label": "signallabel()"
+    },
+    {
+      "label": "TimeEstimatePicker()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L119",
+      "id": "components_kdsboard_timeestimatepicker",
+      "community": 6,
+      "norm_label": "timeestimatepicker()"
+    },
+    {
+      "label": "KDSBoard()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L223",
+      "id": "components_kdsboard_kdsboard",
+      "community": 6,
+      "norm_label": "kdsboard()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "id": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "community": 8,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "PageProps",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L5",
+      "id": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "community": 8,
+      "norm_label": "pageprops"
+    },
+    {
+      "label": "KDSPage()",
+      "file_type": "code",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L9",
+      "id": "restaurant_slug_page_kdspage",
+      "community": 8,
+      "norm_label": "kdspage()"
+    },
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/layout.tsx",
+      "source_location": "L1",
+      "id": "admin_layout",
+      "community": 14,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "AdminLayout()",
+      "file_type": "code",
+      "source_file": "app/(admin)/layout.tsx",
+      "source_location": "L1",
+      "id": "admin_layout_adminlayout",
+      "community": 14,
+      "norm_label": "adminlayout()"
+    },
+    {
+      "label": "LoginForm.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/login/LoginForm.tsx",
+      "source_location": "L1",
+      "id": "login_loginform",
+      "community": 1,
+      "norm_label": "loginform.tsx"
+    },
+    {
+      "label": "LoginForm()",
+      "file_type": "code",
+      "source_file": "app/(admin)/login/LoginForm.tsx",
+      "source_location": "L8",
+      "id": "login_loginform_loginform",
+      "community": 1,
+      "norm_label": "loginform()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(admin)/login/page.tsx",
+      "source_location": "L1",
+      "id": "app_admin_login_page_tsx_login_page",
+      "community": 1,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "LoginPage()",
+      "file_type": "code",
+      "source_file": "app/(admin)/login/page.tsx",
+      "source_location": "L4",
+      "id": "login_page_loginpage",
+      "community": 1,
+      "norm_label": "loginpage()"
+    },
+    {
+      "label": "MenuClient.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L1",
+      "id": "components_menuclient",
+      "community": 2,
+      "norm_label": "menuclient.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L23",
+      "id": "components_menuclient_restaurant",
+      "community": 2,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Category",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L24",
+      "id": "components_menuclient_category",
+      "community": 2,
+      "norm_label": "category"
+    },
+    {
+      "label": "MenuItem",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L25",
+      "id": "components_menuclient_menuitem",
+      "community": 2,
+      "norm_label": "menuitem"
+    },
+    {
+      "label": "DailySpecial",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L26",
+      "id": "components_menuclient_dailyspecial",
+      "community": 2,
+      "norm_label": "dailyspecial"
+    },
+    {
+      "label": "CartItem",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L28",
+      "id": "components_menuclient_cartitem",
+      "community": 2,
+      "norm_label": "cartitem"
+    },
+    {
+      "label": "MenuClientProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L33",
+      "id": "components_menuclient_menuclientprops",
+      "community": 2,
+      "norm_label": "menuclientprops"
+    },
+    {
+      "label": "Signal",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L44",
+      "id": "components_menuclient_signal",
+      "community": 2,
+      "norm_label": "signal"
+    },
+    {
+      "label": "BillSplitter()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L47",
+      "id": "components_menuclient_billsplitter",
+      "community": 2,
+      "norm_label": "billsplitter()"
+    },
+    {
+      "label": "MenuClient()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L154",
+      "id": "components_menuclient_menuclient",
+      "community": 2,
+      "norm_label": "menuclient()"
+    },
+    {
+      "label": "OrderTracker.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L1",
+      "id": "components_ordertracker",
+      "community": 2,
+      "norm_label": "ordertracker.tsx"
+    },
+    {
+      "label": "Order",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L23",
+      "id": "components_ordertracker_order",
+      "community": 2,
+      "norm_label": "order"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L24",
+      "id": "components_ordertracker_restaurant",
+      "community": 2,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "OrderTrackerProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L26",
+      "id": "components_ordertracker_ordertrackerprops",
+      "community": 2,
+      "norm_label": "ordertrackerprops"
+    },
+    {
+      "label": "TrackedOrder",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L33",
+      "id": "components_ordertracker_trackedorder",
+      "community": 2,
+      "norm_label": "trackedorder"
+    },
+    {
+      "label": "statusConfig",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L38",
+      "id": "components_ordertracker_statusconfig",
+      "community": 2,
+      "norm_label": "statusconfig"
+    },
+    {
+      "label": "formatCountdown()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L79",
+      "id": "components_ordertracker_formatcountdown",
+      "community": 2,
+      "norm_label": "formatcountdown()"
+    },
+    {
+      "label": "OrderTracker()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L85",
+      "id": "components_ordertracker_ordertracker",
+      "community": 2,
+      "norm_label": "ordertracker()"
+    },
+    {
+      "label": "ReceiptModal.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L1",
+      "id": "components_receiptmodal",
+      "community": 1,
+      "norm_label": "receiptmodal.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L17",
+      "id": "components_receiptmodal_restaurant",
+      "community": 1,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "StaffMember",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L18",
+      "id": "components_receiptmodal_staffmember",
+      "community": 1,
+      "norm_label": "staffmember"
+    },
+    {
+      "label": "OrderItem",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L20",
+      "id": "components_receiptmodal_orderitem",
+      "community": 1,
+      "norm_label": "orderitem"
+    },
+    {
+      "label": "ReceiptOrder",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L26",
+      "id": "components_receiptmodal_receiptorder",
+      "community": 1,
+      "norm_label": "receiptorder"
+    },
+    {
+      "label": "ReceiptModalProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L32",
+      "id": "components_receiptmodal_receiptmodalprops",
+      "community": 1,
+      "norm_label": "receiptmodalprops"
+    },
+    {
+      "label": "ReceiptModal()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L42",
+      "id": "components_receiptmodal_receiptmodal",
+      "community": 1,
+      "norm_label": "receiptmodal()"
+    },
+    {
+      "label": "RestaurantApp.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L1",
+      "id": "components_restaurantapp",
+      "community": 3,
+      "norm_label": "restaurantapp.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L8",
+      "id": "components_restaurantapp_restaurant",
+      "community": 3,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "Category",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L9",
+      "id": "components_restaurantapp_category",
+      "community": 3,
+      "norm_label": "category"
+    },
+    {
+      "label": "MenuItem",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L10",
+      "id": "components_restaurantapp_menuitem",
+      "community": 3,
+      "norm_label": "menuitem"
+    },
+    {
+      "label": "DailySpecial",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L11",
+      "id": "components_restaurantapp_dailyspecial",
+      "community": 3,
+      "norm_label": "dailyspecial"
+    },
+    {
+      "label": "RestaurantAppProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L13",
+      "id": "components_restaurantapp_restaurantappprops",
+      "community": 3,
+      "norm_label": "restaurantappprops"
+    },
+    {
+      "label": "RestaurantApp()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L22",
+      "id": "components_restaurantapp_restaurantapp",
+      "community": 3,
+      "norm_label": "restaurantapp()"
+    },
+    {
+      "label": "loading.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/loading.tsx",
+      "source_location": "L1",
+      "id": "restaurant_slug_loading",
+      "community": 21,
+      "norm_label": "loading.tsx"
+    },
+    {
+      "label": "Loading()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/loading.tsx",
+      "source_location": "L1",
+      "id": "restaurant_slug_loading_loading",
+      "community": 21,
+      "norm_label": "loading()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "id": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "community": 7,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "PageProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L11",
+      "id": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "community": 7,
+      "norm_label": "pageprops"
+    },
+    {
+      "label": "RestaurantMenuPage()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L16",
+      "id": "restaurant_slug_page_restaurantmenupage",
+      "community": 7,
+      "norm_label": "restaurantmenupage()"
+    },
+    {
+      "label": "session.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L1",
+      "id": "restaurant_slug_session",
+      "community": 3,
+      "norm_label": "session.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L10",
+      "id": "restaurant_slug_session_restaurant",
+      "community": 3,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "MenuItem",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L11",
+      "id": "restaurant_slug_session_menuitem",
+      "community": 3,
+      "norm_label": "menuitem"
+    },
+    {
+      "label": "SessionScreenProps",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L13",
+      "id": "restaurant_slug_session_sessionscreenprops",
+      "community": 3,
+      "norm_label": "sessionscreenprops"
+    },
+    {
+      "label": "Step",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L20",
+      "id": "restaurant_slug_session_step",
+      "community": 3,
+      "norm_label": "step"
+    },
+    {
+      "label": "SessionScreen()",
+      "file_type": "code",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L22",
+      "id": "restaurant_slug_session_sessionscreen",
+      "community": 3,
+      "norm_label": "sessionscreen()"
+    },
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "app/(customer)/layout.tsx",
+      "source_location": "L1",
+      "id": "customer_layout",
+      "community": 17,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "CustomerLayout()",
+      "file_type": "code",
+      "source_file": "app/(customer)/layout.tsx",
+      "source_location": "L1",
+      "id": "customer_layout_customerlayout",
+      "community": 17,
+      "norm_label": "customerlayout()"
+    },
+    {
+      "label": "SuperAdminPanel.tsx",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L1",
+      "id": "components_superadminpanel",
+      "community": 1,
+      "norm_label": "superadminpanel.tsx"
+    },
+    {
+      "label": "Restaurant",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L15",
+      "id": "components_superadminpanel_restaurant",
+      "community": 1,
+      "norm_label": "restaurant"
+    },
+    {
+      "label": "DailyLedger",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L16",
+      "id": "components_superadminpanel_dailyledger",
+      "community": 1,
+      "norm_label": "dailyledger"
+    },
+    {
+      "label": "SuperAdminPanelProps",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L18",
+      "id": "components_superadminpanel_superadminpanelprops",
+      "community": 1,
+      "norm_label": "superadminpanelprops"
+    },
+    {
+      "label": "Tab",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L26",
+      "id": "components_superadminpanel_tab",
+      "community": 1,
+      "norm_label": "tab"
+    },
+    {
+      "label": "SuperAdminPanel()",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L28",
+      "id": "components_superadminpanel_superadminpanel",
+      "community": 1,
+      "norm_label": "superadminpanel()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/login/page.tsx",
+      "source_location": "L1",
+      "id": "app_novanode_novanode_login_page_tsx_login_page",
+      "community": 1,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "NovaNodeLogin()",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/login/page.tsx",
+      "source_location": "L8",
+      "id": "login_page_novanodelogin",
+      "community": 1,
+      "norm_label": "novanodelogin()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L1",
+      "id": "novanode_page",
+      "community": 8,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "NovaNodeAdminPage()",
+      "file_type": "code",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L5",
+      "id": "novanode_page_novanodeadminpage",
+      "community": 8,
+      "norm_label": "novanodeadminpage()"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "app/api/admin/create-staff/route.ts",
+      "source_location": "L1",
+      "id": "create_staff_route",
+      "community": 8,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "app/api/admin/create-staff/route.ts",
+      "source_location": "L5",
+      "id": "create_staff_route_post",
+      "community": 8,
+      "norm_label": "post()"
+    },
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "app/layout.tsx",
+      "source_location": "L1",
+      "id": "app_layout",
+      "community": 12,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "inter",
+      "file_type": "code",
+      "source_file": "app/layout.tsx",
+      "source_location": "L5",
+      "id": "app_layout_inter",
+      "community": 12,
+      "norm_label": "inter"
+    },
+    {
+      "label": "metadata",
+      "file_type": "code",
+      "source_file": "app/layout.tsx",
+      "source_location": "L10",
+      "id": "app_layout_metadata",
+      "community": 12,
+      "norm_label": "metadata"
+    },
+    {
+      "label": "RootLayout()",
+      "file_type": "code",
+      "source_file": "app/layout.tsx",
+      "source_location": "L15",
+      "id": "app_layout_rootlayout",
+      "community": 12,
+      "norm_label": "rootlayout()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/page.tsx",
+      "source_location": "L1",
+      "id": "app_page",
+      "community": 16,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "Home()",
+      "file_type": "code",
+      "source_file": "app/page.tsx",
+      "source_location": "L1",
+      "id": "app_page_home",
+      "community": 16,
+      "norm_label": "home()"
+    },
+    {
+      "label": "SpotlightLayout.tsx",
+      "file_type": "code",
+      "source_file": "components/SpotlightLayout.tsx",
+      "source_location": "L1",
+      "id": "components_spotlightlayout",
+      "community": 3,
+      "norm_label": "spotlightlayout.tsx"
+    },
+    {
+      "label": "SpotlightLayoutProps",
+      "file_type": "code",
+      "source_file": "components/SpotlightLayout.tsx",
+      "source_location": "L5",
+      "id": "components_spotlightlayout_spotlightlayoutprops",
+      "community": 3,
+      "norm_label": "spotlightlayoutprops"
+    },
+    {
+      "label": "SpotlightLayout()",
+      "file_type": "code",
+      "source_file": "components/SpotlightLayout.tsx",
+      "source_location": "L12",
+      "id": "components_spotlightlayout_spotlightlayout",
+      "community": 3,
+      "norm_label": "spotlightlayout()"
+    },
+    {
+      "label": "eslint.config.mjs",
+      "file_type": "code",
+      "source_file": "eslint.config.mjs",
+      "source_location": "L1",
+      "id": "eslint_config",
+      "community": 18,
+      "norm_label": "eslint.config.mjs"
+    },
+    {
+      "label": "eslintConfig",
+      "file_type": "code",
+      "source_file": "eslint.config.mjs",
+      "source_location": "L5",
+      "id": "eslint_config_eslintconfig",
+      "community": 18,
+      "norm_label": "eslintconfig"
+    },
+    {
+      "label": "cache.ts",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L1",
+      "id": "lib_cache",
+      "community": 7,
+      "norm_label": "cache.ts"
+    },
+    {
+      "label": "supabase",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L4",
+      "id": "lib_cache_supabase",
+      "community": 7,
+      "norm_label": "supabase"
+    },
+    {
+      "label": "getRestaurantBySlug",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L6",
+      "id": "lib_cache_getrestaurantbyslug",
+      "community": 7,
+      "norm_label": "getrestaurantbyslug"
+    },
+    {
+      "label": "getMenuItems",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L17",
+      "id": "lib_cache_getmenuitems",
+      "community": 7,
+      "norm_label": "getmenuitems"
+    },
+    {
+      "label": "getCategories",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L31",
+      "id": "lib_cache_getcategories",
+      "community": 7,
+      "norm_label": "getcategories"
+    },
+    {
+      "label": "getStarters",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L43",
+      "id": "lib_cache_getstarters",
+      "community": 7,
+      "norm_label": "getstarters"
+    },
+    {
+      "label": "getDailySpecial",
+      "file_type": "code",
+      "source_file": "lib/cache.ts",
+      "source_location": "L56",
+      "id": "lib_cache_getdailyspecial",
+      "community": 7,
+      "norm_label": "getdailyspecial"
+    },
+    {
+      "label": "compress-image.ts",
+      "file_type": "code",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L1",
+      "id": "lib_compress_image",
+      "community": 10,
+      "norm_label": "compress-image.ts"
+    },
+    {
+      "label": "compressImage()",
+      "file_type": "code",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L1",
+      "id": "lib_compress_image_compressimage",
+      "community": 10,
+      "norm_label": "compressimage()"
+    },
+    {
+      "label": "uploadMenuImage()",
+      "file_type": "code",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L49",
+      "id": "lib_compress_image_uploadmenuimage",
+      "community": 10,
+      "norm_label": "uploadmenuimage()"
+    },
+    {
+      "label": "fingerprint.ts",
+      "file_type": "code",
+      "source_file": "lib/fingerprint.ts",
+      "source_location": "L1",
+      "id": "lib_fingerprint",
+      "community": 3,
+      "norm_label": "fingerprint.ts"
+    },
+    {
+      "label": "generateFingerprint()",
+      "file_type": "code",
+      "source_file": "lib/fingerprint.ts",
+      "source_location": "L1",
+      "id": "lib_fingerprint_generatefingerprint",
+      "community": 3,
+      "norm_label": "generatefingerprint()"
+    },
+    {
+      "label": "realtime-engine.ts",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L1",
+      "id": "lib_realtime_engine",
+      "community": 1,
+      "norm_label": "realtime-engine.ts"
+    },
+    {
+      "label": "ChannelEntry",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L31",
+      "id": "lib_realtime_engine_channelentry",
+      "community": 1,
+      "norm_label": "channelentry"
+    },
+    {
+      "label": "channelMap",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L37",
+      "id": "lib_realtime_engine_channelmap",
+      "community": 1,
+      "norm_label": "channelmap"
+    },
+    {
+      "label": "getRestaurantChannel()",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L48",
+      "id": "lib_realtime_engine_getrestaurantchannel",
+      "community": 1,
+      "norm_label": "getrestaurantchannel()"
+    },
+    {
+      "label": "releaseRestaurantChannel()",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L71",
+      "id": "lib_realtime_engine_releaserestaurantchannel",
+      "community": 1,
+      "norm_label": "releaserestaurantchannel()"
+    },
+    {
+      "label": "purgeRestaurantChannels()",
+      "file_type": "code",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L92",
+      "id": "lib_realtime_engine_purgerestaurantchannels",
+      "community": 1,
+      "norm_label": "purgerestaurantchannels()"
+    },
+    {
+      "label": "session.ts",
+      "file_type": "code",
+      "source_file": "lib/session.ts",
+      "source_location": "L1",
+      "id": "lib_session",
+      "community": 3,
+      "norm_label": "session.ts"
+    },
+    {
+      "label": "getStoredToken()",
+      "file_type": "code",
+      "source_file": "lib/session.ts",
+      "source_location": "L3",
+      "id": "lib_session_getstoredtoken",
+      "community": 3,
+      "norm_label": "getstoredtoken()"
+    },
+    {
+      "label": "storeToken()",
+      "file_type": "code",
+      "source_file": "lib/session.ts",
+      "source_location": "L8",
+      "id": "lib_session_storetoken",
+      "community": 3,
+      "norm_label": "storetoken()"
+    },
+    {
+      "label": "clearToken()",
+      "file_type": "code",
+      "source_file": "lib/session.ts",
+      "source_location": "L13",
+      "id": "lib_session_cleartoken",
+      "community": 3,
+      "norm_label": "cleartoken()"
+    },
+    {
+      "label": "generateToken()",
+      "file_type": "code",
+      "source_file": "lib/session.ts",
+      "source_location": "L18",
+      "id": "lib_session_generatetoken",
+      "community": 3,
+      "norm_label": "generatetoken()"
+    },
+    {
+      "label": "sounds.ts",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L1",
+      "id": "lib_sounds",
+      "community": 2,
+      "norm_label": "sounds.ts"
+    },
+    {
+      "label": "ctx()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L1",
+      "id": "lib_sounds_ctx",
+      "community": 2,
+      "norm_label": "ctx()"
+    },
+    {
+      "label": "playNewOrder()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L6",
+      "id": "lib_sounds_playneworder",
+      "community": 2,
+      "norm_label": "playneworder()"
+    },
+    {
+      "label": "playSignalAlert()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L24",
+      "id": "lib_sounds_playsignalalert",
+      "community": 2,
+      "norm_label": "playsignalalert()"
+    },
+    {
+      "label": "playBillAlert()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L42",
+      "id": "lib_sounds_playbillalert",
+      "community": 2,
+      "norm_label": "playbillalert()"
+    },
+    {
+      "label": "playOrderConfirmed()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L58",
+      "id": "lib_sounds_playorderconfirmed",
+      "community": 2,
+      "norm_label": "playorderconfirmed()"
+    },
+    {
+      "label": "playOrderReady()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L76",
+      "id": "lib_sounds_playorderready",
+      "community": 2,
+      "norm_label": "playorderready()"
+    },
+    {
+      "label": "playCountdownBell()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L94",
+      "id": "lib_sounds_playcountdownbell",
+      "community": 2,
+      "norm_label": "playcountdownbell()"
+    },
+    {
+      "label": "playWaiterCall()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L109",
+      "id": "lib_sounds_playwaitercall",
+      "community": 2,
+      "norm_label": "playwaitercall()"
+    },
+    {
+      "label": "playStarterAlert()",
+      "file_type": "code",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L128",
+      "id": "lib_sounds_playstarteralert",
+      "community": 2,
+      "norm_label": "playstarteralert()"
+    },
+    {
+      "label": "client.ts",
+      "file_type": "code",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L1",
+      "id": "supabase_client",
+      "community": 1,
+      "norm_label": "client.ts"
+    },
+    {
+      "label": "createClient()",
+      "file_type": "code",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L6",
+      "id": "supabase_client_createclient",
+      "community": 1,
+      "norm_label": "createclient()"
+    },
+    {
+      "label": "middleware.ts",
+      "file_type": "code",
+      "source_file": "lib/supabase/middleware.ts",
+      "source_location": "L1",
+      "id": "supabase_middleware",
+      "community": 7,
+      "norm_label": "middleware.ts"
+    },
+    {
+      "label": "updateSession()",
+      "file_type": "code",
+      "source_file": "lib/supabase/middleware.ts",
+      "source_location": "L5",
+      "id": "supabase_middleware_updatesession",
+      "community": 7,
+      "norm_label": "updatesession()"
+    },
+    {
+      "label": "public.ts",
+      "file_type": "code",
+      "source_file": "lib/supabase/public.ts",
+      "source_location": "L1",
+      "id": "supabase_public",
+      "community": 7,
+      "norm_label": "public.ts"
+    },
+    {
+      "label": "createPublicClient()",
+      "file_type": "code",
+      "source_file": "lib/supabase/public.ts",
+      "source_location": "L6",
+      "id": "supabase_public_createpublicclient",
+      "community": 7,
+      "norm_label": "createpublicclient()"
+    },
+    {
+      "label": "server.ts",
+      "file_type": "code",
+      "source_file": "lib/supabase/server.ts",
+      "source_location": "L1",
+      "id": "supabase_server",
+      "community": 8,
+      "norm_label": "server.ts"
+    },
+    {
+      "label": "createClient()",
+      "file_type": "code",
+      "source_file": "lib/supabase/server.ts",
+      "source_location": "L5",
+      "id": "supabase_server_createclient",
+      "community": 8,
+      "norm_label": "createclient()"
+    },
+    {
+      "label": "next.config.ts",
+      "file_type": "code",
+      "source_file": "next.config.ts",
+      "source_location": "L1",
+      "id": "next_config",
+      "community": 19,
+      "norm_label": "next.config.ts"
+    },
+    {
+      "label": "nextConfig",
+      "file_type": "code",
+      "source_file": "next.config.ts",
+      "source_location": "L3",
+      "id": "next_config_nextconfig",
+      "community": 19,
+      "norm_label": "nextconfig"
+    },
+    {
+      "label": "package.json",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L1",
+      "id": "package",
+      "community": 4,
+      "norm_label": "package.json"
+    },
+    {
+      "label": "name",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L2",
+      "id": "package_name",
+      "community": 4,
+      "norm_label": "name"
+    },
+    {
+      "label": "version",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L3",
+      "id": "package_version",
+      "community": 4,
+      "norm_label": "version"
+    },
+    {
+      "label": "private",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L4",
+      "id": "package_private",
+      "community": 4,
+      "norm_label": "private"
+    },
+    {
+      "label": "scripts",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L5",
+      "id": "package_scripts",
+      "community": 4,
+      "norm_label": "scripts"
+    },
+    {
+      "label": "dev",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L6",
+      "id": "package_scripts_dev",
+      "community": 4,
+      "norm_label": "dev"
+    },
+    {
+      "label": "build",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L7",
+      "id": "package_scripts_build",
+      "community": 4,
+      "norm_label": "build"
+    },
+    {
+      "label": "start",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L8",
+      "id": "package_scripts_start",
+      "community": 4,
+      "norm_label": "start"
+    },
+    {
+      "label": "lint",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L9",
+      "id": "package_scripts_lint",
+      "community": 4,
+      "norm_label": "lint"
+    },
+    {
+      "label": "dependencies",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L11",
+      "id": "package_dependencies",
+      "community": 4,
+      "norm_label": "dependencies"
+    },
+    {
+      "label": "@supabase/ssr",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L12",
+      "id": "package_dependencies_supabase_ssr",
+      "community": 4,
+      "norm_label": "@supabase/ssr"
+    },
+    {
+      "label": "@supabase/supabase-js",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L13",
+      "id": "package_dependencies_supabase_supabase_js",
+      "community": 4,
+      "norm_label": "@supabase/supabase-js"
+    },
+    {
+      "label": "jspdf",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L14",
+      "id": "package_dependencies_jspdf",
+      "community": 4,
+      "norm_label": "jspdf"
+    },
+    {
+      "label": "lucide-react",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L15",
+      "id": "package_dependencies_lucide_react",
+      "community": 4,
+      "norm_label": "lucide-react"
+    },
+    {
+      "label": "next",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L16",
+      "id": "package_dependencies_next",
+      "community": 4,
+      "norm_label": "next"
+    },
+    {
+      "label": "next-intl",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L17",
+      "id": "package_dependencies_next_intl",
+      "community": 4,
+      "norm_label": "next-intl"
+    },
+    {
+      "label": "qrcode",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L18",
+      "id": "package_dependencies_qrcode",
+      "community": 4,
+      "norm_label": "qrcode"
+    },
+    {
+      "label": "qrcode.react",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L19",
+      "id": "package_dependencies_qrcode_react",
+      "community": 4,
+      "norm_label": "qrcode.react"
+    },
+    {
+      "label": "react",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L20",
+      "id": "package_dependencies_react",
+      "community": 4,
+      "norm_label": "react"
+    },
+    {
+      "label": "react-dom",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L21",
+      "id": "package_dependencies_react_dom",
+      "community": 4,
+      "norm_label": "react-dom"
+    },
+    {
+      "label": "react-qrcode-logo",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L22",
+      "id": "package_dependencies_react_qrcode_logo",
+      "community": 4,
+      "norm_label": "react-qrcode-logo"
+    },
+    {
+      "label": "devDependencies",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L24",
+      "id": "package_devdependencies",
+      "community": 9,
+      "norm_label": "devdependencies"
+    },
+    {
+      "label": "@tailwindcss/postcss",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L25",
+      "id": "package_devdependencies_tailwindcss_postcss",
+      "community": 9,
+      "norm_label": "@tailwindcss/postcss"
+    },
+    {
+      "label": "@types/node",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L26",
+      "id": "package_devdependencies_types_node",
+      "community": 9,
+      "norm_label": "@types/node"
+    },
+    {
+      "label": "@types/qrcode",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L27",
+      "id": "package_devdependencies_types_qrcode",
+      "community": 9,
+      "norm_label": "@types/qrcode"
+    },
+    {
+      "label": "@types/react",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L28",
+      "id": "package_devdependencies_types_react",
+      "community": 9,
+      "norm_label": "@types/react"
+    },
+    {
+      "label": "@types/react-dom",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L29",
+      "id": "package_devdependencies_types_react_dom",
+      "community": 9,
+      "norm_label": "@types/react-dom"
+    },
+    {
+      "label": "eslint",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L30",
+      "id": "package_devdependencies_eslint",
+      "community": 9,
+      "norm_label": "eslint"
+    },
+    {
+      "label": "eslint-config-next",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L31",
+      "id": "package_devdependencies_eslint_config_next",
+      "community": 9,
+      "norm_label": "eslint-config-next"
+    },
+    {
+      "label": "supabase",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L32",
+      "id": "package_devdependencies_supabase",
+      "community": 9,
+      "norm_label": "supabase"
+    },
+    {
+      "label": "tailwindcss",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L33",
+      "id": "package_devdependencies_tailwindcss",
+      "community": 9,
+      "norm_label": "tailwindcss"
+    },
+    {
+      "label": "typescript",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L34",
+      "id": "package_devdependencies_typescript",
+      "community": 9,
+      "norm_label": "typescript"
+    },
+    {
+      "label": "postcss.config.mjs",
+      "file_type": "code",
+      "source_file": "postcss.config.mjs",
+      "source_location": "L1",
+      "id": "postcss_config",
+      "community": 20,
+      "norm_label": "postcss.config.mjs"
+    },
+    {
+      "label": "config",
+      "file_type": "code",
+      "source_file": "postcss.config.mjs",
+      "source_location": "L1",
+      "id": "postcss_config_config",
+      "community": 20,
+      "norm_label": "config"
+    },
+    {
+      "label": "proxy.ts",
+      "file_type": "code",
+      "source_file": "proxy.ts",
+      "source_location": "L1",
+      "id": "proxy",
+      "community": 7,
+      "norm_label": "proxy.ts"
+    },
+    {
+      "label": "proxy()",
+      "file_type": "code",
+      "source_file": "proxy.ts",
+      "source_location": "L4",
+      "id": "proxy_proxy",
+      "community": 7,
+      "norm_label": "proxy()"
+    },
+    {
+      "label": "config",
+      "file_type": "code",
+      "source_file": "proxy.ts",
+      "source_location": "L8",
+      "id": "proxy_config",
+      "community": 7,
+      "norm_label": "config"
+    },
+    {
+      "label": "linked-project.json",
+      "file_type": "code",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "id": "temp_linked_project",
+      "community": 11,
+      "norm_label": "linked-project.json"
+    },
+    {
+      "label": "ref",
+      "file_type": "code",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "id": "temp_linked_project_ref",
+      "community": 11,
+      "norm_label": "ref"
+    },
+    {
+      "label": "name",
+      "file_type": "code",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "id": "temp_linked_project_name",
+      "community": 11,
+      "norm_label": "name"
+    },
+    {
+      "label": "organization_id",
+      "file_type": "code",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "id": "temp_linked_project_organization_id",
+      "community": 11,
+      "norm_label": "organization_id"
+    },
+    {
+      "label": "organization_slug",
+      "file_type": "code",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "id": "temp_linked_project_organization_slug",
+      "community": 11,
+      "norm_label": "organization_slug"
+    },
+    {
+      "label": "tsconfig.json",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L1",
+      "id": "tsconfig",
+      "community": 5,
+      "norm_label": "tsconfig.json"
+    },
+    {
+      "label": "compilerOptions",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L2",
+      "id": "tsconfig_compileroptions",
+      "community": 5,
+      "norm_label": "compileroptions"
+    },
+    {
+      "label": "target",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L3",
+      "id": "tsconfig_compileroptions_target",
+      "community": 5,
+      "norm_label": "target"
+    },
+    {
+      "label": "lib",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L4",
+      "id": "tsconfig_compileroptions_lib",
+      "community": 5,
+      "norm_label": "lib"
+    },
+    {
+      "label": "allowJs",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L5",
+      "id": "tsconfig_compileroptions_allowjs",
+      "community": 5,
+      "norm_label": "allowjs"
+    },
+    {
+      "label": "skipLibCheck",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L6",
+      "id": "tsconfig_compileroptions_skiplibcheck",
+      "community": 5,
+      "norm_label": "skiplibcheck"
+    },
+    {
+      "label": "strict",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L7",
+      "id": "tsconfig_compileroptions_strict",
+      "community": 5,
+      "norm_label": "strict"
+    },
+    {
+      "label": "noEmit",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L8",
+      "id": "tsconfig_compileroptions_noemit",
+      "community": 5,
+      "norm_label": "noemit"
+    },
+    {
+      "label": "esModuleInterop",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L9",
+      "id": "tsconfig_compileroptions_esmoduleinterop",
+      "community": 5,
+      "norm_label": "esmoduleinterop"
+    },
+    {
+      "label": "module",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L10",
+      "id": "tsconfig_compileroptions_module",
+      "community": 5,
+      "norm_label": "module"
+    },
+    {
+      "label": "moduleResolution",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L11",
+      "id": "tsconfig_compileroptions_moduleresolution",
+      "community": 5,
+      "norm_label": "moduleresolution"
+    },
+    {
+      "label": "resolveJsonModule",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L12",
+      "id": "tsconfig_compileroptions_resolvejsonmodule",
+      "community": 5,
+      "norm_label": "resolvejsonmodule"
+    },
+    {
+      "label": "isolatedModules",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L13",
+      "id": "tsconfig_compileroptions_isolatedmodules",
+      "community": 5,
+      "norm_label": "isolatedmodules"
+    },
+    {
+      "label": "jsx",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L14",
+      "id": "tsconfig_compileroptions_jsx",
+      "community": 5,
+      "norm_label": "jsx"
+    },
+    {
+      "label": "incremental",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L15",
+      "id": "tsconfig_compileroptions_incremental",
+      "community": 5,
+      "norm_label": "incremental"
+    },
+    {
+      "label": "plugins",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L16",
+      "id": "tsconfig_compileroptions_plugins",
+      "community": 5,
+      "norm_label": "plugins"
+    },
+    {
+      "label": "paths",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L21",
+      "id": "tsconfig_compileroptions_paths",
+      "community": 5,
+      "norm_label": "paths"
+    },
+    {
+      "label": "@/*",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L22",
+      "id": "tsconfig_paths",
+      "community": 5,
+      "norm_label": "@/*"
+    },
+    {
+      "label": "include",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L25",
+      "id": "tsconfig_include",
+      "community": 5,
+      "norm_label": "include"
+    },
+    {
+      "label": "exclude",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L33",
+      "id": "tsconfig_exclude",
+      "community": 5,
+      "norm_label": "exclude"
+    },
+    {
+      "label": "database.types.ts",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L1",
+      "id": "types_database_types",
+      "community": 0,
+      "norm_label": "database.types.ts"
+    },
+    {
+      "label": "Json",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L1",
+      "id": "types_database_types_json",
+      "community": 0,
+      "norm_label": "json"
+    },
+    {
+      "label": "Database",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L9",
+      "id": "types_database_types_database",
+      "community": 7,
+      "norm_label": "database"
+    },
+    {
+      "label": "DatabaseWithoutInternals",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L592",
+      "id": "types_database_types_databasewithoutinternals",
+      "community": 0,
+      "norm_label": "databasewithoutinternals"
+    },
+    {
+      "label": "DefaultSchema",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L594",
+      "id": "types_database_types_defaultschema",
+      "community": 0,
+      "norm_label": "defaultschema"
+    },
+    {
+      "label": "Tables",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L599",
+      "id": "types_database_types_tables",
+      "community": 0,
+      "norm_label": "tables"
+    },
+    {
+      "label": "TablesInsert",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L628",
+      "id": "types_database_types_tablesinsert",
+      "community": 0,
+      "norm_label": "tablesinsert"
+    },
+    {
+      "label": "TablesUpdate",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L653",
+      "id": "types_database_types_tablesupdate",
+      "community": 0,
+      "norm_label": "tablesupdate"
+    },
+    {
+      "label": "Enums",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L678",
+      "id": "types_database_types_enums",
+      "community": 0,
+      "norm_label": "enums"
+    },
+    {
+      "label": "CompositeTypes",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L695",
+      "id": "types_database_types_compositetypes",
+      "community": 0,
+      "norm_label": "compositetypes"
+    },
+    {
+      "label": "Constants",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L712",
+      "id": "types_database_types_constants",
+      "community": 0,
+      "norm_label": "constants"
+    },
+    {
+      "label": "RestaurantStats",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L719",
+      "id": "types_database_types_restaurantstats",
+      "community": 0,
+      "norm_label": "restaurantstats"
+    },
+    {
+      "label": "MenuItemStats",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L738",
+      "id": "types_database_types_menuitemstats",
+      "community": 0,
+      "norm_label": "menuitemstats"
+    },
+    {
+      "label": "PeakHourStats",
+      "file_type": "code",
+      "source_file": "types/database.types.ts",
+      "source_location": "L752",
+      "id": "types_database_types_peakhourstats",
+      "community": 0,
+      "norm_label": "peakhourstats"
+    },
+    {
+      "label": "AGENTS.md",
+      "file_type": "document",
+      "source_file": "AGENTS.md",
+      "source_location": "L1",
+      "id": "agents",
+      "community": 15,
+      "norm_label": "agents.md"
+    },
+    {
+      "label": "This is NOT the Next.js you know",
+      "file_type": "document",
+      "source_file": "AGENTS.md",
+      "source_location": "L2",
+      "id": "agents_this_is_not_the_next_js_you_know",
+      "community": 15,
+      "norm_label": "this is not the next.js you know"
+    },
+    {
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "id": "claude",
+      "community": 22,
+      "norm_label": "claude.md"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme",
+      "community": 13,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "Getting Started",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L3",
+      "id": "readme_getting_started",
+      "community": 13,
+      "norm_label": "getting started"
+    },
+    {
+      "label": "Learn More",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L23",
+      "id": "readme_learn_more",
+      "community": 13,
+      "norm_label": "learn more"
+    },
+    {
+      "label": "Deploy on Vercel",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L32",
+      "id": "readme_deploy_on_vercel",
+      "community": 13,
+      "norm_label": "deploy on vercel"
+    }
+  ],
+  "links": [
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "components_dashboardhome",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_dashboardhome",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_props",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_statusicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_statuslabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "components_dashboardhome_tab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_dashboardhome",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "components_dashboardhome_props",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "components_dashboardhome_props",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_dashboardhome_props",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "components_dashboardhome_props",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "components_qrgenerator_qrgenerator",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "components_qrgenerator_qrgeneratorprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "components_qrgenerator_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "components_qrgenerator_tableqr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/QRGenerator.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_qrgenerator",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_period",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_statsdashboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_statsprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_statusicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "components_statsdashboard_statuslabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_statsdashboard",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "components_statsdashboard_statsprops",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "components_statsdashboard_statsprops",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "field",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/components/StatsDashboard.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "components_statsdashboard_statsprops",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_category",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_menuitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_menumanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_menumanagerprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "components_menumanager_view",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "lib_compress_image",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "lib_compress_image_compressimage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_menumanager",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "menu_page",
+      "target": "components_menumanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "menu_page",
+      "target": "menu_page_menupage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "menu_page",
+      "target": "menu_page_pageprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "menu_page",
+      "target": "supabase_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/menu/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "menu_page",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "restaurant_slug_page_dashboardpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "restaurant_slug_page_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "supabase_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/dashboard/[restaurant_slug]/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "app_admin_dashboard_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "components_kdsboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L223",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_kdsboard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_kdsboardprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_kdstab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_menuitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_orderstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_signal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_signalicon",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L104",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_signallabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_status_border",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_status_colors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_status_flow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_status_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_timeago",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L119",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "components_kdsboard_timeestimatepicker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "lib_sounds",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "lib_sounds_playbillalert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "lib_sounds_playneworder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "lib_sounds_playsignalalert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "lib_sounds_playstarteralert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/components/KDSBoard.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_kdsboard",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "restaurant_slug_page_kdspage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "supabase_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/kds/[restaurant_slug]/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "app_admin_kds_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/layout.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "admin_layout",
+      "target": "admin_layout_adminlayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/login/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "app_admin_login_page_tsx_login_page",
+      "target": "login_loginform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/login/LoginForm.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "login_loginform",
+      "target": "login_loginform_loginform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/login/LoginForm.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "login_loginform",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/login/LoginForm.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "login_loginform",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(admin)/login/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_admin_login_page_tsx_login_page",
+      "target": "login_page_loginpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_billsplitter",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_cartitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_category",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_dailyspecial",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L154",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_menuclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_menuclientprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_menuitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_menuclient_signal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "components_ordertracker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "lib_sounds",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "lib_sounds_playorderconfirmed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/MenuClient.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_menuclient",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_menuclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_formatcountdown",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L85",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_ordertracker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_ordertrackerprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_statusconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "components_ordertracker_trackedorder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "lib_sounds",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "lib_sounds_playcountdownbell",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "lib_sounds_playorderready",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "lib_sounds_playwaitercall",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_ordertracker",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "context": "type",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/OrderTracker.tsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "components_ordertracker_trackedorder",
+      "target": "components_ordertracker_order",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_orderitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_receiptmodal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_receiptmodalprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_receiptorder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "components_receiptmodal_staffmember",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/ReceiptModal.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_receiptmodal",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "components_restaurantapp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_category",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_dailyspecial",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_menuitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_restaurantapp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "components_restaurantapp_restaurantappprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "restaurant_slug_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/components/RestaurantApp.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_restaurantapp",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/loading.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "restaurant_slug_loading",
+      "target": "restaurant_slug_loading_loading",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page_pageprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache_getcategories",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache_getdailyspecial",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache_getmenuitems",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache_getrestaurantbyslug",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "lib_cache_getstarters",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "app_customer_restaurant_slug_page_tsx_restaurant_slug_page",
+      "target": "restaurant_slug_page_restaurantmenupage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "restaurant_slug_page_restaurantmenupage",
+      "target": "lib_cache_getcategories"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "restaurant_slug_page_restaurantmenupage",
+      "target": "lib_cache_getdailyspecial"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "restaurant_slug_page_restaurantmenupage",
+      "target": "lib_cache_getmenuitems"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "restaurant_slug_page_restaurantmenupage",
+      "target": "lib_cache_getrestaurantbyslug"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/(customer)/[restaurant_slug]/page.tsx",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "restaurant_slug_page_restaurantmenupage",
+      "target": "lib_cache_getstarters"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "components_spotlightlayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_fingerprint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_fingerprint_generatefingerprint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_session_generatetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_session_getstoredtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "lib_session_storetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "restaurant_slug_session_menuitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "restaurant_slug_session_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "restaurant_slug_session_sessionscreen",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "restaurant_slug_session_sessionscreenprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "restaurant_slug_session_step",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/[restaurant_slug]/session.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "restaurant_slug_session",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(customer)/layout.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "customer_layout",
+      "target": "customer_layout_customerlayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "components_superadminpanel_dailyledger",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "components_superadminpanel_restaurant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "components_superadminpanel_superadminpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "components_superadminpanel_superadminpanelprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "components_superadminpanel_tab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/components/SuperAdminPanel.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_superadminpanel",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "novanode_page",
+      "target": "components_superadminpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/login/page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "app_novanode_novanode_login_page_tsx_login_page",
+      "target": "login_page_novanodelogin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/login/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_novanode_novanode_login_page_tsx_login_page",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/login/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "app_novanode_novanode_login_page_tsx_login_page",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "novanode_page",
+      "target": "novanode_page_novanodeadminpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "novanode_page",
+      "target": "supabase_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(novanode)/novanode/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "novanode_page",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/admin/create-staff/route.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "create_staff_route",
+      "target": "create_staff_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/admin/create-staff/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "create_staff_route",
+      "target": "supabase_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/admin/create-staff/route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "create_staff_route",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/layout.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "app_layout",
+      "target": "app_layout_inter",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/layout.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "app_layout",
+      "target": "app_layout_metadata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/layout.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "app_layout",
+      "target": "app_layout_rootlayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/page.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "app_page",
+      "target": "app_page_home",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/SpotlightLayout.tsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "components_spotlightlayout",
+      "target": "components_spotlightlayout_spotlightlayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/SpotlightLayout.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_spotlightlayout",
+      "target": "components_spotlightlayout_spotlightlayoutprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "eslint.config.mjs",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "eslint_config",
+      "target": "eslint_config_eslintconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_getcategories",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_getdailyspecial",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_getmenuitems",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_getrestaurantbyslug",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_getstarters",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "lib_cache_supabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "supabase_public",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/cache.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "lib_cache",
+      "target": "supabase_public_createpublicclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "lib_compress_image",
+      "target": "lib_compress_image_compressimage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "lib_compress_image",
+      "target": "lib_compress_image_uploadmenuimage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/compress-image.ts",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "lib_compress_image_uploadmenuimage",
+      "target": "lib_compress_image_compressimage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/fingerprint.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "lib_fingerprint",
+      "target": "lib_fingerprint_generatefingerprint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "lib_realtime_engine_channelentry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "lib_realtime_engine_channelmap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "lib_realtime_engine_getrestaurantchannel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "lib_realtime_engine_purgerestaurantchannels",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "lib_realtime_engine_releaserestaurantchannel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "supabase_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/realtime-engine.ts",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "lib_realtime_engine",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/session.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "lib_session",
+      "target": "lib_session_cleartoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/session.ts",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "lib_session",
+      "target": "lib_session_generatetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/session.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "lib_session",
+      "target": "lib_session_getstoredtoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/session.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "lib_session",
+      "target": "lib_session_storetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playbillalert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L94",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playcountdownbell",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playneworder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playorderconfirmed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playorderready",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playsignalalert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L128",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playstarteralert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L109",
+      "weight": 1.0,
+      "source": "lib_sounds",
+      "target": "lib_sounds_playwaitercall",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "lib_sounds_playbillalert",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "lib_sounds_playcountdownbell",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "lib_sounds_playneworder",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "lib_sounds_playorderconfirmed",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L78",
+      "weight": 1.0,
+      "source": "lib_sounds_playorderready",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "lib_sounds_playsignalalert",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L130",
+      "weight": 1.0,
+      "source": "lib_sounds_playstarteralert",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/sounds.ts",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "lib_sounds_playwaitercall",
+      "target": "lib_sounds_ctx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "supabase_client",
+      "target": "supabase_client_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "supabase_client",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/client.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "supabase_client",
+      "target": "types_database_types_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "proxy.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "proxy",
+      "target": "supabase_middleware",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/middleware.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "supabase_middleware",
+      "target": "supabase_middleware_updatesession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/middleware.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "supabase_middleware",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/middleware.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "supabase_middleware",
+      "target": "types_database_types_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "proxy.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "proxy",
+      "target": "supabase_middleware_updatesession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "proxy.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "proxy_proxy",
+      "target": "supabase_middleware_updatesession"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/public.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "supabase_public",
+      "target": "supabase_public_createpublicclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/public.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "supabase_public",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/public.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "supabase_public",
+      "target": "types_database_types_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/server.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "supabase_server",
+      "target": "supabase_server_createclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/server.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "supabase_server",
+      "target": "types_database_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase/server.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "supabase_server",
+      "target": "types_database_types_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "next.config.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "next_config",
+      "target": "next_config_nextconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_devdependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_name",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_private",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_scripts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "package",
+      "target": "package_version",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "package_scripts",
+      "target": "package_scripts_build",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "package_scripts",
+      "target": "package_scripts_dev",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "package_scripts",
+      "target": "package_scripts_lint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "package_scripts",
+      "target": "package_scripts_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_jspdf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_lucide_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_next",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_next_intl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_qrcode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_qrcode_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_react_dom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_react_qrcode_logo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_supabase_ssr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "package_dependencies",
+      "target": "package_dependencies_supabase_supabase_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_eslint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_eslint_config_next",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_supabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_tailwindcss",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_tailwindcss_postcss",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_types_node",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_types_qrcode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_types_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_types_react_dom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_typescript",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "postcss.config.mjs",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "postcss_config",
+      "target": "postcss_config_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "proxy.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "proxy",
+      "target": "proxy_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "proxy.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "proxy",
+      "target": "proxy_proxy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "temp_linked_project",
+      "target": "temp_linked_project_name",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "temp_linked_project",
+      "target": "temp_linked_project_organization_id",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "temp_linked_project",
+      "target": "temp_linked_project_organization_slug",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "supabase/.temp/linked-project.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "temp_linked_project",
+      "target": "temp_linked_project_ref",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "tsconfig",
+      "target": "tsconfig_compileroptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "tsconfig",
+      "target": "tsconfig_exclude",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "tsconfig",
+      "target": "tsconfig_include",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_allowjs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_esmoduleinterop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_incremental",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_isolatedmodules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_jsx",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_lib",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_module",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_moduleresolution",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_noemit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_paths",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_plugins",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_resolvejsonmodule",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_skiplibcheck",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_strict",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_target",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions_paths",
+      "target": "tsconfig_paths",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L695",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_compositetypes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L712",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_constants",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L592",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_databasewithoutinternals",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L594",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_defaultschema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L678",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_enums",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_json",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L738",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_menuitemstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L752",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_peakhourstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L719",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_restaurantstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L599",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L628",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_tablesinsert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "types/database.types.ts",
+      "source_location": "L653",
+      "weight": 1.0,
+      "source": "types_database_types",
+      "target": "types_database_types_tablesupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AGENTS.md",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "agents",
+      "target": "agents_this_is_not_the_next_js_you_know",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "readme",
+      "target": "readme_deploy_on_vercel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "readme",
+      "target": "readme_getting_started",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "readme",
+      "target": "readme_learn_more",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "89d83535dfe33f7ac863980d8da39226e9aa7eba"
+}
