@@ -437,7 +437,54 @@ button:not(:disabled):active svg {
 .menu-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
 .menu-card:hover .menu-card-img img { transform: scale(1.06); }
 .menu-card-body { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+.menu-card-body > div:last-child { gap: 10px; margin-top: 8px; min-width: 0; }
 .sold-overlay { position: absolute; inset: 0; background: rgba(2,20,12,0.65); display: flex; align-items: center; justify-content: center; }
+
+@media (max-width: 430px) {
+  .menu-grid { padding: 12px 12px 112px; gap: 10px; }
+  .hero-card { height: 210px; border-radius: 20px; }
+  .hero-body { padding: 16px; }
+  .menu-card {
+    min-height: 104px;
+    height: auto;
+    border-radius: 16px;
+  }
+  .menu-card:hover { transform: none; }
+  .menu-card-img { width: 96px; }
+  .menu-card-body {
+    padding: 11px 12px;
+    gap: 8px;
+  }
+  .menu-card .t-eyebrow { display: none; }
+  .menu-card .t-title {
+    font-size: 14px !important;
+    line-height: 1.18;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .menu-card .t-body {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 1 !important;
+  }
+  .menu-card .t-price-sm { font-size: 13px; }
+  .menu-card .btn-add {
+    padding: 7px 11px;
+    border-radius: 9px;
+    font-size: 11px;
+  }
+  .menu-card .qty-control {
+    padding: 4px 8px !important;
+    gap: 7px;
+  }
+  .menu-card .qty-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+  }
+}
 
 /* Order Bar */
 .order-bar {
