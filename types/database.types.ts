@@ -169,6 +169,7 @@ export type Database = {
         Row: {
           created_at: string | null;
           customer_name: string | null;
+          platform_fee?: number | null
           customer_whatsapp: string | null;
           id: string;
           is_starter_order: boolean | null;
@@ -184,6 +185,7 @@ export type Database = {
         Insert: {
           created_at?: string | null;
           customer_name?: string | null;
+          platform_fee?: number | null
           customer_whatsapp?: string | null;
           id?: string;
           is_starter_order?: boolean | null;

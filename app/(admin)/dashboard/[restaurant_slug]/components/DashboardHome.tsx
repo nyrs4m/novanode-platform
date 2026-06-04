@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart2,
@@ -45,6 +45,7 @@ interface Props {
   activeOrdersCount: number;
   activeTablesCount: number;
   signalsCount: number;
+  todayRevenueOverride: number;
 }
 
 type Tab = "overview" | "stats" | "menu";
@@ -62,12 +63,22 @@ function StatusLabel({ status }: { status: string }) {
   return <span className="status-pending">{status}</span>;
 }
 
+type LedgerRow = {
+  total_owed: number;
+  completed_sessions: number;
+  is_paid: boolean;
+  session_fees_collected?: number;
+  platform_fees_owed?: number;
+  platform_fees_paid?: number;
+};
+
 export default function DashboardHome({
   restaurant,
   dailyStats,
   monthlyStats,
   topItems,
   peakHours,
+  todayRevenueOverride,
   recentOrders: initialRecentOrders,
   activeOrdersCount: initialActiveOrders,
   activeTablesCount: initialActiveTables,
@@ -75,6 +86,7 @@ export default function DashboardHome({
 }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   // ── Live counts — seeded from server render, kept fresh via realtime ──
   const [activeOrdersCount, setActiveOrdersCount] =
@@ -84,46 +96,101 @@ export default function DashboardHome({
   const [signalsCount, setSignalsCount] = useState(initialSignals);
   const [recentOrders, setRecentOrders] =
     useState<Order[]>(initialRecentOrders);
+  const [todayLedger, setTodayLedger] = useState<LedgerRow | null>(null);
+  const [todayRevenue, setTodayRevenue] = useState(todayRevenueOverride);
 
   // ── CRITICAL: singleton supabase client in ref ────────────────────────
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
- 
   useEffect(() => {
-    async function refreshCounts() {
-      const [ordersRes, tablesRes, signalsRes, recentRes] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .eq("restaurant_id", restaurant.id)
-          .in("status", ["Pending", "Preparing"]),
+    async function refreshTodayRevenue() {
+      const today = new Date().toISOString().split("T")[0];
+      const todayStart = `${today}T00:00:00.000Z`;
+      const tomorrowStartDate = new Date(todayStart);
+      tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
+      const tomorrowStart = tomorrowStartDate.toISOString();
 
-        supabase
+      try {
+        // Fetch completed session tokens for today
+        const { data: completedSessions } = await supabase
           .from("table_sessions")
-          .select("*", { count: "exact", head: true })
+          .select("session_token")
           .eq("restaurant_id", restaurant.id)
-          .eq("is_active", true),
+          .eq("status", "completed")
+          .gte("closed_at", todayStart)
+          .lt("closed_at", tomorrowStart);
 
-        supabase
-          .from("waiter_signals")
-          .select("*", { count: "exact", head: true })
-          .eq("restaurant_id", restaurant.id)
-          .eq("is_resolved", false),
+        const completedSessionTokens =
+          completedSessions?.map((s) => s.session_token) ?? [];
 
-        supabase
-          .from("orders")
-          .select("*")
-          .eq("restaurant_id", restaurant.id)
-          .neq("status", "Cancelled")
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
+        // Fetch orders from completed sessions
+        if (completedSessionTokens.length > 0) {
+          const { data: revenueOrders } = await supabase
+            .from("orders")
+            .select("total_amount")
+            .eq("restaurant_id", restaurant.id)
+            .in("session_token", completedSessionTokens)
+            .neq("status", "Cancelled");
+
+          const revenue = (revenueOrders ?? []).reduce(
+            (sum, o) => sum + Number(o.total_amount),
+            0,
+          );
+          setTodayRevenue(revenue);
+        } else {
+          setTodayRevenue(0);
+        }
+      } catch {
+        // Silently fail if revenue fetch has issues
+      }
+    }
+
+    async function refreshCounts() {
+      // Run revenue refresh in parallel without blocking other counts
+      refreshTodayRevenue().catch(() => {});
+
+      const [ordersRes, tablesRes, signalsRes, recentRes, ledgerRes] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select("*", { count: "exact", head: true })
+            .eq("restaurant_id", restaurant.id)
+            .in("status", ["Pending", "Preparing"]),
+
+          supabase
+            .from("table_sessions")
+            .select("*", { count: "exact", head: true })
+            .eq("restaurant_id", restaurant.id)
+            .eq("is_active", true),
+
+          supabase
+            .from("waiter_signals")
+            .select("*", { count: "exact", head: true })
+            .eq("restaurant_id", restaurant.id)
+            .eq("is_resolved", false),
+
+          supabase
+            .from("orders")
+            .select("*")
+            .eq("restaurant_id", restaurant.id)
+            .neq("status", "Cancelled")
+            .order("created_at", { ascending: false })
+            .limit(10),
+
+          supabase
+            .from("daily_ledger")
+            .select("*")
+            .eq("restaurant_id", restaurant.id)
+            .eq("ledger_date", new Date().toISOString().split("T")[0])
+            .maybeSingle(),
+        ]);
 
       if (ordersRes.count !== null) setActiveOrdersCount(ordersRes.count);
       if (tablesRes.count !== null) setActiveTablesCount(tablesRes.count);
       if (signalsRes.count !== null) setSignalsCount(signalsRes.count);
       if (recentRes.data) setRecentOrders(recentRes.data as Order[]);
+      if (ledgerRes.data) setTodayLedger(ledgerRes.data as typeof todayLedger);
     }
 
     // Refresh immediately on mount to catch any changes since SSR
@@ -209,7 +276,7 @@ export default function DashboardHome({
       ((r as RestaurantStats & { platform_fees?: number }).platform_fees ?? 0),
     0,
   );
-  const dRevenue = dailyStats?.gross_revenue ?? 0;
+  const dRevenue = todayRevenue ?? dailyStats?.gross_revenue ?? 0;
   const dOrders = dailyStats?.total_orders ?? 0;
   const dTables = dailyStats?.tables_served ?? 0;
 
@@ -218,7 +285,9 @@ export default function DashboardHome({
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/login");
+    startTransition(() => {
+      router.push("/login");
+    });
   }
 
   // Quick actions use live counts from state (not initial props)
@@ -229,7 +298,10 @@ export default function DashboardHome({
       icon: <ChefHat size={24} />,
       badge: activeOrdersCount,
       badgeUrgent: activeOrdersCount > 0,
-      onClick: () => router.push(`/kds/${restaurant.slug}`),
+      onClick: () =>
+        startTransition(() => {
+          router.push(`/kds/${restaurant.slug}`);
+        }),
       color: "var(--gold-glow)",
     },
     {
@@ -238,7 +310,10 @@ export default function DashboardHome({
       icon: <Users2 size={24} />,
       badge: activeTablesCount,
       badgeUrgent: false,
-      onClick: () => router.push(`/kds/${restaurant.slug}`),
+      onClick: () =>
+        startTransition(() => {
+          router.push(`/kds/${restaurant.slug}`);
+        }),
       color: "#60a5fa",
     },
     {
@@ -247,7 +322,10 @@ export default function DashboardHome({
       icon: <Bell size={24} />,
       badge: signalsCount,
       badgeUrgent: signalsCount > 0,
-      onClick: () => router.push(`/kds/${restaurant.slug}`),
+      onClick: () =>
+        startTransition(() => {
+          router.push(`/kds/${restaurant.slug}`);
+        }),
       color: signalsCount > 0 ? "var(--gold-glow)" : "var(--cream-35)",
     },
     {
@@ -256,7 +334,10 @@ export default function DashboardHome({
       icon: <Package size={24} />,
       badge: 0,
       badgeUrgent: false,
-      onClick: () => router.push(`/kds/${restaurant.slug}`),
+      onClick: () =>
+        startTransition(() => {
+          router.push(`/kds/${restaurant.slug}`);
+        }),
       color: "#34d399",
     },
   ];
@@ -406,9 +487,9 @@ export default function DashboardHome({
                   up: false,
                 },
                 {
-                  label: "Platform Fees",
-                  value: `${restaurant.currency} ${mFees.toFixed(2)}`,
-                  sub: "2.5% per order",
+                  label: "NovaNode Fee Today",
+                  value: `${restaurant.currency} ${(todayLedger?.total_owed ?? 0).toFixed(2)}`,
+                  sub: `${todayLedger?.completed_sessions ?? 0} sessions · ${todayLedger?.is_paid ? "✓ Paid" : "Unpaid"}`,
                   icon: <TrendingUp size={20} />,
                   up: false,
                 },
@@ -538,6 +619,54 @@ export default function DashboardHome({
               ))}
             </div>
 
+            {/* Ledger breakdown */}
+            {todayLedger && (
+              <div className="dash-section" style={{ marginBottom: 24 }}>
+                <div className="dash-section-head">
+                  <DollarSign size={17} color="var(--gold-glow)" />
+                  <span className="t-title" style={{ fontSize: 15 }}>
+                    Today's Ledger
+                  </span>
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
+                  {[
+                    {
+                      label: "Session fees collected",
+                      value: `${restaurant.currency} ${Number((todayLedger as LedgerRow).session_fees_collected ?? 0).toFixed(2)}`,
+                    },
+                    {
+                      label: "NovaNode fee owed",
+                      value: `${restaurant.currency} ${Number(todayLedger.total_owed ?? 0).toFixed(2)}`,
+                    },
+                    {
+                      label: "NovaNode fee settled",
+                      value: `${restaurant.currency} ${Number((todayLedger as LedgerRow).platform_fees_paid ?? 0).toFixed(2)}`,
+                    },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "12px 16px",
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--cream-06)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <span className="t-body" style={{ fontSize: 13 }}>
+                        {row.label}
+                      </span>
+                      <span className="t-price-sm">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recent Orders — live-updated list */}
             <div className="dash-section">
               <div className="dash-section-head">
@@ -575,7 +704,8 @@ export default function DashboardHome({
                         if (o.created_at && o.created_at > existing.latest_time)
                           existing.latest_time = o.created_at;
                         existing.totalOrders += 1;
-                        if (o.status === "Cancelled") existing.cancelledOrders += 1;
+                        if (o.status === "Cancelled")
+                          existing.cancelledOrders += 1;
                         else existing.status = o.status ?? "";
                         existing.totalOrders += 1;
                         if (o.status === "Cancelled")
@@ -681,7 +811,7 @@ export default function DashboardHome({
                     const pct = (qty / Number(maxQty)) * 100;
                     return (
                       <div
-                        key={item.item_id}
+                        key={`${item.item_id}-${i}`}
                         style={{
                           display: "flex",
                           alignItems: "center",

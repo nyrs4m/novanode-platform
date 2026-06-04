@@ -23,13 +23,20 @@ export default async function DashboardPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/dashboard/${restaurant_slug}`);
 
+  // Block superadmin accounts from restaurant routes
+  const { data: isAdmin } = await supabase
+    .from("novanode_admins")
+    .select("email")
+    .eq("email", user.email!)
+    .maybeSingle();
+  if (isAdmin) redirect("/novanode");
+
   const { data: restaurant } = await supabase
     .from("restaurants")
     .select("*")
     .eq("slug", restaurant_slug)
     .maybeSingle();
 
-  console.log("RESTAURANT:", restaurant);
   if (!restaurant) {
     return notFound();
   }
@@ -49,6 +56,22 @@ export default async function DashboardPage({ params }: PageProps) {
 
   const today = new Date().toISOString().split("T")[0];
   const thisMonth = today.slice(0, 7);
+  const todayStart = `${today}T00:00:00.000Z`;
+  const tomorrowStartDate = new Date(todayStart);
+  tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
+  const tomorrowStart = tomorrowStartDate.toISOString();
+
+  // Fetch completed sessions first (in parallel with stats)
+  const completedSessionsResult = await supabase
+    .from("table_sessions")
+    .select("session_token")
+    .eq("restaurant_id", restaurant.id)
+    .eq("status", "completed")
+    .gte("closed_at", todayStart)
+    .lt("closed_at", tomorrowStart);
+
+  const completedSessions = completedSessionsResult.data ?? [];
+  const completedSessionTokens = completedSessions.map((s) => s.session_token);
 
   // ── Stats views ────────────────────────────────────────────────────────
   const [
@@ -89,7 +112,6 @@ export default async function DashboardPage({ params }: PageProps) {
       .from("orders")
       .select("*")
       .eq("restaurant_id", restaurant.id)
-      .eq("is_starter_order", false)
       .order("created_at", { ascending: false })
       .limit(10),
     supabase
@@ -108,6 +130,18 @@ export default async function DashboardPage({ params }: PageProps) {
       .eq("restaurant_id", restaurant.id)
       .eq("is_resolved", false),
   ]);
+
+  // Fetch revenue orders separately after getting completed sessions
+  let todayRevenueOrders = [];
+  if (completedSessionTokens.length > 0) {
+    const { data } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("restaurant_id", restaurant.id)
+      .in("session_token", completedSessionTokens)
+      .neq("status", "Cancelled");
+    todayRevenueOrders = data ?? [];
+  }
 
   const dailyStats =
     dailyR.status === "fulfilled"
@@ -135,12 +169,17 @@ export default async function DashboardPage({ params }: PageProps) {
     activeTablesR.status === "fulfilled" ? (activeTablesR.value.count ?? 0) : 0;
   const signalsCount =
     signalsR.status === "fulfilled" ? (signalsR.value.count ?? 0) : 0;
+  const todayRevenueTotal = todayRevenueOrders.reduce(
+    (s, o) => s + Number(o.total_amount),
+    0,
+  );
 
   return (
     <DashboardHome
       restaurant={restaurant}
       staff={staff}
       dailyStats={dailyStats ?? null}
+      todayRevenueOverride={todayRevenueTotal}
       monthlyStats={monthlyStats ?? []}
       topItems={topItems ?? []}
       peakHours={peakHours ?? []}

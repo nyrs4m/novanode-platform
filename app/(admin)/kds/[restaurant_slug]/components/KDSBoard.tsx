@@ -55,7 +55,7 @@ interface KDSBoardProps {
   todayCount: number;
 }
 
-type KDSTab = "orders" | "signals" | "stock" | "tables";
+type KDSTab = "orders" | "signals" | "stock" | "tables" | "ledger";
 const STATUS_FLOW = ["Pending", "Preparing", "Ready", "Served"] as const;
 type OrderStatus = (typeof STATUS_FLOW)[number];
 
@@ -218,6 +218,17 @@ function TimeEstimatePicker({
     </div>
   );
 }
+type LedgerRow = {
+  id: string;
+  total_owed: number;
+  completed_sessions: number;
+  is_paid: boolean;
+  ledger_date: string;
+  paid_amount?: number;
+  session_fees_collected?: number;
+  platform_fees_owed?: number;
+  platform_fees_paid?: number;
+};
 
 export default function KDSBoard({
   restaurant,
@@ -232,10 +243,35 @@ export default function KDSBoard({
   const [sessions, setSessions] = useState<Session[]>(initialSessions);
   const [signals, setSignals] = useState<Signal[]>(initialSignals);
   const [items, setItems] = useState<MenuItem[]>(menuItems);
-  const [activeTab, setActiveTab] = useState<KDSTab>("orders");
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [revenue, setRevenue] = useState(todayRevenue);
   const [orderCount, setOrderCount] = useState(todayCount);
+  const [ledger, setLedger] = useState<LedgerRow | null>(null);
+  const [payingLedger, setPayingLedger] = useState(false);
+  const [closingTable, setClosingTable] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<KDSTab>("orders");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      setPaymentSuccess(true);
+      setActiveTab("ledger");
+      window.history.replaceState({}, "", window.location.pathname);
+      // Refresh ledger after successful payment
+      const today = new Date().toISOString().split("T")[0];
+      supabaseRef.current
+        .from("daily_ledger")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .eq("ledger_date", today)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setLedger(data as LedgerRow);
+        });
+    }
+  }, []);
 
   // ── CRITICAL: supabase client in a ref — one instance for this component ──
   const supabaseRef = useRef(createClient());
@@ -281,11 +317,55 @@ export default function KDSBoard({
   }
 
   async function closeTable(sessionId: string) {
+    if (closingTable === sessionId) return;
+    setClosingTable(sessionId);
+
+    const session = sessions.find((s) => s.id === sessionId);
+    if (!session) {
+      setClosingTable(null);
+      return;
+    }
+
+    const sessionOrders = orders.filter(
+      (o) => o.session_token === session.session_token && o.status !== "Cancelled",
+    );
+    const foodTotal = sessionOrders.reduce((s, o) => s + Number(o.total_amount), 0);
+    const dynamicFee = Math.min(Math.round(foodTotal * 0.01 * 100) / 100, 5);
+
     await supabaseRef.current
       .from("table_sessions")
-      .update({ is_active: false })
+      .update({
+        is_active: false,
+        status: "completed",
+        closed_at: new Date().toISOString(),
+      })
       .eq("id", sessionId);
+    if (foodTotal >= 0) {
+      // 1. Session fee ledger (what restaurant collects from customer)
+      await supabaseRef.current.rpc("increment_daily_ledger", {
+        p_restaurant_id: restaurant.id,
+        p_session_fee: dynamicFee,
+        p_platform_fee: dynamicFee,
+      } as never);
+      // Update revenue and order count instantly
+      setRevenue((prev) => prev + foodTotal);
+      setOrderCount((prev) => prev + sessionOrders.length);
+      console.log("CLOSE TABLE — foodTotal:", foodTotal, "orders:", sessionOrders.length);
+
+      // Refresh ledger display
+      const today = new Date().toISOString().split("T")[0];
+      supabaseRef.current
+        .from("daily_ledger")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .eq("ledger_date", today)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setLedger(data as LedgerRow);
+        });
+    }
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setClosingTable(null);
   }
 
   // ── TimeAgo: client-only to avoid hydration mismatch ──────────────────
@@ -300,14 +380,21 @@ export default function KDSBoard({
   }
 
   // ── Realtime channel ───────────────────────────────────────────────────
-  //
-  // FIX: Single channel for this restaurant, cleaned up properly on unmount.
-  // Revenue is only incremented on INSERT (new orders) — not on UPDATE.
-  // The old code incremented on UPDATE when status → Served, which caused
-  // double-counting when refreshing the page (initialOrders already counted
-  // served orders in todayRevenue from the server query).
-  //
   useEffect(() => {
+    // Fetch today's ledger
+    if (paymentSuccess) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    const today = new Date().toISOString().split("T")[0];
+    supabaseRef.current
+      .from("daily_ledger")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("ledger_date", today)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setLedger(data as LedgerRow);
+      });
     const channel = supabaseRef.current
       .channel(`kds-${restaurant.id}`)
       .on(
@@ -325,10 +412,6 @@ export default function KDSBoard({
             if (prev.find((o) => o.id === newOrder.id)) return prev;
             return [...prev, newOrder];
           });
-          // Count revenue on insert (matches server query: status=Served isn't
-          // guaranteed yet — we track pending revenue for the live display).
-          // The definitive daily revenue figure is always the server-rendered
-          // todayRevenue from KDS page.tsx; this is just the live increment.
           setOrderCount((c) => c + 1);
           if (newOrder.is_starter_order) playStarterAlert();
           else playNewOrder();
@@ -348,10 +431,8 @@ export default function KDSBoard({
           setOrders((prev) =>
             prev.map((o) => (o.id === updated.id ? updated : o)),
           );
-          // Increment revenue display only when an order transitions TO Served
-          // for the first time (previous was not Served)
+
           if (updated.status === "Served" && previous.status !== "Served") {
-            setRevenue((r) => r + Number(updated.total_amount));
           }
         },
       )
@@ -441,8 +522,12 @@ export default function KDSBoard({
           );
         },
       )
-      .subscribe();
-
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          console.error("KDS realtime channel error — reconnecting...");
+          setTimeout(() => channel.subscribe(), 2000);
+        }
+      });
     // ── CRITICAL: clean up channel on unmount ──
     return () => {
       supabaseRef.current.removeChannel(channel);
@@ -469,6 +554,7 @@ export default function KDSBoard({
       icon: <ChefHat size={18} />,
       badge: pendingOrders.length + preparingOrders.length,
     },
+    { id: "ledger", label: "Ledger", icon: <DollarSign size={18} /> },
     {
       id: "signals",
       label: "Signals",
@@ -1235,6 +1321,18 @@ export default function KDSBoard({
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             onClick={async () => {
+                              const pendingForTable = orders.filter(
+                                (o) =>
+                                  o.session_token === session.session_token &&
+                                  (o.status === "Pending" ||
+                                    o.status === "Preparing"),
+                              );
+                              if (pendingForTable.length > 0) {
+                                alert(
+                                  `${pendingForTable.length} order${pendingForTable.length > 1 ? "s are" : " is"} still being processed. Mark them as Served or Cancelled before presenting the bill.`,
+                                );
+                                return;
+                              }
                               await supabaseRef.current
                                 .from("table_sessions")
                                 .update({ bill_status: "presented" })
@@ -1369,6 +1467,240 @@ export default function KDSBoard({
                 );
               })
             )}
+          </div>
+        )}
+
+        {/* LEDGER TAB */}
+        {activeTab === "ledger" && (
+          <div>
+            {paymentSuccess && (
+              <div
+                style={{
+                  background: "rgba(16,185,129,0.1)",
+                  border: "1px solid rgba(16,185,129,0.3)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <CheckCircle size={18} color="#34d399" />
+                <span
+                  style={{ color: "#34d399", fontWeight: 700, fontSize: 14 }}
+                >
+                  Payment successful! NovaNode fee settled.
+                </span>
+              </div>
+            )}
+
+            {/* Unpaid amount */}
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--gold-dim)",
+                borderRadius: 20,
+                padding: 20,
+                marginBottom: 12,
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <p className="t-eyebrow" style={{ marginBottom: 6 }}>
+                Today&apos;s Ledger
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                }}
+              >
+                <span className="t-caption">Session fees collected</span>
+                <span className="t-body">
+                  {restaurant.currency}{" "}
+                  {Number(ledger?.session_fees_collected ?? 0).toFixed(2)}
+                </span>
+              </div>
+
+              <div className="divider" style={{ margin: "12px 0" }} />
+
+              <p className="t-eyebrow" style={{ marginBottom: 6 }}>
+                Outstanding NovaNode Fee
+              </p>
+              <p className="t-price" style={{ fontSize: 32, marginBottom: 4 }}>
+                {restaurant.currency}{" "}
+                {Number(ledger?.total_owed ?? 0).toFixed(2)}
+              </p>
+              <p className="t-caption">
+                {ledger?.completed_sessions ?? 0} closed sessions · 1% per
+                session (max {restaurant.currency} 5.00)
+              </p>
+
+              {Number(ledger?.platform_fees_paid ?? 0) > 0 && (
+                <div
+                  style={{
+                    background: "rgba(16,185,129,0.08)",
+                    border: "1px solid rgba(16,185,129,0.2)",
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    margin: "12px 0 0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span className="t-caption">Total settled today</span>
+                  <span
+                    style={{ color: "#34d399", fontWeight: 800, fontSize: 14 }}
+                  >
+                    {restaurant.currency}{" "}
+                    {Number(ledger?.platform_fees_paid ?? 0).toFixed(2)} ✓
+                  </span>
+                </div>
+              )}
+
+              <div className="divider" style={{ margin: "16px 0" }} />
+
+              {!ledger || ledger.total_owed === 0 ? (
+                <p
+                  className="t-body"
+                  style={{ textAlign: "center", opacity: 0.5 }}
+                >
+                  No sessions completed today yet.
+                </p>
+              ) : ledger.is_paid ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "12px",
+                    background: "rgba(16,185,129,0.08)",
+                    border: "1px solid rgba(16,185,129,0.2)",
+                    borderRadius: 12,
+                  }}
+                >
+                  <CheckCircle size={16} color="#34d399" />
+                  <span
+                    style={{ color: "#34d399", fontWeight: 700, fontSize: 14 }}
+                  >
+                    All fees paid for today ✓
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={async () => {
+                    setPayingLedger(true);
+                    try {
+                      const res = await fetch("/api/paystack/initialize", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          restaurant_id: restaurant.id,
+                          ledger_date: ledger.ledger_date,
+                          amount_kobo: Math.round(
+                            Number(ledger.total_owed) * 100,
+                          ),
+                          email:
+                            (restaurant as Restaurant & { email?: string })
+                              .email ?? "pay@novanode.com",
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.authorization_url) {
+                        window.location.href = data.authorization_url;
+                      } else {
+                        alert("Payment initialization failed. Try again.");
+                        setPayingLedger(false);
+                      }
+                    } catch {
+                      alert("Network error. Try again.");
+                      setPayingLedger(false);
+                    }
+                  }}
+                  disabled={payingLedger}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    background: payingLedger
+                      ? "var(--cream-06)"
+                      : "linear-gradient(135deg, var(--gold-glow), var(--gold))",
+                    border: "none",
+                    borderBottom: payingLedger ? "none" : "3px solid #92400e",
+                    borderRadius: 14,
+                    cursor: payingLedger ? "not-allowed" : "pointer",
+                    color: payingLedger ? "var(--cream-35)" : "#1a0e00",
+                    fontSize: 15,
+                    fontWeight: 900,
+                    fontFamily: "Inter, sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {payingLedger ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />{" "}
+                      Redirecting to Paystack...
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign size={16} /> Pay {restaurant.currency}{" "}
+                      {Number(ledger.total_owed).toFixed(2)} Now
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Paid history */}
+            {ledger && Number(ledger.paid_amount ?? 0) > 0 && (
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid rgba(16,185,129,0.2)",
+                  borderRadius: 20,
+                  padding: 20,
+                  marginTop: 12,
+                  boxShadow: "var(--shadow-card)",
+                }}
+              >
+                <p className="t-eyebrow" style={{ marginBottom: 6 }}>
+                  Settled Today
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <p
+                      className="t-price"
+                      style={{ fontSize: 24, color: "#34d399" }}
+                    >
+                      {restaurant.currency}{" "}
+                      {Number(ledger.paid_amount).toFixed(2)}
+                    </p>
+                    <p className="t-caption">Paid via Paystack ✓</p>
+                  </div>
+                  <CheckCircle size={32} color="#34d399" />
+                </div>
+              </div>
+            )}
+
+            <p
+              className="t-caption"
+              style={{ textAlign: "center", opacity: 0.5, marginTop: 16 }}
+            >
+              Payments processed via Paystack. Ledger resets daily at midnight.
+            </p>
           </div>
         )}
       </div>

@@ -60,8 +60,7 @@ export default function ReceiptModal({
   const supabase = createClient();
 
   const subtotal = orders.reduce((s, o) => s + Number(o.total_amount), 0);
-  const sessionFee = Number(restaurant.session_fee ?? 1.0);
-  const grandTotal = subtotal + sessionFee;
+  const sessionFee = Math.min(Math.round(subtotal * 0.01 * 100) / 100, 5);  const grandTotal = subtotal + sessionFee;
 
   const allItems = orders.flatMap((o) =>
     Array.isArray(o.items) ? (o.items as OrderItem[]) : [],
@@ -188,6 +187,7 @@ export default function ReceiptModal({
         staff_id: selectedStaff || null,
       });
       setFeedbackDone(true);
+      setTimeout(() => onClose(), 3000);
     } catch (err) {
       console.error(err);
     } finally {

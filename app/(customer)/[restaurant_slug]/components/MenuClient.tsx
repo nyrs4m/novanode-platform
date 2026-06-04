@@ -171,6 +171,7 @@ export default function MenuClient({
   const [billLocked, setBillLocked] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
+  const [liveMenuItems, setLiveMenuItems] = useState<MenuItem[]>(menuItems);
   const [allOrders, setAllOrders] = useState<
     {
       total_amount: number;
@@ -185,11 +186,16 @@ export default function MenuClient({
   const supabase = supabaseRef.current;
 
   const filtered = activeCategory
-    ? menuItems.filter((i) => i.category_id === activeCategory)
-    : menuItems;
+    ? liveMenuItems.filter((i) => i.category_id === activeCategory)
+    : liveMenuItems;
 
   const total = order.reduce((s, ci) => s + ci.item.price * ci.quantity, 0);
   const count = order.reduce((s, ci) => s + ci.quantity, 0);
+
+  // ── Sync initial menuItems to live state ────────────────────────────────
+  useEffect(() => {
+    setLiveMenuItems(menuItems);
+  }, [menuItems]);
 
   // ── Fetch all non-cancelled session orders ─────────────────────────────
   const fetchSessionOrders = useCallback(async () => {
@@ -201,7 +207,6 @@ export default function MenuClient({
     if (data) setAllOrders(data as typeof allOrders);
   }, [sessionToken, supabase]);
 
-
   useEffect(() => {
     // Fetch staff for receipt feedback selector
     supabase
@@ -212,6 +217,20 @@ export default function MenuClient({
         if (data) setStaffList(data as Tables<"restaurant_staff">[]);
       });
 
+    // Re-apply bill lock on mount if session already presented/paid
+    supabase
+      .from("table_sessions")
+      .select("bill_status")
+      .eq("session_token", sessionToken)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.bill_status === "presented" || data?.bill_status === "paid") {
+          setBillLocked(true);
+          if (data.bill_status === "presented") {
+            fetchSessionOrders().then(() => setShowBillPopup(true));
+          }
+        }
+      });
     const channel = supabase
       .channel(`menu-session-${sessionToken}`)
       .on(
@@ -262,6 +281,21 @@ export default function MenuClient({
             localStorage.removeItem("nn_session_token");
             setTimeout(() => window.location.reload(), 1500);
           }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "menu_items",
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as MenuItem;
+          setLiveMenuItems((prev) =>
+            prev.map((i) => (i.id === updated.id ? updated : i)),
+          );
         },
       )
       .subscribe();
@@ -328,6 +362,8 @@ export default function MenuClient({
         total_amount: total,
         status: "Pending",
         is_starter_order: false,
+        platform_fee: (Math.round(Math.min(total, 500) * 0.01 * 100) /
+          100) as never,
       });
 
       if (orderError) {
@@ -380,9 +416,7 @@ export default function MenuClient({
     (s, o) => s + Number(o.total_amount),
     0,
   );
-  const sessionFee = Number(
-    (restaurant as Restaurant & { session_fee?: number }).session_fee ?? 2,
-  );
+  const sessionFee = Math.min(Math.round(runningTotal * 0.01 * 100) / 100, 5);
   const grandTotal = runningTotal + sessionFee;
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -603,7 +637,9 @@ export default function MenuClient({
                         </span>
                         <button
                           className="qty-btn"
-                          onClick={() => {if (!billLocked) addItem(item);}}
+                          onClick={() => {
+                            if (!billLocked) addItem(item);
+                          }}
                         >
                           <Plus size={16} />
                         </button>
@@ -611,7 +647,9 @@ export default function MenuClient({
                     ) : (
                       <button
                         className="btn-add btn-add-full"
-                        onClick={() => {if (!billLocked) addItem(item);}}
+                        onClick={() => {
+                          if (!billLocked) addItem(item);
+                        }}
                       >
                         + Add to Order
                       </button>
@@ -690,7 +728,9 @@ export default function MenuClient({
                         </span>
                         <button
                           className="qty-btn"
-                          onClick={() => { if (!billLocked) addItem(item); }}
+                          onClick={() => {
+                            if (!billLocked) addItem(item);
+                          }}
                         >
                           <Plus size={13} />
                         </button>
@@ -1034,10 +1074,23 @@ export default function MenuClient({
               currency={restaurant.currency ?? "GHS"}
             />
 
-             <div style={{ marginTop: 20, textAlign: "center", padding: "14px", background: "var(--cream-06)", border: "1px solid var(--cream-15)", borderRadius: 14 }}>
-             <p className="t-caption">Waiting for payment confirmation from staff...</p>
-             <p className="t-eyebrow" style={{ marginTop: 6, fontSize: 10 }}>Your receipt will appear automatically</p>
-           </div>
+            <div
+              style={{
+                marginTop: 20,
+                textAlign: "center",
+                padding: "14px",
+                background: "var(--cream-06)",
+                border: "1px solid var(--cream-15)",
+                borderRadius: 14,
+              }}
+            >
+              <p className="t-caption">
+                Waiting for payment confirmation from staff...
+              </p>
+              <p className="t-eyebrow" style={{ marginTop: 6, fontSize: 10 }}>
+                Your receipt will appear automatically
+              </p>
+            </div>
           </div>
         </div>
       )}

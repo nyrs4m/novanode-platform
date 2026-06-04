@@ -47,7 +47,7 @@ export default async function KDSPage({ params }: PageProps) {
     { data: sessions },
     { data: signals },
     { data: menuItems },
-    { data: todayOrders },
+    completedSessionsResult,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -75,19 +75,34 @@ export default async function KDSPage({ params }: PageProps) {
       .eq("restaurant_id", restaurant.id)
       .order("name_en"),
     supabase
-      .from("orders")
-      .select("total_amount, status")
+      .from("table_sessions")
+      .select("session_token")
       .eq("restaurant_id", restaurant.id)
-      .eq("is_starter_order", false)
-      .gte("created_at", todayStart)
-      .lt("created_at", tomorrowStart),
+      .eq("status", "completed")
+      .gte("closed_at", todayStart)
+      .lt("closed_at", tomorrowStart),
   ]);
 
-  const todayRevenue =
-    todayOrders
-      ?.filter((o) => o.status === "Served")
-      .reduce((s, o) => s + Number(o.total_amount), 0) ?? 0;
-  const todayCount = todayOrders?.length ?? 0;
+  const completedSessions = completedSessionsResult.data ?? [];
+  const completedSessionTokens = completedSessions.map((s) => s.session_token);
+
+  // Fetch revenue orders only if there are completed sessions
+  let todayRevenueOrders = [];
+  if (completedSessionTokens.length > 0) {
+    const { data } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("restaurant_id", restaurant.id)
+      .in("session_token", completedSessionTokens)
+      .neq("status", "Cancelled");
+    todayRevenueOrders = data ?? [];
+  }
+
+  const todayRevenue = (todayRevenueOrders ?? []).reduce(
+    (sum, o) => sum + Number(o.total_amount),
+    0,
+  );
+  const todayCount = todayRevenueOrders?.length ?? 0;
 
   return (
     <KDSBoard
