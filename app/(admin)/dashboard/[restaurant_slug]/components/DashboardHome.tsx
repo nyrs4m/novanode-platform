@@ -24,6 +24,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import QRGenerator from "./QRGenerator";
 import type {
   Tables,
   RestaurantStats,
@@ -98,10 +99,15 @@ export default function DashboardHome({
     useState<Order[]>(initialRecentOrders);
   const [todayLedger, setTodayLedger] = useState<LedgerRow | null>(null);
   const [todayRevenue, setTodayRevenue] = useState(todayRevenueOverride);
+  const [baseUrl, setBaseUrl] = useState("");
 
   // ── CRITICAL: singleton supabase client in ref ────────────────────────
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+
+  useEffect(() => {
+    setBaseUrl(window.location.origin);
+  }, []);
 
   useEffect(() => {
     async function refreshTodayRevenue() {
@@ -1001,48 +1007,9 @@ export default function DashboardHome({
                 Generate QR codes for each table. Customers scan to access your
                 digital menu instantly.
               </p>
-              <p className="t-caption" style={{ marginBottom: 20 }}>
-                Your menu URL:{" "}
-                <strong style={{ color: "var(--gold-glow)" }}>
-                  {typeof window !== "undefined" ? window.location.origin : ""}/
-                  {restaurant.slug}?table=
-                </strong>
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[1, 2, 3, 4, 5].map((tableNum) => (
-                  <div
-                    key={tableNum}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--cream-06)",
-                      borderRadius: 12,
-                      padding: "12px 16px",
-                    }}
-                  >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 10 }}
-                    >
-                      <QrCode size={16} color="var(--gold-glow)" />
-                      <span className="t-title" style={{ fontSize: 14 }}>
-                        Table {tableNum}
-                      </span>
-                    </div>
-                    <button
-                      className="btn-ghost"
-                      style={{ padding: "6px 14px", fontSize: 12 }}
-                      onClick={() => {
-                        const url = `${window.location.origin}/${restaurant.slug}?table=${tableNum}`;
-                        navigator.clipboard.writeText(url);
-                      }}
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {baseUrl && (
+                <QRGenerator restaurant={restaurant} baseUrl={baseUrl} />
+              )}
             </div>
           </div>
         )}
