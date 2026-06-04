@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import KDSBoard from "./components/KDSBoard";
+import type { Tables } from "@/types/database.types";
+
+type RevenueOrder = Pick<Tables<"orders">, "total_amount">;
 
 interface PageProps {
   params: Promise<{ restaurant_slug: string }>;
@@ -87,7 +90,7 @@ export default async function KDSPage({ params }: PageProps) {
   const completedSessionTokens = completedSessions.map((s) => s.session_token);
 
   // Fetch revenue orders only if there are completed sessions
-  let todayRevenueOrders = [];
+  let todayRevenueOrders: RevenueOrder[] = [];
   if (completedSessionTokens.length > 0) {
     const { data } = await supabase
       .from("orders")

@@ -9,6 +9,7 @@ import type {
 import type { Tables } from "@/types/database.types";
 
 type Order = Tables<"orders">;
+type RevenueOrder = Pick<Order, "total_amount">;
 
 interface PageProps {
   params: Promise<{ restaurant_slug: string }>;
@@ -132,7 +133,7 @@ export default async function DashboardPage({ params }: PageProps) {
   ]);
 
   // Fetch revenue orders separately after getting completed sessions
-  let todayRevenueOrders = [];
+  let todayRevenueOrders: RevenueOrder[] = [];
   if (completedSessionTokens.length > 0) {
     const { data } = await supabase
       .from("orders")
