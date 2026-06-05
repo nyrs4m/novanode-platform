@@ -1,6 +1,6 @@
 'use client'
 import SpotlightLayout from '@/components/SpotlightLayout'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { generateFingerprint } from '@/lib/fingerprint'
 import { getStoredToken, storeToken, generateToken } from '@/lib/session'
@@ -34,7 +34,8 @@ export default function SessionScreen({
   const [liveStarters, setLiveStarters] = useState(starters)
   const [existingSession, setExistingSession] = useState<string | null>(null)
   const [existingName, setExistingName] = useState('')
-
+  const resolvedName = useRef('')
+  
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => { checkExistingSession() }, [])
@@ -107,6 +108,7 @@ export default function SessionScreen({
         .eq('restaurant_id', restaurant.id)
         .eq('is_active', true).maybeSingle()
       if (session) {
+        resolvedName.current = session.customer_name
         onSessionReady(session.session_token, session.customer_name)
         return
       }
@@ -132,11 +134,13 @@ export default function SessionScreen({
     setLoading(true); setNameError('')
     try {
       const token = generateToken()
+      resolvedName.current = customerName.trim()
+
       const fingerprint = generateFingerprint()
       const { error } = await supabase.from('table_sessions').insert({
         restaurant_id: restaurant.id,
         table_number: tableNumber,
-        customer_name: customerName.trim(),
+        customer_name: resolvedName.current || customerName.trim(),
         session_token: token,
         browser_fingerprint: fingerprint,
         is_active: true,

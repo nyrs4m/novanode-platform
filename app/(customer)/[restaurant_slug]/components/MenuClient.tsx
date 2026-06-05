@@ -4,6 +4,7 @@ import { playOrderConfirmed } from "@/lib/sounds";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReceiptModal from "./ReceiptModal";
+import { clearToken } from "@/lib/session";
 import { Tables } from "@/types/database.types";
 import {
   ShoppingBag,
@@ -208,6 +209,11 @@ export default function MenuClient({
   }, [sessionToken, supabase]);
 
   useEffect(() => {
+
+    // Initial fetch + mobile retry
+    fetchSessionOrders();
+    const retryTimer = setTimeout(() => fetchSessionOrders(), 300);
+
     // Fetch staff for receipt feedback selector
     supabase
       .from("restaurant_staff")
@@ -277,8 +283,9 @@ export default function MenuClient({
             fetchSessionOrders().then(() => setShowReceipt(true));
           }
 
+          
           if (!updated.is_active) {
-            localStorage.removeItem("nn_session_token");
+            clearToken();
             setTimeout(() => window.location.reload(), 1500);
           }
         },
@@ -302,6 +309,7 @@ export default function MenuClient({
 
     return () => {
       supabase.removeChannel(channel);
+      clearTimeout(retryTimer);
     };
   }, [sessionToken, supabase, fetchSessionOrders, restaurant.id]);
 
