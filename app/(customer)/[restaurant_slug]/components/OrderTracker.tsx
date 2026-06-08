@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
+import { getRestaurantChannel, releaseRestaurantChannel } from '@/lib/realtime-engine';
 import {
   Clock,
   CheckCircle,
@@ -120,49 +121,41 @@ export default function OrderTracker({
     fetchOrders();
   }, [fetchOrders]);
 
-  // ── Realtime: order status changes for this session ────────────────────
-  //
-  // NOTE: We use a separate channel name "tracker-{sessionToken}" so it
-  // coexists with the "menu-session-{sessionToken}" channel in MenuClient
-  // without collision. Both channels are scoped to the same session_token
-  // but serve different purposes (tracker = status updates, menu = bill/close).
-  //
-  // We do NOT re-listen for table_sessions here — MenuClient owns that.
-  //
   useEffect(() => {
-    const channel = supabase
-      .channel(`tracker-${sessionToken}`)
+    if (!sessionToken || !restaurant?.id) return;
+
+    const supabase = supabaseRef.current;
+    const channel = getRestaurantChannel(restaurant.id, supabase, 'customer');
+
+    channel
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*",
-          schema: "public",
-          table: "orders",
+          event: '*',
+          schema: 'public',
+          table: 'orders',
           filter: `session_token=eq.${sessionToken}`,
         },
         (payload) => {
           const updated = payload.new as TrackedOrder;
-
           setOrders((prev) => {
             const exists = prev.find((o) => o.id === updated.id);
-            if (exists)
-              return prev.map((o) => (o.id === updated.id ? updated : o));
+            if (exists) return prev.map((o) => (o.id === updated.id ? updated : o));
             return [updated, ...prev];
           });
-
           const prevStatus = prevStatusRef.current[updated.id];
           if (prevStatus !== updated.status) {
-            if (updated.status === "Ready") playOrderReady();
-            prevStatusRef.current[updated.id] = updated.status ?? "";
+            if (updated.status === 'Ready') playOrderReady();
+            prevStatusRef.current[updated.id] = updated.status ?? '';
           }
         }
-      )
-      .subscribe();
+      );
+    // NOTE: Do NOT call .subscribe() here — MenuClient already subscribed this channel
 
     return () => {
-      supabase.removeChannel(channel);
+      releaseRestaurantChannel(restaurant.id, supabase, 'customer');
     };
-  }, [sessionToken, supabase]);
+  }, [sessionToken, restaurant?.id]);
 
   // ── Countdown timer (1s tick) ──────────────────────────────────────────
   useEffect(() => {

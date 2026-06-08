@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReceiptModal from "./ReceiptModal";
 import { clearToken } from "@/lib/session";
+import { getRestaurantChannel, releaseRestaurantChannel } from '@/lib/realtime-engine';
 import { Tables } from "@/types/database.types";
 import {
   ShoppingBag,
@@ -185,6 +186,8 @@ export default function MenuClient({
   // ── CRITICAL FIX: supabase client in a ref, never re-created ──
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  const realtimeSetupDone = useRef(false);
+  const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = activeCategory
     ? liveMenuItems.filter((i) => i.category_id === activeCategory)
@@ -208,8 +211,15 @@ export default function MenuClient({
     if (data) setAllOrders(data as typeof allOrders);
   }, [sessionToken, supabase]);
 
-  useEffect(() => {
+  const fetchSessionOrdersThrottled = useCallback(() => {
+    if (fetchTimerRef.current) return;
+    fetchTimerRef.current = setTimeout(async () => {
+      fetchTimerRef.current = null;
+      await fetchSessionOrders();
+    }, 300);
+  }, [fetchSessionOrders]);
 
+  useEffect(() => {
     // Initial fetch + mobile retry
     fetchSessionOrders();
     const retryTimer = setTimeout(() => fetchSessionOrders(), 300);
@@ -223,95 +233,105 @@ export default function MenuClient({
         if (data) setStaffList(data as Tables<"restaurant_staff">[]);
       });
 
-    // Re-apply bill lock on mount if session already presented/paid
-    supabase
-      .from("table_sessions")
-      .select("bill_status")
-      .eq("session_token", sessionToken)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.bill_status === "presented" || data?.bill_status === "paid") {
-          setBillLocked(true);
-          if (data.bill_status === "presented") {
-            fetchSessionOrders().then(() => setShowBillPopup(true));
-          }
+    // 3000ms Polling fallback for session termination/billing
+    const checkSession = async () => {
+      const { data } = await supabase
+        .from("table_sessions")
+        .select("bill_status, is_active, status")
+        .eq("session_token", sessionToken)
+        .maybeSingle();
+
+      if (!data) return;
+      if (data.bill_status === "presented" || data.bill_status === "paid") {
+        setBillLocked(true);
+        if (data.bill_status === "presented") {
+          fetchSessionOrders().then(() => setShowBillPopup(true));
         }
-      });
-    const channel = supabase
-      .channel(`menu-session-${sessionToken}`)
+      }
+      if (!data.is_active || data.status === "completed") {
+        clearToken();
+        setTimeout(() => window.location.reload(), 1500);
+      }
+    };
+
+    checkSession();
+    const pollInterval = setInterval(checkSession, 3000);
+
+    return () => {
+      clearTimeout(retryTimer);
+      clearInterval(pollInterval);
+    };
+  }, [sessionToken, supabase, fetchSessionOrders, restaurant.id]);
+
+  useEffect(() => {
+    if (!sessionToken || !restaurant?.id || realtimeSetupDone.current) return
+    realtimeSetupDone.current = true
+
+    const supabase = supabaseRef.current
+    const channel = getRestaurantChannel(restaurant.id, supabase, 'customer')
+
+    channel
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        () => fetchSessionOrders(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        () => fetchSessionOrders(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "table_sessions",
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'table_sessions',
           filter: `session_token=eq.${sessionToken}`,
         },
         (payload) => {
           const updated = payload.new as {
-            is_active: boolean;
-            bill_status: string | null;
-          };
-
-          if (updated.bill_status === "presented") {
-            fetchSessionOrders().then(() => setShowBillPopup(true));
-            setBillLocked(true);
+            bill_status: string | null
+            is_active: boolean
+            status: string
           }
-
-          if (updated.bill_status === "paid") {
-            setShowBillPopup(false);
-            fetchSessionOrders().then(() => setShowReceipt(true));
+          if (updated.bill_status === 'presented') {
+            setShowBillPopup(true)
+            fetchSessionOrdersThrottled()
           }
-
-          
-          if (!updated.is_active) {
-            clearToken();
-            setTimeout(() => window.location.reload(), 1500);
+          if (updated.bill_status === 'paid') {
+            setShowBillPopup(false)
+            setShowReceipt(true)
+            fetchSessionOrdersThrottled()
           }
-        },
+          if (!updated.is_active || updated.status === 'completed') {
+            clearToken()
+            setTimeout(() => window.location.reload(), 1500)
+          }
+        }
       )
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "UPDATE",
-          schema: "public",
-          table: "menu_items",
-          filter: `restaurant_id=eq.${restaurant.id}`,
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `session_token=eq.${sessionToken}`,
         },
-        (payload) => {
-          const updated = payload.new as MenuItem;
-          setLiveMenuItems((prev) =>
-            prev.map((i) => (i.id === updated.id ? updated : i)),
-          );
-        },
+        () => fetchSessionOrdersThrottled()
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        () => fetchSessionOrdersThrottled()
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[MenuClient] Realtime degraded — polling fallback active')
+        }
+      })
 
     return () => {
-      supabase.removeChannel(channel);
-      clearTimeout(retryTimer);
-    };
-  }, [sessionToken, supabase, fetchSessionOrders, restaurant.id]);
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
+      realtimeSetupDone.current = false
+      releaseRestaurantChannel(restaurant.id, supabase, 'customer')
+    }
+  }, [sessionToken, restaurant?.id, fetchSessionOrdersThrottled]);
 
   // ── Cart helpers ───────────────────────────────────────────────────────
   function addItem(item: MenuItem) {
