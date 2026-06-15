@@ -34,6 +34,10 @@ export default function SessionScreen({
   const [liveStarters, setLiveStarters] = useState(starters)
   const [existingSession, setExistingSession] = useState<string | null>(null)
   const [existingName, setExistingName] = useState('')
+  const [lang, setLang] = useState<'en' | 'fr'>(() => {
+    if (typeof window === 'undefined') return 'en'
+    return (localStorage.getItem('nn_lang') as 'en' | 'fr') ?? 'en'
+  })
   const resolvedName = useRef('')
   
   const supabase = useMemo(() => createClient(), [])
@@ -137,6 +141,12 @@ export default function SessionScreen({
       resolvedName.current = customerName.trim()
 
       const fingerprint = generateFingerprint()
+      // Sign in anonymously to get a real JWT for reliable Realtime delivery
+      const { error: anonError } = await supabase.auth.signInAnonymously()
+      if (anonError) {
+        console.warn('[session] Anonymous sign-in failed — realtime may be degraded:', anonError.message)
+        // Do not block the flow — continue even if this fails
+      }
       const { error } = await supabase.from('table_sessions').insert({
         restaurant_id: restaurant.id,
         table_number: tableNumber,
@@ -161,7 +171,7 @@ export default function SessionScreen({
       .filter(([id]) => liveStarters.some((s) => s.id === id && s.is_available !== false))
       .map(([id, quantity]) => {
         const item = liveStarters.find((s) => s.id === id)!
-        return { id: item.id, name: item.name_en, price: item.price, quantity }
+        return { id: item.id, name: t(item.name_en, item.name_fr), price: item.price, quantity }
       })
     if (selected.length > 0) {
       const total = selected.reduce((sum, i) => sum + i.price * i.quantity, 0)
@@ -188,6 +198,14 @@ export default function SessionScreen({
       const next = Math.max(0, (prev[id] ?? 0) + delta)
       return { ...prev, [id]: next }
     })
+  }
+
+  function t(en: string | null, fr: string | null | undefined): string {
+    if (typeof window !== 'undefined') {
+      const lang = localStorage.getItem('nn_lang')
+      if (lang === 'fr' && fr) return fr
+    }
+    return en ?? ''
   }
 
   // ── CHECKING ──
@@ -323,7 +341,7 @@ export default function SessionScreen({
             return (
               <div key={item.id} className={`starter-row ${qty > 0 ? 'selected' : ''} ${unavailable ? 'unavailable' : ''}`}>
                 <div className="starter-thumb">
-                  <img src={item.image_url} alt={item.name_en} />
+                  <img src={item.image_url} alt={t(item.name_en, item.name_fr)} />
                   {unavailable && (
                     <div className="sold-overlay">
                       <span className="badge-red">Sold Out</span>
@@ -331,10 +349,10 @@ export default function SessionScreen({
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="t-title" style={{ fontSize: 15, marginBottom: 3 }}>{item.name_en}</p>
-                  {item.description_en && (
+                  <p className="t-title" style={{ fontSize: 15, marginBottom: 3 }}>{t(item.name_en, item.name_fr)}</p>
+                  {(item.description_en || item.description_fr) && (
                     <p className="t-body" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
-                      {item.description_en}
+                      {t(item.description_en, item.description_fr)}
                     </p>
                   )}
                   <p className="t-price-sm">{restaurant.currency} {item.price.toFixed(2)}</p>

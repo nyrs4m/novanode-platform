@@ -62,6 +62,35 @@ export default async function DashboardPage({ params }: PageProps) {
   tomorrowStartDate.setUTCDate(tomorrowStartDate.getUTCDate() + 1);
   const tomorrowStart = tomorrowStartDate.toISOString();
 
+  // Fetch completed session tokens for this month
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+
+  const { data: monthSessions } = await supabase
+    .from('table_sessions')
+    .select('session_token')
+    .eq('restaurant_id', restaurant.id)
+    .eq('status', 'completed')
+    .gte('closed_at', monthStart.toISOString())
+
+  const monthTokens = monthSessions?.map(s => s.session_token) ?? []
+
+  let monthRevenue = 0
+  let monthCount = 0
+
+  if (monthTokens.length > 0) {
+    const { data: monthOrders } = await supabase
+      .from('orders')
+      .select('total_amount')
+      .eq('restaurant_id', restaurant.id)
+      .in('session_token', monthTokens)
+      .neq('status', 'Cancelled')
+
+    monthRevenue = monthOrders?.reduce((sum, o) => sum + (o.total_amount ?? 0), 0) ?? 0
+    monthCount = monthSessions?.length ?? 0
+  }
+
   // Fetch completed sessions first (in parallel with stats)
   const completedSessionsResult = await supabase
     .from("table_sessions")
@@ -77,7 +106,6 @@ export default async function DashboardPage({ params }: PageProps) {
   // ── Stats views ────────────────────────────────────────────────────────
   const [
     dailyR,
-    monthlyR,
     topR,
     peakR,
     recentR,
@@ -91,11 +119,6 @@ export default async function DashboardPage({ params }: PageProps) {
       .eq("restaurant_id", restaurant.id)
       .eq("order_date", today)
       .maybeSingle(),
-    supabase
-      .from("restaurant_stats" as never)
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .eq("order_month", thisMonth),
     supabase
       .from("menu_item_stats" as never)
       .select("*")
@@ -148,10 +171,6 @@ export default async function DashboardPage({ params }: PageProps) {
     dailyR.status === "fulfilled"
       ? (dailyR.value.data as RestaurantStats | null)
       : null;
-  const monthlyStats =
-    monthlyR.status === "fulfilled"
-      ? ((monthlyR.value.data as RestaurantStats[] | null) ?? [])
-      : [];
   const topItems =
     topR.status === "fulfilled"
       ? ((topR.value.data as MenuItemStats[] | null) ?? [])
@@ -181,7 +200,8 @@ export default async function DashboardPage({ params }: PageProps) {
       staff={staff}
       dailyStats={dailyStats ?? null}
       todayRevenueOverride={todayRevenueTotal}
-      monthlyStats={monthlyStats ?? []}
+      monthRevenue={monthRevenue}
+      monthCount={monthCount}
       topItems={topItems ?? []}
       peakHours={peakHours ?? []}
       recentOrders={recentOrders ?? []}

@@ -169,7 +169,7 @@ export type Database = {
         Row: {
           created_at: string | null;
           customer_name: string | null;
-          platform_fee?: number | null
+          platform_fee?: number | null;
           customer_whatsapp: string | null;
           id: string;
           is_starter_order: boolean | null;
@@ -185,7 +185,7 @@ export type Database = {
         Insert: {
           created_at?: string | null;
           customer_name?: string | null;
-          platform_fee?: number | null
+          platform_fee?: number | null;
           customer_whatsapp?: string | null;
           id?: string;
           is_starter_order?: boolean | null;
@@ -303,6 +303,10 @@ export type Database = {
           session_fee: number | null;
           closing_time: string | null;
           payment_overdue: boolean | null;
+          description: string | null;
+          opening_time: string | null;
+          contact_number: string | null;
+          address: string | null;
         };
         Insert: {
           created_at?: string | null;
@@ -319,6 +323,10 @@ export type Database = {
           session_fee?: number | null;
           closing_time?: string | null;
           payment_overdue?: boolean | null;
+          description?: string | null;
+          opening_time?: string | null;
+          contact_number?: string | null;
+          address?: string | null;
         };
         Update: {
           created_at?: string | null;
@@ -335,6 +343,10 @@ export type Database = {
           session_fee?: number | null;
           closing_time?: string | null;
           payment_overdue?: boolean | null;
+          description?: string | null;
+          opening_time?: string | null;
+          contact_number?: string | null;
+          address?: string | null;
         };
         Relationships: [];
       };

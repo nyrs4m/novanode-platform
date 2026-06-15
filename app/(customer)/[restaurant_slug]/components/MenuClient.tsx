@@ -4,11 +4,15 @@ import { playOrderConfirmed } from "@/lib/sounds";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReceiptModal from "./ReceiptModal";
+import { getStoredToken } from "@/lib/session";
 import { clearToken } from "@/lib/session";
-import { getRestaurantChannel, releaseRestaurantChannel } from '@/lib/realtime-engine';
+import {
+  getRestaurantChannel,
+  releaseRestaurantChannel,
+} from "@/lib/realtime-engine";
 import { Tables } from "@/types/database.types";
 import {
-  ShoppingBag,
+  Phone,
   X,
   Minus,
   Plus,
@@ -17,16 +21,112 @@ import {
   Droplets,
   Receipt,
   HandPlatter,
+  Languages,
   Zap,
   CheckCircle,
   Loader2,
   DollarSign,
+  UtensilsCrossed,
 } from "lucide-react";
 
 type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
 type DailySpecial = Tables<"daily_specials">;
+
+const UI_TEXT = {
+  en: {
+    digitalMenu: "DIGITAL MENU",
+    addToOrder: "Add",
+    reviewOrder: "Review Order",
+    placeOrder: "Place Order",
+    yourOrder: "Your Order",
+    orderSent: "Order Sent!",
+    callWaiter: "Waiter",
+    napkins: "Napkins",
+    water: "Water",
+    bill: "Bill",
+    total: "Total",
+    items: "items",
+    item: "item",
+    soldOut: "Sold Out",
+    sending: "Sending...",
+    close: "Close",
+    splitBill: "Split Bill",
+    perPerson: "per person",
+    people: "people",
+    confirmPayment: "Confirm Payment",
+    thankYou: "Thank you!",
+    feedbackPrompt: "How was your experience?",
+    submitReview: "Submit Review",
+    downloadReceipt: "Download Receipt",
+    shareReceipt: "Share Receipt",
+    subtotal: "Subtotal",
+    serviceFee: "Service Fee",
+    allergy: "Allergy or special request?",
+    noItems: "No items available",
+    loading: "Loading menu...",
+    todaySpecial: "Today's Special",
+    runningTotal: "Running Total",
+    chefsPick: "Chef's Pick",
+    inOrder: "in order",
+    unavailable: "Unavailable",
+    yourBill: "Your Bill",
+    orderNumber: "Order #",
+    paymentNotice: "Payment is processed at the counter or with your waiter.",
+    each: "Each",
+    waitingForPayment: "Waiting for payment confirmation from staff...",
+    receiptNotice: "Your receipt will appear automatically",
+    sendToKitchen: "Send to Kitchen",
+    sent: "Sent!",
+  },
+  fr: {
+    digitalMenu: "MENU NUMÉRIQUE",
+    addToOrder: "Ajouter",
+    reviewOrder: "Voir la Commande",
+    placeOrder: "Passer la Commande",
+    yourOrder: "Votre Commande",
+    orderSent: "Commande Envoyée!",
+    callWaiter: "Serveur",
+    napkins: "Serviettes",
+    water: "Eau",
+    bill: "Addition",
+    total: "Total",
+    items: "articles",
+    item: "article",
+    soldOut: "Épuisé",
+    sending: "Envoi...",
+    close: "Fermer",
+    splitBill: "Partager",
+    perPerson: "par personne",
+    people: "personnes",
+    confirmPayment: "Confirmer le Paiement",
+    thankYou: "Merci!",
+    feedbackPrompt: "Comment était votre expérience?",
+    submitReview: "Soumettre un Avis",
+    downloadReceipt: "Télécharger le Reçu",
+    shareReceipt: "Partager le Reçu",
+    subtotal: "Sous-total",
+    serviceFee: "Frais de Service",
+    allergy: "Allergie ou demande spéciale?",
+    noItems: "Aucun article disponible",
+    loading: "Chargement du menu...",
+    todaySpecial: "Spécial du Jour",
+    runningTotal: "Total en Cours",
+    chefsPick: "Sélection du Chef",
+    inOrder: "en commande",
+    unavailable: "Indisponible",
+    yourBill: "Votre Addition",
+    orderNumber: "Commande #",
+    paymentNotice:
+      "Le paiement est effectué au comptoir ou avec votre serveur.",
+    each: "Chacun",
+    waitingForPayment: "En attente de confirmation de paiement...",
+    receiptNotice: "Votre reçu apparaîtra automatiquement",
+    sendToKitchen: "Envoyer en Cuisine",
+    sent: "Envoyé!",
+  },
+};
 
 interface CartItem {
   item: MenuItem;
@@ -50,9 +150,11 @@ type Signal = "call_waiter" | "napkins" | "water" | "bill";
 function BillSplitter({
   total,
   currency,
+  ui,
 }: {
   total: number;
   currency: string;
+  ui: (typeof UI_TEXT)["en"];
 }) {
   const [people, setPeople] = useState(2);
   const perPerson = total / people;
@@ -70,7 +172,7 @@ function BillSplitter({
         className="t-eyebrow"
         style={{ marginBottom: 12, textAlign: "center" }}
       >
-        Split the Bill
+        {ui.splitBill}
       </p>
       <div
         style={{
@@ -144,7 +246,9 @@ function BillSplitter({
           padding: "12px 16px",
         }}
       >
-        <span className="t-caption">Each person pays</span>
+        <span className="t-caption">
+          {ui.each} {ui.perPerson}
+        </span>
         <span className="t-price" style={{ fontSize: 20 }}>
           {currency} {perPerson.toFixed(2)}
         </span>
@@ -172,8 +276,13 @@ export default function MenuClient({
   const [showBillPopup, setShowBillPopup] = useState(false);
   const [billLocked, setBillLocked] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
   const [liveMenuItems, setLiveMenuItems] = useState<MenuItem[]>(menuItems);
+  const [lang, setLang] = useState<"en" | "fr">(() => {
+    if (typeof window === "undefined") return "en";
+    return (localStorage.getItem("nn_lang") as "en" | "fr") ?? "en";
+  });
   const [allOrders, setAllOrders] = useState<
     {
       total_amount: number;
@@ -183,9 +292,13 @@ export default function MenuClient({
     }[]
   >([]);
 
+  const [promos, setPromos] = useState<
+    { title: string; description: string | null }[]
+  >([]);
+  const [heroIndex, setHeroIndex] = useState(0);
+
   // ── CRITICAL FIX: supabase client in a ref, never re-created ──
   const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
   const realtimeSetupDone = useRef(false);
   const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -201,15 +314,59 @@ export default function MenuClient({
     setLiveMenuItems(menuItems);
   }, [menuItems]);
 
+  // 3b. Add promo fetch on mount
+  useEffect(() => {
+    if (!sessionId) return;
+    async function fetchPromos() {
+      const { data } = await supabaseRef.current
+        .from("restaurant_promos")
+        .select("title, description")
+        .eq("restaurant_id", restaurant.id)
+        .eq("is_active", true)
+        .lte("start_date", new Date().toISOString())
+        .gte("end_date", new Date().toISOString());
+      if (data && data.length > 0) setPromos(data);
+    }
+    fetchPromos();
+  }, [restaurant.id, sessionId]);
+
+  // 3c. Hero cycling — restaurant info + all active promos
+  useEffect(() => {
+    const totalSlides = 1 + promos.length; // slide 0 = restaurant, slides 1..n = promos
+    if (totalSlides <= 1) return;
+    const interval = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % totalSlides);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [promos]);
+
+  // FIX 1: Get sessionId (the DB UUID) after session is ready
+  useEffect(() => {
+    if (!sessionToken || !restaurant?.id) return;
+    supabaseRef.current
+      .from("table_sessions")
+      .select("id, bill_status")
+      .eq("session_token", sessionToken)
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_active", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setSessionId(data.id);
+          if (data.bill_status !== "none" && data.bill_status)
+            setBillLocked(true);
+        }
+      });
+  }, [sessionToken, restaurant?.id]);
   // ── Fetch all non-cancelled session orders ─────────────────────────────
   const fetchSessionOrders = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await supabaseRef.current
       .from("orders")
       .select("total_amount, items, is_starter_order, status")
       .eq("session_token", sessionToken)
       .neq("status", "Cancelled");
     if (data) setAllOrders(data as typeof allOrders);
-  }, [sessionToken, supabase]);
+  }, [sessionToken]);
 
   const fetchSessionOrdersThrottled = useCallback(() => {
     if (fetchTimerRef.current) return;
@@ -220,118 +377,99 @@ export default function MenuClient({
   }, [fetchSessionOrders]);
 
   useEffect(() => {
-    // Initial fetch + mobile retry
-    fetchSessionOrders();
-    const retryTimer = setTimeout(() => fetchSessionOrders(), 300);
-
-    // Fetch staff for receipt feedback selector
-    supabase
-      .from("restaurant_staff")
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .then(({ data }) => {
-        if (data) setStaffList(data as Tables<"restaurant_staff">[]);
-      });
-
-    // 3000ms Polling fallback for session termination/billing
-    const checkSession = async () => {
-      const { data } = await supabase
-        .from("table_sessions")
-        .select("bill_status, is_active, status")
-        .eq("session_token", sessionToken)
-        .maybeSingle();
-
-      if (!data) return;
-      if (data.bill_status === "presented" || data.bill_status === "paid") {
-        setBillLocked(true);
-        if (data.bill_status === "presented") {
-          fetchSessionOrders().then(() => setShowBillPopup(true));
-        }
-      }
-      if (!data.is_active || data.status === "completed") {
-        clearToken();
-        setTimeout(() => window.location.reload(), 1500);
-      }
-    };
-
-    checkSession();
-    const pollInterval = setInterval(checkSession, 3000);
-
-    return () => {
-      clearTimeout(retryTimer);
-      clearInterval(pollInterval);
-    };
-  }, [sessionToken, supabase, fetchSessionOrders, restaurant.id]);
-
-  useEffect(() => {
-    if (!sessionToken || !restaurant?.id || realtimeSetupDone.current) return
-    realtimeSetupDone.current = true
-
-    const supabase = supabaseRef.current
-    const channel = getRestaurantChannel(restaurant.id, supabase, 'customer')
+    // FIX 2: Update realtime filter to use id instead of session_token
+    if (!sessionId || !restaurant?.id || realtimeSetupDone.current) return;
+    realtimeSetupDone.current = true;
+    const supabase = supabaseRef.current;
+    const channel = getRestaurantChannel(restaurant.id, supabase, "customer");
 
     channel
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'table_sessions',
-          filter: `session_token=eq.${sessionToken}`,
+          event: "UPDATE",
+          schema: "public",
+          table: "table_sessions",
+          filter: `id=eq.${sessionId}`,
         },
         (payload) => {
           const updated = payload.new as {
-            bill_status: string | null
-            is_active: boolean
-            status: string
+            bill_status: string | null;
+            is_active: boolean;
+            status: string;
+            id: string; // Add id to updated type for clarity
+          };
+
+          if (updated.bill_status === "presented") {
+            setBillLocked(true);
+            fetchSessionOrdersThrottled();
+            setTimeout(() => setShowBillPopup(true), 400);
+          } else if (updated.bill_status === "paid") {
+            setBillLocked(true);
+            fetchSessionOrdersThrottled();
+            setTimeout(() => {
+              setShowBillPopup(false);
+              setShowReceipt(true);
+            }, 400);
+          } else if (!updated.is_active || updated.status === "completed") {
+            clearToken();
+            setTimeout(() => window.location.reload(), 1500);
           }
-          if (updated.bill_status === 'presented') {
-            setShowBillPopup(true)
-            fetchSessionOrdersThrottled()
-          }
-          if (updated.bill_status === 'paid') {
-            setShowBillPopup(false)
-            setShowReceipt(true)
-            fetchSessionOrdersThrottled()
-          }
-          if (!updated.is_active || updated.status === 'completed') {
-            clearToken()
-            setTimeout(() => window.location.reload(), 1500)
-          }
-        }
+        },
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
           filter: `session_token=eq.${sessionToken}`,
         },
-        () => fetchSessionOrdersThrottled()
+        () => fetchSessionOrdersThrottled(),
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
           filter: `session_token=eq.${sessionToken}`,
         },
-        () => fetchSessionOrdersThrottled()
+        () => fetchSessionOrdersThrottled(),
       )
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[MenuClient] Realtime degraded — polling fallback active')
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(
+            "[MenuClient] Realtime degraded — polling fallback active",
+          );
         }
-      })
+      });
 
     return () => {
-      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
-      realtimeSetupDone.current = false
-      releaseRestaurantChannel(restaurant.id, supabase, 'customer')
-    }
-  }, [sessionToken, restaurant?.id, fetchSessionOrdersThrottled]);
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+      realtimeSetupDone.current = false;
+      releaseRestaurantChannel(restaurant.id, supabase, "customer");
+    };
+  }, [sessionId, sessionToken, restaurant?.id, fetchSessionOrdersThrottled]);
+
+  // Fallback Polling for bill_status
+  useEffect(() => {
+    if (!sessionId || !restaurant?.id) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabaseRef.current
+        .from("table_sessions")
+        .select("bill_status")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (data?.bill_status === "presented" && !showBillPopup) {
+        fetchSessionOrders().then(() =>
+          setTimeout(() => setShowBillPopup(true), 400),
+        );
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [sessionId, restaurant?.id, showBillPopup, fetchSessionOrdersThrottled]);
 
   // ── Cart helpers ───────────────────────────────────────────────────────
   function addItem(item: MenuItem) {
@@ -361,18 +499,26 @@ export default function MenuClient({
     setPlacingOrder(true);
 
     try {
-      // Verify session is still active before inserting
+      const supabase = supabaseRef.current;
       const { data: session } = await supabase
         .from("table_sessions")
-        .select("is_active")
+        .select("is_active, bill_status")
         .eq("session_token", sessionToken)
         .maybeSingle();
 
-      if (session && !session.is_active) {
+      if (
+        session &&
+        (!session.is_active ||
+          (session.bill_status !== "none" && session.bill_status))
+      ) {
         setPlacingOrder(false);
         setShowOrder(false);
         setOrder([]);
-        alert("Your table session has ended. Please scan the QR code again.");
+        alert(
+          session.is_active
+            ? "The bill has been presented. No more orders can be placed."
+            : "Your table session has ended.",
+        );
         return;
       }
 
@@ -421,7 +567,7 @@ export default function MenuClient({
   async function sendSignal(type: Signal) {
     if (sentSignals.includes(type)) return;
     setSentSignals((prev) => [...prev, type]);
-    await supabase.from("waiter_signals").insert({
+    await supabaseRef.current.from("waiter_signals").insert({
       restaurant_id: restaurant.id,
       table_number: tableNumber,
       customer_name: customerName,
@@ -433,11 +579,29 @@ export default function MenuClient({
     );
   }
 
+  function toggleLang() {
+    setLang((prev) => {
+      const next = prev === "en" ? "fr" : "en";
+      localStorage.setItem("nn_lang", next);
+      return next;
+    });
+  }
+
+  function t(en: string | null, fr: string | null | undefined): string {
+    if (lang === "fr" && fr) return fr;
+    return en ?? "";
+  }
+
+  const ui = UI_TEXT[lang];
   const signals: { type: Signal; icon: React.ReactNode; label: string }[] = [
-    { type: "call_waiter", icon: <HandPlatter size={22} />, label: "Waiter" },
-    { type: "napkins", icon: <Bell size={22} />, label: "Napkins" },
-    { type: "water", icon: <Droplets size={22} />, label: "Water" },
-    { type: "bill", icon: <Receipt size={22} />, label: "Bill" },
+    {
+      type: "call_waiter",
+      icon: <HandPlatter size={22} />,
+      label: ui.callWaiter,
+    },
+    { type: "napkins", icon: <Bell size={22} />, label: ui.napkins },
+    { type: "water", icon: <Droplets size={22} />, label: ui.water },
+    { type: "bill", icon: <Receipt size={22} />, label: ui.bill },
   ];
 
   const runningTotal = allOrders.reduce(
@@ -476,26 +640,186 @@ export default function MenuClient({
 
       {/* ── HEADER ── */}
       <header className="menu-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div className="menu-logo">
-            {restaurant.logo_url ? (
-              <img src={restaurant.logo_url} alt={restaurant.name} />
-            ) : (
-              <span style={{ fontSize: 22 }}>🍽️</span>
-            )}
+        {/* Hero — cycles restaurant info then each active promo */}
+        <div className="relative overflow-hidden" style={{ minHeight: "80px" }}>
+          {/* Slide 0 — Restaurant info */}
+          <div
+            className="transition-all duration-500"
+            style={{
+              opacity: heroIndex === 0 ? 1 : 0,
+              transform:
+                heroIndex === 0 ? "translateY(0)" : "translateY(-10px)",
+              position: heroIndex === 0 ? "relative" : "absolute",
+              width: "100%",
+              top: 0,
+            }}
+          >
+            <div style={{ padding: "20px 20px 16px" }}>
+              {/* Top row — logo + name */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 16,
+                  marginBottom: 12,
+                }}
+              >
+                {/* Logo */}
+                <div
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 18,
+                    overflow: "hidden",
+                    border: "1.5px solid rgba(217, 119, 6, 0.35)",
+                    flexShrink: 0,
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {restaurant.logo_url ? (
+                    <img
+                      src={restaurant.logo_url}
+                      alt={restaurant.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                      }}
+                    >
+                      <UtensilsCrossed size={26} color="rgba(217,119,6,0.35)" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Name + tagline */}
+                <div style={{ flex: 1, paddingTop: 4 }}>
+                  <p
+                    style={{
+                      color: "rgba(217, 119, 6, 0.8)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {ui.digitalMenu}
+                  </p>
+                  <h1
+                    style={{
+                      color: "#FDFBF7",
+                      fontSize: 22,
+                      fontWeight: 800,
+                      lineHeight: 1.15,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {restaurant.name}
+                  </h1>
+                </div>
+              </div>
+
+              {/* Bottom row — description + contact */}
+              {((restaurant as any).description ||
+                (restaurant as any).contact_number) && (
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(217, 119, 6, 0.1)",
+                    paddingTop: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  {(restaurant as any).description && (
+                    <p
+                      style={{
+                        color: "rgba(253, 251, 247, 0.5)",
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {(restaurant as any).description}
+                    </p>
+                  )}
+                  {(restaurant as any).contact_number && (
+                    <p
+                      style={{
+                        color: "rgba(217, 119, 6, 0.55)",
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Phone /> {(restaurant as any).contact_number}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="menu-name">{restaurant.name}</p>
-            <p className="menu-sub">Digital Menu</p>
-          </div>
-        </div>
-        <div
-          className={`cart-icon ${count > 0 ? "active" : ""}`}
-          onClick={() => count > 0 && setShowOrder(true)}
-          role="button"
-        >
-          <ShoppingBag size={20} />
-          {count > 0 && <span className="cart-badge">{count}</span>}
+
+          {/* Slides 1..n — Promos */}
+          {promos.map((promo, i) => (
+            <div
+              key={i}
+              className="transition-all duration-500 p-4"
+              style={{
+                opacity: heroIndex === i + 1 ? 1 : 0,
+                transform:
+                  heroIndex === i + 1 ? "translateY(0)" : "translateY(10px)",
+                position: heroIndex === i + 1 ? "relative" : "absolute",
+                width: "100%",
+                top: 0,
+              }}
+            >
+              <div
+                className="rounded-xl p-4 border border-amber-500/30"
+                style={{ backgroundColor: "rgba(217, 119, 6, 0.15)" }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-amber-400 text-xs font-bold tracking-widest">
+                    PROMO
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-amber-400/50" />
+                  <span className="text-amber-300/50 text-xs">
+                    Limited time
+                  </span>
+                </div>
+                <p className="text-amber-200 font-bold text-base">
+                  {promo.title}
+                </p>
+                {promo.description && (
+                  <p className="text-amber-300/70 text-xs mt-1">
+                    {promo.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Dot indicators */}
+          {promos.length > 0 && (
+            <div className="flex justify-center gap-1.5 mt-2">
+              {[...Array(1 + promos.length)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${heroIndex === i ? "bg-amber-400" : "bg-amber-400/30"}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -520,7 +844,7 @@ export default function MenuClient({
           </div>
           <div>
             <p className="t-eyebrow" style={{ marginBottom: 4 }}>
-              Today&apos;s Special
+              {ui.todaySpecial}
             </p>
             <p className="t-title" style={{ fontSize: 15 }}>
               {dailySpecial.title}
@@ -547,7 +871,7 @@ export default function MenuClient({
         <div
           style={{
             margin: "16px 16px 0",
-            background: "var(--gold-faint)",
+            background: "var(--gold-faint)", // Do not translate CSS values
             border: "1px solid var(--gold-dim)",
             borderRadius: 16,
             padding: "12px 16px",
@@ -559,7 +883,7 @@ export default function MenuClient({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <DollarSign size={16} color="var(--gold-glow)" />
-            <span className="t-caption">Running Total</span>
+            <span className="t-caption">{ui.runningTotal}</span>
           </div>
           <span className="t-price" style={{ fontSize: 18 }}>
             {restaurant.currency} {runningTotal.toFixed(2)}
@@ -577,8 +901,10 @@ export default function MenuClient({
               className={`signal-btn ${sent ? "sent" : ""}`}
               onClick={() => sendSignal(s.type)}
             >
+              {" "}
+              {/* s.label is already translated */}
               {sent ? <CheckCircle size={22} /> : s.icon}
-              {sent ? "Sent!" : s.label}
+              {sent ? ui.sent : s.label}
             </button>
           );
         })}
@@ -586,15 +912,17 @@ export default function MenuClient({
 
       {/* ── CATEGORY PILLS ── */}
       <div className="pills-wrap scrollbar-hide">
-        {[{ id: null, name_en: "All" }, ...categories].map((cat) => (
-          <button
-            key={cat.id ?? "all"}
-            className={`pill ${activeCategory === (cat.id ?? null) ? "active" : ""}`}
-            onClick={() => setActiveCategory(cat.id ?? null)}
-          >
-            {cat.name_en}
-          </button>
-        ))}
+        {[{ id: null, name_en: "All", name_fr: "Tout" }, ...categories].map(
+          (cat) => (
+            <button
+              key={cat.id ?? "all"}
+              className={`pill ${activeCategory === (cat.id ?? null) ? "active" : ""}`}
+              onClick={() => setActiveCategory(cat.id ?? null)}
+            >
+              {t(cat.name_en, (cat as any).name_fr)}
+            </button>
+          ),
+        )}
       </div>
 
       {/* ── MENU ITEMS ── */}
@@ -602,7 +930,7 @@ export default function MenuClient({
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 0" }}>
             <p style={{ fontSize: 48, marginBottom: 12 }}>🍽️</p>
-            <p className="t-body">No items in this category yet.</p>
+            <p className="t-body">{ui.noItems}</p>
           </div>
         ) : (
           filtered.map((item, index) => {
@@ -613,18 +941,25 @@ export default function MenuClient({
             if (isHero)
               return (
                 <div key={item.id} className="hero-card">
-                  <img src={item.image_url} alt={item.name_en} />
+                  <img
+                    src={item.image_url}
+                    alt={t(item.name_en, item.name_fr)}
+                  />
                   <div className="hero-overlay" />
-                  <span
+                  <span /* Do not translate item.image_url, item.name_en, item.name_fr */
                     className="badge-gold"
                     style={{ position: "absolute", top: 16, left: 16 }}
                   >
-                    Chef&apos;s Pick
+                    {ui.chefsPick}
                   </span>
                   <div className="hero-body">
                     <p className="t-eyebrow" style={{ marginBottom: 6 }}>
-                      {categories.find((c) => c.id === item.category_id)
-                        ?.name_en ?? "Menu"}
+                      {(() => {
+                        const c = categories.find(
+                          (c) => c.id === item.category_id,
+                        );
+                        return t(c?.name_en ?? "Menu", c?.name_fr);
+                      })()}
                     </p>
                     <div
                       style={{
@@ -636,11 +971,11 @@ export default function MenuClient({
                     >
                       <div style={{ flex: 1 }}>
                         <h3 className="t-heading" style={{ marginBottom: 4 }}>
-                          {item.name_en}
+                          {t(item.name_en, item.name_fr)}
                         </h3>
-                        {item.description_en && (
+                        {(item.description_en || item.description_fr) && (
                           <p className="t-body" style={{ fontSize: 12 }}>
-                            {item.description_en}
+                            {t(item.description_en, item.description_fr)}
                           </p>
                         )}
                       </div>
@@ -661,13 +996,13 @@ export default function MenuClient({
                           className="qty-num"
                           style={{ flex: 1, textAlign: "center" }}
                         >
-                          {inOrder.quantity} in order
+                          {inOrder.quantity} {ui.inOrder}
                         </span>
                         <button
                           className="qty-btn"
                           onClick={() => {
                             if (!billLocked) addItem(item);
-                          }}
+                          }} /* Do not translate item.id */
                         >
                           <Plus size={16} />
                         </button>
@@ -677,9 +1012,9 @@ export default function MenuClient({
                         className="btn-add btn-add-full"
                         onClick={() => {
                           if (!billLocked) addItem(item);
-                        }}
+                        }} /* Do not translate item.id */
                       >
-                        + Add to Order
+                        + {ui.addToOrder}
                       </button>
                     )}
                   </div>
@@ -692,10 +1027,13 @@ export default function MenuClient({
                 className={`menu-card ${unavailable ? "unavailable" : ""}`}
               >
                 <div className="menu-card-img">
-                  <img src={item.image_url} alt={item.name_en} />
+                  <img
+                    src={item.image_url}
+                    alt={t(item.name_en, item.name_fr)}
+                  />
                   {unavailable && (
                     <div className="sold-overlay">
-                      <span className="badge-red">Sold Out</span>
+                      <span className="badge-red">{ui.soldOut}</span>
                     </div>
                   )}
                 </div>
@@ -705,13 +1043,17 @@ export default function MenuClient({
                       className="t-eyebrow"
                       style={{ fontSize: 9, marginBottom: 4 }}
                     >
-                      {categories.find((c) => c.id === item.category_id)
-                        ?.name_en ?? ""}
+                      {(() => {
+                        const c = categories.find(
+                          (c) => c.id === item.category_id,
+                        );
+                        return t(c?.name_en ?? "", c?.name_fr);
+                      })()}
                     </p>
                     <p className="t-title" style={{ fontSize: 15 }}>
-                      {item.name_en}
+                      {t(item.name_en, item.name_fr)}
                     </p>
-                    {item.description_en && (
+                    {(item.description_en || item.description_fr) && (
                       <p
                         className="t-body"
                         style={{
@@ -724,7 +1066,7 @@ export default function MenuClient({
                           overflow: "hidden",
                         }}
                       >
-                        {item.description_en}
+                        {t(item.description_en, item.description_fr)}
                       </p>
                     )}
                   </div>
@@ -739,7 +1081,7 @@ export default function MenuClient({
                       {restaurant.currency} {item.price.toFixed(0)}
                     </p>
                     {unavailable ? (
-                      <span className="t-caption">Unavailable</span>
+                      <span className="t-caption">{ui.unavailable}</span>
                     ) : inOrder ? (
                       <div
                         className="qty-control"
@@ -758,15 +1100,15 @@ export default function MenuClient({
                           className="qty-btn"
                           onClick={() => {
                             if (!billLocked) addItem(item);
-                          }}
+                          }} /* Do not translate item.id */
                         >
                           <Plus size={13} />
                         </button>
                       </div>
                     ) : (
                       <button className="btn-add" onClick={() => addItem(item)}>
-                        Add +
-                      </button>
+                        {ui.addToOrder} +
+                      </button> /* Do not translate item.id */
                     )}
                   </div>
                 </div>
@@ -781,7 +1123,7 @@ export default function MenuClient({
         <div className="order-bar">
           <div>
             <p className="t-caption">
-              {count} item{count !== 1 ? "s" : ""}
+              {count} {count !== 1 ? ui.items : ui.item}
             </p>
             <p className="t-price">
               {restaurant.currency} {total.toFixed(2)}
@@ -792,7 +1134,7 @@ export default function MenuClient({
             style={{ width: "auto", gap: 8 }}
             onClick={() => setShowOrder(true)}
           >
-            Review Order <ChevronRight size={16} />
+            {ui.reviewOrder} <ChevronRight size={16} />
           </button>
         </div>
       )}
@@ -804,9 +1146,7 @@ export default function MenuClient({
           <div className="drawer">
             <div className="drawer-head">
               <div>
-                <h2 className="t-heading" style={{ fontSize: 20 }}>
-                  Your Order
-                </h2>
+                <h2 className="t-heading" style={{ fontSize: 20 }}></h2>
                 <p className="t-eyebrow" style={{ marginTop: 4 }}>
                   {customerName} · {count} item{count !== 1 ? "s" : ""}
                 </p>
@@ -821,7 +1161,10 @@ export default function MenuClient({
                 <div key={ci.item.id} className="drawer-item">
                   <img
                     src={ci.item.image_url}
-                    alt={ci.item.name_en}
+                    alt={t(
+                      ci.item.name_en,
+                      ci.item.name_fr,
+                    )} /* Do not translate ci.item.image_url */
                     style={{
                       width: 52,
                       height: 52,
@@ -841,7 +1184,7 @@ export default function MenuClient({
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {ci.item.name_en}
+                      {t(ci.item.name_en, ci.item.name_fr)}
                     </p>
                     <p className="t-price-sm">
                       {restaurant.currency}{" "}
@@ -853,7 +1196,7 @@ export default function MenuClient({
                     style={{ flexShrink: 0, padding: "4px 10px" }}
                   >
                     <button
-                      className="qty-btn"
+                      className="qty-btn" /* Do not translate ci.item.id */
                       onClick={() => removeItem(ci.item.id)}
                     >
                       <Minus size={13} />
@@ -862,7 +1205,7 @@ export default function MenuClient({
                       {ci.quantity}
                     </span>
                     <button
-                      className="qty-btn"
+                      className="qty-btn" /* Do not translate ci.item.id */
                       onClick={() => addItem(ci.item)}
                     >
                       <Plus size={13} />
@@ -881,7 +1224,7 @@ export default function MenuClient({
                   marginBottom: 20,
                 }}
               >
-                <span className="t-body">Total</span>
+                <span className="t-body">{ui.total}</span>
                 <span className="t-price">
                   {restaurant.currency} {total.toFixed(2)}
                 </span>
@@ -893,15 +1236,15 @@ export default function MenuClient({
               >
                 {orderSuccess ? (
                   <>
-                    <CheckCircle size={18} /> Order Sent to Kitchen!
+                    <CheckCircle size={18} /> {ui.orderSent}
                   </>
                 ) : placingOrder ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" /> Sending...
+                    <Loader2 size={18} className="animate-spin" /> {ui.sending}
                   </>
                 ) : (
                   <>
-                    Send to Kitchen <ChevronRight size={18} />
+                    {ui.sendToKitchen} <ChevronRight size={18} />
                   </>
                 )}
               </button>
@@ -954,7 +1297,7 @@ export default function MenuClient({
             {/* Title */}
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <p className="t-eyebrow" style={{ marginBottom: 8 }}>
-                Your Bill
+                {ui.yourBill}
               </p>
               <h2 className="t-heading" style={{ fontSize: 24 }}>
                 {restaurant.name}
@@ -985,11 +1328,13 @@ export default function MenuClient({
                   : [];
                 return (
                   <div key={i}>
-                    <p
+                    <p /* Do not translate o.is_starter_order, i */
                       className="t-eyebrow"
                       style={{ fontSize: 9, marginBottom: 6 }}
                     >
-                      {o.is_starter_order ? "⚡ Starter" : `Order #${i + 1}`}
+                      {o.is_starter_order
+                        ? "⚡ Starter"
+                        : `${ui.orderNumber}${i + 1}`}
                     </p>
                     {items.map((item, j) => (
                       <div
@@ -1044,20 +1389,20 @@ export default function MenuClient({
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="t-body">Subtotal</span>
+                <span className="t-body">{ui.subtotal}</span>
                 <span className="t-body">
                   {restaurant.currency} {runningTotal.toFixed(2)}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span
+                <span /* Do not translate sessionFee */
                   style={{
                     color: "var(--gold-glow)",
                     fontSize: 13,
                     fontWeight: 600,
                   }}
                 >
-                  Digital Service Fee
+                  {ui.serviceFee}
                 </span>
                 <span
                   style={{
@@ -1082,7 +1427,7 @@ export default function MenuClient({
                 }}
               >
                 <span className="t-title" style={{ fontSize: 16 }}>
-                  Total
+                  {ui.total}
                 </span>
                 <span className="t-price" style={{ fontSize: 26 }}>
                   {restaurant.currency} {grandTotal.toFixed(2)}
@@ -1093,13 +1438,14 @@ export default function MenuClient({
               className="t-caption"
               style={{ textAlign: "center", marginBottom: 24 }}
             >
-              Payment is processed at the counter or with your waiter.
+              {ui.paymentNotice}
             </p>
 
             {/* Bill splitter */}
             <BillSplitter
               total={grandTotal}
               currency={restaurant.currency ?? "GHS"}
+              ui={ui}
             />
 
             <div
@@ -1112,11 +1458,9 @@ export default function MenuClient({
                 borderRadius: 14,
               }}
             >
-              <p className="t-caption">
-                Waiting for payment confirmation from staff...
-              </p>
+              <p className="t-caption">{ui.waitingForPayment}</p>
               <p className="t-eyebrow" style={{ marginTop: 6, fontSize: 10 }}>
-                Your receipt will appear automatically
+                {ui.receiptNotice}
               </p>
             </div>
           </div>
@@ -1140,6 +1484,21 @@ export default function MenuClient({
           onClose={() => setShowReceipt(false)}
         />
       )}
+
+      {/* Floating language toggle */}
+      <button
+        type="button"
+        onClick={toggleLang}
+        className="fixed bottom-24 right-4 z-50 flex items-center justify-center w-12 h-12 rounded-full transition-all active:scale-95 hover:scale-105"
+        style={{
+          backgroundColor: "#D97706",
+          color: "#022c22",
+          boxShadow: "0 4px 20px rgba(217, 119, 6, 0.4)",
+        }}
+        title={lang === "en" ? "Switch to French" : "Switch to English"}
+      >
+        <Languages size={20} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }

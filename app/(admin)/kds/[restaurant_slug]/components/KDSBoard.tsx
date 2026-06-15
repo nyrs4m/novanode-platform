@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -249,29 +249,64 @@ export default function KDSBoard({
   const [ledger, setLedger] = useState<LedgerRow | null>(null);
   const [payingLedger, setPayingLedger] = useState(false);
   const [closingTable, setClosingTable] = useState<string | null>(null);
+  const [unpaidLedgers, setUnpaidLedgers] = useState<{
+    ledger_date: string;
+    total_owed: number;
+  }[]>([]);
 
   const [activeTab, setActiveTab] = useState<KDSTab>("orders");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [closingWarning, setClosingWarning] = useState<
+    "approaching" | "overdue" | null
+  >(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
       setPaymentSuccess(true);
+      setClosingWarning(null);
       setActiveTab("ledger");
       window.history.replaceState({}, "", window.location.pathname);
-      // Refresh ledger after successful payment
-      const today = new Date().toISOString().split("T")[0];
-      supabaseRef.current
-        .from("daily_ledger")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .eq("ledger_date", today)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setLedger(data as LedgerRow);
-        });
+      fetchLedger();
     }
   }, []);
+
+  useEffect(() => {
+    if (!restaurant.closing_time) return;
+
+    function checkClosingTime() {
+      const now = new Date();
+      const [hours, minutes] = restaurant.closing_time!.split(":").map(Number);
+      const closing = new Date();
+      closing.setHours(hours, minutes, 0, 0);
+
+      const diffMs = closing.getTime() - now.getTime();
+      const diffMins = diffMs / 60000;
+
+      if (diffMins <= 0) {
+        // Only show overdue if there's an unpaid balance
+        const hasOutstanding = (ledger && Number(ledger.total_owed ?? 0) > 0) || unpaidLedgers.length > 0;
+        if (hasOutstanding) {
+          setClosingWarning('overdue');
+          supabaseRef.current
+            .from('restaurants')
+            .update({ payment_overdue: true } as any)
+            .eq('id', restaurant.id)
+            .then(() => {})
+        } else {
+          setClosingWarning(null)
+        }
+      } else if (diffMins <= 30) {
+        setClosingWarning("approaching");
+      } else {
+        setClosingWarning(null);
+      }
+    }
+
+    checkClosingTime();
+    const interval = setInterval(checkClosingTime, 60000);
+    return () => clearInterval(interval);
+  }, [restaurant.closing_time, restaurant.id, ledger, unpaidLedgers]);
 
   // ── CRITICAL: supabase client in a ref — one instance for this component ──
   const supabaseRef = useRef(createClient());
@@ -279,16 +314,23 @@ export default function KDSBoard({
   // ── Order status updates ───────────────────────────────────────────────
   async function updateOrderStatus(orderId: string, newStatus: string) {
     setUpdatingOrder(orderId);
-    await supabaseRef.current
+    const { error } = await supabaseRef.current
       .from("orders")
       .update({ status: newStatus })
       .eq("id", orderId);
+
+    if (!error) {
+      // Optimistic update — don't wait for realtime
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)),
+      );
+    }
     setUpdatingOrder(null);
   }
 
   async function updateOrderStatusWithTime(orderId: string, minutes: number) {
     setUpdatingOrder(orderId);
-    await supabaseRef.current
+    const { error } = await supabaseRef.current
       .from("orders")
       .update({
         status: "Preparing",
@@ -296,6 +338,21 @@ export default function KDSBoard({
         preparation_started_at: new Date().toISOString(),
       })
       .eq("id", orderId);
+
+    if (!error) {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: "Preparing",
+                estimated_minutes: minutes,
+                preparation_started_at: new Date().toISOString(),
+              }
+            : o,
+        ),
+      );
+    }
     setUpdatingOrder(null);
   }
 
@@ -316,6 +373,28 @@ export default function KDSBoard({
     );
   }
 
+  async function fetchLedger() {
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabaseRef.current
+      .from("daily_ledger")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("ledger_date", today)
+      .maybeSingle();
+    if (data) setLedger(data as LedgerRow);
+
+    // Fetch unpaid previous days
+    const { data: unpaid } = await supabaseRef.current
+      .from("daily_ledger")
+      .select("ledger_date, total_owed")
+      .eq("restaurant_id", restaurant.id)
+      .eq("is_paid", false)
+      .lt("ledger_date", today)
+      .gt("total_owed", 0)
+      .order("ledger_date", { ascending: false });
+    setUnpaidLedgers(unpaid ?? []);
+  }
+
   async function closeTable(sessionId: string) {
     if (closingTable === sessionId) return;
     setClosingTable(sessionId);
@@ -327,9 +406,13 @@ export default function KDSBoard({
     }
 
     const sessionOrders = orders.filter(
-      (o) => o.session_token === session.session_token && o.status !== "Cancelled",
+      (o) =>
+        o.session_token === session.session_token && o.status !== "Cancelled",
     );
-    const foodTotal = sessionOrders.reduce((s, o) => s + Number(o.total_amount), 0);
+    const foodTotal = sessionOrders.reduce(
+      (s, o) => s + Number(o.total_amount),
+      0,
+    );
     const dynamicFee = Math.min(Math.round(foodTotal * 0.01 * 100) / 100, 5);
 
     await supabaseRef.current
@@ -346,37 +429,40 @@ export default function KDSBoard({
         p_restaurant_id: restaurant.id,
         p_session_fee: dynamicFee,
         p_platform_fee: dynamicFee,
-      } as never);
+      } as any);
       // Update revenue and order count instantly
       setRevenue((prev) => prev + foodTotal);
       setOrderCount((prev) => prev + sessionOrders.length);
-      console.log("CLOSE TABLE — foodTotal:", foodTotal, "orders:", sessionOrders.length);
+      console.log(
+        "CLOSE TABLE — foodTotal:",
+        foodTotal,
+        "orders:",
+        sessionOrders.length,
+      );
 
-      // Refresh ledger display
-      const today = new Date().toISOString().split("T")[0];
-      supabaseRef.current
-        .from("daily_ledger")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .eq("ledger_date", today)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setLedger(data as LedgerRow);
-        });
+      await fetchLedger();
     }
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     setClosingTable(null);
   }
 
   // ── TimeAgo: client-only to avoid hydration mismatch ──────────────────
-  function TimeAgo({ dateStr }: { dateStr: string | null }) {
-    const [label, setLabel] = useState("");
+  function TimeAgo({ date }: { date: string }) {
+    const [display, setDisplay] = useState(() => {
+      const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
+      return diff < 1 ? 'just now' : `${diff}m ago`
+    })
+
     useEffect(() => {
-      setLabel(timeAgo(dateStr));
-      const t = setInterval(() => setLabel(timeAgo(dateStr)), 10000);
-      return () => clearInterval(t);
-    }, [dateStr]);
-    return <>{label}</>;
+      const update = () => {
+        const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
+        setDisplay(diff < 1 ? 'just now' : `${diff}m ago`)
+      }
+      const interval = setInterval(update, 60000)
+      return () => clearInterval(interval)
+    }, [date])
+
+    return <span>{display}</span>
   }
 
   // ── Realtime channel ───────────────────────────────────────────────────
@@ -385,16 +471,7 @@ export default function KDSBoard({
     if (paymentSuccess) {
       window.history.replaceState({}, "", window.location.pathname);
     }
-    const today = new Date().toISOString().split("T")[0];
-    supabaseRef.current
-      .from("daily_ledger")
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .eq("ledger_date", today)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setLedger(data as LedgerRow);
-      });
+    fetchLedger();
     const channel = supabaseRef.current
       .channel(`kds-${restaurant.id}`)
       .on(
@@ -523,9 +600,11 @@ export default function KDSBoard({
         },
       )
       .subscribe((status) => {
-        if (status === "CHANNEL_ERROR") {
-          console.error("KDS realtime channel error — reconnecting...");
-          setTimeout(() => channel.subscribe(), 2000);
+        if (status === "SUBSCRIBED") {
+          console.log("[KDS] Realtime channel connected");
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[KDS] Realtime channel error — will retry on next event");
         }
       });
     // ── CRITICAL: clean up channel on unmount ──
@@ -659,6 +738,26 @@ export default function KDSBoard({
           )}
         </div>
       </header>
+
+      {closingWarning === "approaching" && (
+        <div className="mx-4 mt-3 px-5 py-4 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 text-base font-semibold flex items-center gap-3 shadow-lg shadow-amber-900/20">
+          <span className="text-xl">⏰</span>
+          <span>
+            Closing time approaching — settle today&apos;s ledger before
+            closing.
+          </span>
+        </div>
+      )}
+
+      {closingWarning === "overdue" && (
+        <div className="mx-4 mt-3 px-5 py-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-base font-semibold flex items-center gap-3 shadow-lg shadow-red-900/20">
+          <span className="text-xl">🔴</span>
+          <span>
+            Past closing time — ledger payment is overdue. Settle now to avoid
+            suspension.
+          </span>
+        </div>
+      )}
 
       {/* TABS */}
       <div
@@ -1657,6 +1756,89 @@ export default function KDSBoard({
                 </button>
               )}
             </div>
+
+            {unpaidLedgers.length > 0 && (
+              <div style={{
+                background: 'rgba(2, 44, 34, 0.95)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 20,
+                marginBottom: 12,
+                overflow: 'hidden',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+              }}>
+                {/* Header */}
+                <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                  <p style={{ color: 'rgba(252, 165, 165, 0.7)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8 }}>
+                    OUTSTANDING BALANCE
+                  </p>
+                  <p style={{ color: '#fca5a5', fontSize: 30, fontWeight: 800, lineHeight: 1.1, marginBottom: 4 }}>
+                    GHS {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+                  </p>
+                  <p style={{ color: 'rgba(252, 165, 165, 0.4)', fontSize: 12 }}>
+                    Unpaid from {unpaidLedgers.length} previous {unpaidLedgers.length === 1 ? 'day' : 'days'}
+                  </p>
+                </div>
+
+                {/* Day breakdown */}
+                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {unpaidLedgers.map(l => (
+                    <div key={l.ledger_date} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'rgba(253, 230, 138, 0.6)', fontSize: 13 }}>
+                        {new Date(l.ledger_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </span>
+                      <span style={{ color: '#fde68a', fontSize: 13, fontWeight: 700 }}>
+                        GHS {l.total_owed.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Settle button */}
+                <div style={{ padding: '0 20px 20px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const totalOutstanding = unpaidLedgers.reduce((s, l) => s + l.total_owed, 0)
+                      const amountKobo = Math.round(totalOutstanding * 100)
+                      try {
+                        const res = await fetch('/api/paystack/initialize', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            restaurant_id: restaurant.id,
+                            ledger_date: unpaidLedgers[0].ledger_date,
+                            amount_kobo: amountKobo,
+                            email: 'settlement@novanode.app',
+                            settle_all_unpaid: true,
+                            unpaid_dates: unpaidLedgers.map(l => l.ledger_date),
+                          }),
+                        })
+                        const data = await res.json()
+                        if (data.authorization_url) {
+                          window.location.href = data.authorization_url
+                        }
+                      } catch (e) {
+                        console.error('Settlement init failed:', e)
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 20px',
+                      borderRadius: 14,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                      color: '#fca5a5',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      cursor: 'pointer',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    Settle Outstanding — GHS {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Paid history */}
             {ledger && Number(ledger.paid_amount ?? 0) > 0 && (

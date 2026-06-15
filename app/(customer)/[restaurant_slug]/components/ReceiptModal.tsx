@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -57,7 +57,7 @@ export default function ReceiptModal({
   const [feedbackDone, setFeedbackDone] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
 
   const subtotal = orders.reduce((s, o) => s + Number(o.total_amount), 0);
   const sessionFee = Math.min(Math.round(subtotal * 0.01 * 100) / 100, 5);  const grandTotal = subtotal + sessionFee;
@@ -177,15 +177,23 @@ export default function ReceiptModal({
     }
     setSubmittingFeedback(true);
     try {
-      await supabase.from("order_feedback").insert({
-        restaurant_id: restaurant.id,
-        session_token: sessionToken,
-        table_number: tableNumber,
-        customer_name: customerName,
-        rating,
-        review: review.trim() || null,
-        staff_id: selectedStaff || null,
-      });
+      const { error } = await supabaseRef.current
+        .from('order_feedback')
+        .insert({
+          restaurant_id: restaurant.id,
+          session_token: sessionToken,
+          table_number: tableNumber,
+          customer_name: customerName,
+          rating,
+          review: review.trim() || null,
+          staff_id: selectedStaff || null,
+        })
+
+      if (error) {
+        console.error('[ReceiptModal] Feedback insert failed:', error)
+        return
+      }
+
       setFeedbackDone(true);
       setTimeout(() => onClose(), 3000);
     } catch (err) {

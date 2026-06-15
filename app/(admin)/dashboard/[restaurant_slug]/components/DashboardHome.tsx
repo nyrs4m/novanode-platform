@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import QRGenerator from "./QRGenerator";
+import { uploadMenuImage } from "@/lib/compress-image";
 import type {
   Tables,
   RestaurantStats,
@@ -39,7 +40,8 @@ interface Props {
   restaurant: Restaurant;
   staff: Tables<"restaurant_staff">;
   dailyStats: RestaurantStats | null;
-  monthlyStats: RestaurantStats[];
+  monthRevenue: number;
+  monthCount: number;
   topItems: MenuItemStats[];
   peakHours: PeakHourStats[];
   recentOrders: Order[];
@@ -49,7 +51,7 @@ interface Props {
   todayRevenueOverride: number;
 }
 
-type Tab = "overview" | "stats" | "menu";
+type Tab = "overview" | "stats" | "menu" | "analytics" | "profile";
 
 function StatusIcon({ status }: { status: string }) {
   if (status === "Cancelled") return <XCircle size={14} color="#f87171" />;
@@ -76,7 +78,8 @@ type LedgerRow = {
 export default function DashboardHome({
   restaurant,
   dailyStats,
-  monthlyStats,
+  monthRevenue,
+  monthCount,
   topItems,
   peakHours,
   todayRevenueOverride,
@@ -100,14 +103,116 @@ export default function DashboardHome({
   const [todayLedger, setTodayLedger] = useState<LedgerRow | null>(null);
   const [todayRevenue, setTodayRevenue] = useState(todayRevenueOverride);
   const [baseUrl, setBaseUrl] = useState("");
+  const [closingWarning, setClosingWarning] = useState<
+    "approaching" | "overdue" | null
+  >(null);
+  const [analyticsData, setAnalyticsData] = useState<{
+    daily: { date: string; revenue: number; orders: number }[];
+    monthly?: { month: string; revenue: number; orders: number }[];
+    feedback: {
+      rating: number;
+      review: string;
+      customer_name: string;
+      created_at: string;
+    }[];
+  } | null>(null);
+
+  const [showAllRevDays, setShowAllRevDays] = useState(false);
+  const [showAllOrdDays, setShowAllOrdDays] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Profile & Settings state
+  const [profileForm, setProfileForm] = useState({
+    name: restaurant.name ?? "",
+    description: restaurant.description ?? "",
+    opening_time: restaurant.opening_time ?? "",
+    closing_time: restaurant.closing_time ?? "",
+    contact_number: restaurant.contact_number ?? "",
+    address: restaurant.address ?? "",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(restaurant.logo_url ?? "");
+  const [promos, setPromos] = useState<
+    {
+      id: string;
+      title: string;
+      description: string;
+      start_date: string;
+      end_date: string;
+      is_active: boolean;
+    }[]
+  >([]);
+  const [promoForm, setPromoForm] = useState({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+  });
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [staffList, setStaffList] = useState<
+    {
+      id: string;
+      display_name: string;
+      role: string;
+    }[]
+  >([]);
+  const [newStaffName, setNewStaffName] = useState("");
+  const [staffSaving, setStaffSaving] = useState(false);
 
   // ── CRITICAL: singleton supabase client in ref ────────────────────────
   const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+
+  useEffect(() => {
+    if (todayLedger?.is_paid) setClosingWarning(null);
+  }, [todayLedger?.is_paid]);
+
+  useEffect(() => {
+    if (!restaurant.closing_time) return;
+
+    function checkClosingTime() {
+      const now = new Date();
+      const [hours, minutes] = restaurant.closing_time!.split(":").map(Number);
+      const closing = new Date();
+      closing.setHours(hours, minutes, 0, 0);
+
+      const diffMs = closing.getTime() - now.getTime();
+      const diffMins = diffMs / 60000;
+
+      if (diffMins <= 0) {
+        const hasOutstanding =
+          todayLedger && Number(todayLedger?.total_owed ?? 0) > 0;
+        setClosingWarning(hasOutstanding ? "overdue" : null);
+      } else if (diffMins <= 30) {
+        setClosingWarning("approaching");
+      } else {
+        setClosingWarning(null);
+      }
+    }
+
+    // Run immediately on mount regardless of closing_time
+    checkClosingTime();
+    const interval = setInterval(checkClosingTime, 10000);
+    return () => clearInterval(interval);
+  }, [restaurant.closing_time, todayLedger]);
 
   useEffect(() => {
     setBaseUrl(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    if (tab === "profile") {
+      fetchPromos();
+      fetchStaff();
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab === "analytics" && !analyticsData && !analyticsLoading) {
+      fetchAnalytics();
+    }
+  }, [tab, analyticsData, analyticsLoading, restaurant.id]);
 
   useEffect(() => {
     async function refreshTodayRevenue() {
@@ -119,7 +224,7 @@ export default function DashboardHome({
 
       try {
         // Fetch completed session tokens for today
-        const { data: completedSessions } = await supabase
+        const { data: completedSessions } = await supabaseRef.current
           .from("table_sessions")
           .select("session_token")
           .eq("restaurant_id", restaurant.id)
@@ -132,7 +237,7 @@ export default function DashboardHome({
 
         // Fetch orders from completed sessions
         if (completedSessionTokens.length > 0) {
-          const { data: revenueOrders } = await supabase
+          const { data: revenueOrders } = await supabaseRef.current
             .from("orders")
             .select("total_amount")
             .eq("restaurant_id", restaurant.id)
@@ -158,25 +263,25 @@ export default function DashboardHome({
 
       const [ordersRes, tablesRes, signalsRes, recentRes, ledgerRes] =
         await Promise.all([
-          supabase
+          supabaseRef.current
             .from("orders")
             .select("*", { count: "exact", head: true })
             .eq("restaurant_id", restaurant.id)
             .in("status", ["Pending", "Preparing"]),
 
-          supabase
+          supabaseRef.current
             .from("table_sessions")
             .select("*", { count: "exact", head: true })
             .eq("restaurant_id", restaurant.id)
             .eq("is_active", true),
 
-          supabase
+          supabaseRef.current
             .from("waiter_signals")
             .select("*", { count: "exact", head: true })
             .eq("restaurant_id", restaurant.id)
             .eq("is_resolved", false),
 
-          supabase
+          supabaseRef.current
             .from("orders")
             .select("*")
             .eq("restaurant_id", restaurant.id)
@@ -184,7 +289,7 @@ export default function DashboardHome({
             .order("created_at", { ascending: false })
             .limit(10),
 
-          supabase
+          supabaseRef.current
             .from("daily_ledger")
             .select("*")
             .eq("restaurant_id", restaurant.id)
@@ -196,14 +301,14 @@ export default function DashboardHome({
       if (tablesRes.count !== null) setActiveTablesCount(tablesRes.count);
       if (signalsRes.count !== null) setSignalsCount(signalsRes.count);
       if (recentRes.data) setRecentOrders(recentRes.data as Order[]);
-      if (ledgerRes.data) setTodayLedger(ledgerRes.data as typeof todayLedger);
+      if (ledgerRes.data) setTodayLedger(ledgerRes.data as any);
     }
 
     // Refresh immediately on mount to catch any changes since SSR
     refreshCounts();
 
     // Then subscribe and refresh on any relevant change
-    const channel = supabase
+    const channel = supabaseRef.current
       .channel(`dashboard-${restaurant.id}`)
       .on(
         "postgres_changes",
@@ -268,20 +373,28 @@ export default function DashboardHome({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseRef.current.removeChannel(channel);
     };
-  }, [restaurant.id, supabase]);
+  }, [restaurant.id]);
+
+  async function fetchAnalytics() {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch(`/api/analytics?restaurant_id=${restaurant.id}`);
+      const data = await res.json();
+      setAnalyticsData(data);
+    } catch (e) {
+      console.error("Analytics fetch failed:", e);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }
 
   // ── Static computed values from server-rendered props ─────────────────
-  const mRevenue = monthlyStats.reduce((s, r) => s + (r.gross_revenue ?? 0), 0);
-  const mOrders = monthlyStats.reduce((s, r) => s + (r.total_orders ?? 0), 0);
-  const mTables = monthlyStats.reduce((s, r) => s + (r.tables_served ?? 0), 0);
-  const mFees = monthlyStats.reduce(
-    (s, r) =>
-      s +
-      ((r as RestaurantStats & { platform_fees?: number }).platform_fees ?? 0),
-    0,
-  );
+  const mRevenue = monthRevenue;
+  const mOrders = 0;
+  const mTables = monthCount;
+  const mFees = 0;
   const dRevenue = todayRevenue ?? dailyStats?.gross_revenue ?? 0;
   const dOrders = dailyStats?.total_orders ?? 0;
   const dTables = dailyStats?.tables_served ?? 0;
@@ -290,10 +403,125 @@ export default function DashboardHome({
   const maxPeak = peakHours[0]?.order_count ?? 1;
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await supabaseRef.current.auth.signOut();
     startTransition(() => {
       router.push("/login");
     });
+  }
+
+  async function fetchPromos() {
+    const { data } = await supabaseRef.current
+      .from("restaurant_promos")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .order("created_at", { ascending: false });
+    setPromos((data as any) ?? []);
+  }
+
+  async function fetchStaff() {
+    const { data } = await supabaseRef.current
+      .from("restaurant_staff")
+      .select("id, display_name, role")
+      .eq("restaurant_id", restaurant.id);
+    setStaffList((data as any) ?? []);
+  }
+
+async function saveProfile() {
+  setProfileSaving(true)
+  try {
+    console.log('[Profile] Saving:', profileForm, 'id:', restaurant.id)
+    
+    const { data, error } = await supabaseRef.current
+      .from('restaurants')
+      .update({
+        name: profileForm.name,
+        description: profileForm.description,
+        opening_time: profileForm.opening_time || null,
+        closing_time: profileForm.closing_time || null,
+        contact_number: profileForm.contact_number,
+        address: profileForm.address,
+      } as any)
+      .eq('id', restaurant.id)
+      .select()
+
+    console.log('[Profile] Result:', data, error)
+
+    if (error) {
+      console.error('[Profile] Save failed:', error)
+      return
+    }
+
+    await fetch('/api/revalidate?tag=restaurant', { method: 'POST' })
+    setProfileSaved(true)
+    setTimeout(() => setProfileSaved(false), 3000)
+  } catch (e) {
+    console.error('[Profile] Unexpected error:', e)
+  } finally {
+    setProfileSaving(false)
+  }
+}
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const url = await uploadMenuImage(
+        file,
+        restaurant.id,
+        supabaseRef.current,
+      );
+      if (url) {
+        await supabaseRef.current
+          .from("restaurants")
+          .update({ logo_url: url } as any)
+          .eq("id", restaurant.id);
+        setLogoUrl(url);
+        await fetch("/api/revalidate?tag=restaurant", { method: "POST" });
+      }
+    } catch (e) {
+      console.error("Logo upload failed:", e);
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function savePromo() {
+    if (!promoForm.title || !promoForm.start_date || !promoForm.end_date)
+      return;
+    setPromoSaving(true);
+    try {
+      await supabaseRef.current.from("restaurant_promos").insert({
+        restaurant_id: restaurant.id,
+        title: promoForm.title,
+        description: promoForm.description,
+        start_date: promoForm.start_date,
+        end_date: promoForm.end_date,
+        is_active: true,
+      } as any);
+      setPromoForm({
+        title: "",
+        description: "",
+        start_date: "",
+        end_date: "",
+      });
+      await fetchPromos();
+    } finally {
+      setPromoSaving(false);
+    }
+  }
+
+  async function deletePromo(id: string) {
+    await supabaseRef.current.from("restaurant_promos").delete().eq("id", id);
+    await fetchPromos();
+  }
+
+  async function updateStaffName(id: string, name: string) {
+    await supabaseRef.current
+      .from("restaurant_staff")
+      .update({ display_name: name } as any)
+      .eq("id", id);
+    await fetchStaff();
   }
 
   // Quick actions use live counts from state (not initial props)
@@ -347,6 +575,41 @@ export default function DashboardHome({
       color: "#34d399",
     },
   ];
+
+  // Styles for the Menu Manager button in the 'menu' tab
+  const menuManagerButtonStyle: React.CSSProperties = {
+    width: "100%",
+    marginBottom: 24,
+    background: "var(--surface)",
+    border: "1px solid rgba(253,251,247,0.08)",
+    boxShadow: "var(--shadow-card)",
+    textAlign: "left",
+    padding: "18px 16px",
+    borderRadius: 18,
+    transition: "all 0.2s ease",
+  };
+
+  const menuManagerIconContainerStyle: React.CSSProperties = {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    background: "var(--gold-faint)",
+    border: "1px solid var(--gold-dim)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--gold-glow)",
+    marginBottom: 12,
+  };
+
+  const menuManagerTitleStyle: React.CSSProperties = {
+    fontSize: 14,
+    marginBottom: 4,
+  };
+  const menuManagerDescStyle: React.CSSProperties = {
+    fontSize: 12,
+    opacity: 0.7,
+  };
 
   return (
     <div className="dash-page">
@@ -405,6 +668,25 @@ export default function DashboardHome({
         </div>
       </header>
 
+      {closingWarning === "approaching" && (
+        <div className="mx-4 mt-3 px-5 py-4 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 text-base font-semibold flex items-center gap-3 shadow-lg shadow-amber-900/20">
+          <span className="text-xl">⏰</span>
+          <span>
+            Closing time approaching — settle today&apos;s ledger before
+            closing.
+          </span>
+        </div>
+      )}
+      {closingWarning === "overdue" && (
+        <div className="mx-4 mt-3 px-5 py-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-base font-semibold flex items-center gap-3 shadow-lg shadow-red-900/20">
+          <span className="text-xl">🔴</span>
+          <span>
+            Past closing time — ledger payment is overdue. Settle now to avoid
+            suspension.
+          </span>
+        </div>
+      )}
+
       {/* TABS */}
       <div
         style={{
@@ -433,6 +715,16 @@ export default function DashboardHome({
               icon: <TrendingUp size={16} />,
             },
             { id: "menu", label: "Menu Items", icon: <Utensils size={16} /> },
+            {
+              id: "analytics",
+              label: "Analytics",
+              icon: <BarChart2 size={16} />,
+            },
+            {
+              id: "profile",
+              label: "Profile",
+              icon: <Users2 size={16} />,
+            },
           ] as { id: Tab; label: string; icon: React.ReactNode }[]
         ).map((t) => (
           <button
@@ -640,7 +932,7 @@ export default function DashboardHome({
                   {[
                     {
                       label: "Session fees collected",
-                      value: `${restaurant.currency} ${Number((todayLedger as LedgerRow).session_fees_collected ?? 0).toFixed(2)}`,
+                      value: `${restaurant.currency} ${Number(todayLedger?.session_fees_collected ?? 0).toFixed(2)}`,
                     },
                     {
                       label: "NovaNode fee owed",
@@ -648,7 +940,7 @@ export default function DashboardHome({
                     },
                     {
                       label: "NovaNode fee settled",
-                      value: `${restaurant.currency} ${Number((todayLedger as LedgerRow).platform_fees_paid ?? 0).toFixed(2)}`,
+                      value: `${restaurant.currency} ${Number(todayLedger?.platform_fees_paid ?? 0).toFixed(2)}`,
                     },
                   ].map((row) => (
                     <div
@@ -709,10 +1001,6 @@ export default function DashboardHome({
                         existing.total += Number(o.total_amount);
                         if (o.created_at && o.created_at > existing.latest_time)
                           existing.latest_time = o.created_at;
-                        existing.totalOrders += 1;
-                        if (o.status === "Cancelled")
-                          existing.cancelledOrders += 1;
-                        else existing.status = o.status ?? "";
                         existing.totalOrders += 1;
                         if (o.status === "Cancelled")
                           existing.cancelledOrders += 1;
@@ -877,7 +1165,7 @@ export default function DashboardHome({
                 <div className="dash-empty">No data yet</div>
               ) : (
                 <div className="peak-grid">
-                  {peakHours.map((h) => {
+                  {peakHours.map((h, i) => {
                     const hour = Number(h.hour_of_day);
                     const label =
                       hour === 0
@@ -889,7 +1177,7 @@ export default function DashboardHome({
                             : `${hour - 12}pm`;
                     const pct = (Number(h.order_count) / Number(maxPeak)) * 100;
                     return (
-                      <div key={hour} className="peak-cell">
+                      <div key={`${hour}-${i}`} className="peak-cell">
                         <div
                           style={{
                             display: "flex",
@@ -976,24 +1264,29 @@ export default function DashboardHome({
         {/* ── MENU TAB ── */}
         {tab === "menu" && (
           <div>
-            <div className="dash-section">
-              <div className="dash-section-head">
-                <Utensils size={17} color="var(--gold-glow)" />
-                <span className="t-title" style={{ fontSize: 15 }}>
-                  Menu Management
-                </span>
-              </div>
-              <p className="t-body" style={{ marginBottom: 20 }}>
-                Full menu editing coming in the next update. For now manage
-                stock availability from the Kitchen Display.
-              </p>
-              <button
-                className="btn-primary"
-                onClick={() => router.push(`/kds/${restaurant.slug}`)}
+            <button
+              onClick={() => router.push(`/dashboard/${restaurant.slug}/menu`)}
+              className="dash-action-card group"
+              style={menuManagerButtonStyle}
+            >
+              <div
+                className="dash-action-icon"
+                style={menuManagerIconContainerStyle}
               >
-                <ChefHat size={18} /> Go to Kitchen Display
-              </button>
-            </div>
+                🍽️
+              </div>
+              <div>
+                <div
+                  className="dash-action-title"
+                  style={menuManagerTitleStyle}
+                >
+                  Menu Manager
+                </div>
+                <div className="dash-action-desc" style={menuManagerDescStyle}>
+                  Add, edit and manage your full menu
+                </div>
+              </div>
+            </button>
 
             {/* QR Codes */}
             <div className="dash-section">
@@ -1010,6 +1303,774 @@ export default function DashboardHome({
               {baseUrl && (
                 <QRGenerator restaurant={restaurant} baseUrl={baseUrl} />
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ANALYTICS TAB ── */}
+        {tab === "analytics" && (
+          <div className="px-3 pt-5 space-y-6 pb-24">
+            {analyticsLoading && (
+              <div className="text-center text-amber-300/60 py-12 text-sm">
+                Loading analytics...
+              </div>
+            )}
+
+            {!analyticsLoading && analyticsData && (
+              <>
+                {/* Revenue Chart */}
+                <div
+                  className="rounded-2xl p-6 border border-amber-900/20"
+                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
+                      Revenue —{" "}
+                      {new Date().toLocaleDateString("en-GB", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </h3>
+                    <span className="text-amber-400 text-sm font-bold bg-amber-400/10 px-2 py-1 rounded-lg">
+                      GHS{" "}
+                      {analyticsData.daily
+                        .reduce((s, d) => s + d.revenue, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="relative h-48 mt-3">
+                    <div className="absolute inset-0 flex items-end gap-[2px]">
+                      {analyticsData.daily.map((d) => {
+                        const maxRev = Math.max(
+                          ...analyticsData.daily.map((x) => x.revenue),
+                          1,
+                        );
+                        if (d.revenue === 0)
+                          return (
+                            <div
+                              key={d.date}
+                              className="flex-1"
+                              style={{ minWidth: "4px" }}
+                            />
+                          );
+                        const heightPct = Math.max(
+                          (d.revenue / maxRev) * 100,
+                          4,
+                        );
+                        const dateLabel = new Date(
+                          d.date + "T12:00:00",
+                        ).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        });
+                        return (
+                          <div
+                            key={d.date}
+                            className="flex-1 rounded-t-sm cursor-default transition-all hover:opacity-80"
+                            style={{
+                              height: `${heightPct}%`,
+                              backgroundColor: "#D97706",
+                              minWidth: "4px",
+                            }}
+                            title={`${dateLabel}: GHS ${d.revenue.toFixed(2)}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-amber-300/40 mt-2 px-1">
+                    <span>
+                      1{" "}
+                      {new Date().toLocaleDateString("en-GB", {
+                        month: "short",
+                      })}
+                    </span>
+                    <span>Today</span>
+                  </div>
+
+                  {/* Daily breakdown table */}
+                  <div className="mt-5 space-y-1">
+                    <div className="flex justify-between text-xs text-amber-300/40 px-1 pb-1 border-b border-amber-900/20">
+                      <span>Day</span>
+                      <div className="flex gap-6">
+                        <span>Orders</span>
+                        <span>Revenue</span>
+                      </div>
+                    </div>
+                    {(showAllRevDays
+                      ? analyticsData.daily
+                      : analyticsData.daily
+                          .filter((d) => d.revenue > 0 || d.orders > 0)
+                          .slice(-7)
+                    ).map((d) => (
+                      <div
+                        key={d.date}
+                        className="flex justify-between items-center px-1 py-1"
+                      >
+                        <span className="text-amber-300/60 text-xs">
+                          {new Date(d.date + "T12:00:00").toLocaleDateString(
+                            "en-GB",
+                            {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                            },
+                          )}
+                        </span>
+                        <div className="flex gap-6">
+                          <span className="text-emerald-400 text-xs w-12 text-right">
+                            {d.orders}
+                          </span>
+                          <span className="text-amber-400 text-xs w-20 text-right">
+                            GHS {d.revenue.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {analyticsData.daily.every((d) => d.revenue === 0) && (
+                      <p className="text-amber-300/30 text-xs text-center py-3">
+                        No data yet this month
+                      </p>
+                    )}
+                  </div>
+                  {analyticsData.daily.filter((d) => d.revenue > 0).length >
+                    7 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllRevDays((p) => !p)}
+                      className="w-full text-center text-amber-400/60 text-xs py-2 hover:text-amber-400 transition-colors mt-1"
+                    >
+                      {showAllRevDays
+                        ? "▲ Show less"
+                        : `▼ Show all ${analyticsData.daily.filter((d) => d.revenue > 0).length} days`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Orders Chart */}
+                <div
+                  className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
+                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
+                      Orders —{" "}
+                      {new Date().toLocaleDateString("en-GB", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </h3>
+                    <span className="text-emerald-400 text-sm font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">
+                      {analyticsData.daily.reduce((s, d) => s + d.orders, 0)}{" "}
+                      total
+                    </span>
+                  </div>
+                  <div className="relative h-48 mt-3">
+                    <div className="absolute inset-0 flex items-end gap-[2px]">
+                      {analyticsData.daily.map((d) => {
+                        const maxOrd = Math.max(
+                          ...analyticsData.daily.map((x) => x.orders),
+                          1,
+                        );
+                        if (d.orders === 0)
+                          return (
+                            <div
+                              key={d.date}
+                              className="flex-1"
+                              style={{ minWidth: "4px" }}
+                            />
+                          );
+                        const heightPct = Math.max(
+                          (d.orders / maxOrd) * 100,
+                          4,
+                        );
+                        const dateLabel = new Date(
+                          d.date + "T12:00:00",
+                        ).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        });
+                        return (
+                          <div
+                            key={d.date}
+                            className="flex-1 rounded-t-sm cursor-default transition-all hover:opacity-80"
+                            style={{
+                              height: `${heightPct}%`,
+                              backgroundColor: "#10b981",
+                              minWidth: "4px",
+                            }}
+                            title={`${dateLabel}: ${d.orders} orders`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-emerald-300/40 mt-2 px-1">
+                    <span>
+                      1{" "}
+                      {new Date().toLocaleDateString("en-GB", {
+                        month: "short",
+                      })}
+                    </span>
+                    <span>Today</span>
+                  </div>
+
+                  {/* Daily breakdown table */}
+                  <div className="mt-5 space-y-1">
+                    <div className="flex justify-between text-xs text-amber-300/40 px-1 pb-1 border-b border-amber-900/20">
+                      <span>Day</span>
+                      <div className="flex gap-6">
+                        <span>Orders</span>
+                        <span>Revenue</span>
+                      </div>
+                    </div>
+                    {(showAllOrdDays
+                      ? analyticsData.daily
+                      : analyticsData.daily
+                          .filter((d) => d.revenue > 0 || d.orders > 0)
+                          .slice(-7)
+                    ).map((d) => (
+                      <div
+                        key={d.date}
+                        className="flex justify-between items-center px-1 py-1"
+                      >
+                        <span className="text-amber-300/60 text-xs">
+                          {new Date(d.date + "T12:00:00").toLocaleDateString(
+                            "en-GB",
+                            {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                            },
+                          )}
+                        </span>
+                        <div className="flex gap-6">
+                          <span className="text-emerald-400 text-xs w-12 text-right">
+                            {d.orders}
+                          </span>
+                          <span className="text-amber-400 text-xs w-20 text-right">
+                            GHS {d.revenue.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {analyticsData.daily.every((d) => d.orders === 0) && (
+                      <p className="text-amber-300/30 text-xs text-center py-3">
+                        No data yet this month
+                      </p>
+                    )}
+                  </div>
+                  {analyticsData.daily.filter((d) => d.orders > 0).length >
+                    7 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllOrdDays((p) => !p)}
+                      className="w-full text-center text-amber-400/60 text-xs py-2 hover:text-amber-400 transition-colors mt-1"
+                    >
+                      {showAllOrdDays
+                        ? "▲ Show less"
+                        : `▼ Show all ${analyticsData.daily.filter((d) => d.orders > 0).length} days`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Monthly Archive */}
+                {(analyticsData.monthly ?? []).length > 0 && (
+                  <div
+                    className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
+                    style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                  >
+                    <h3 className="text-amber-200 font-bold text-base tracking-wide mb-4">
+                      Monthly History
+                    </h3>
+                    <div className="space-y-3">
+                      {(analyticsData.monthly ?? []).map((m) => {
+                        const [year, month] = m.month.split("-");
+                        const label = new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,
+                          1,
+                        ).toLocaleDateString("en-GB", {
+                          month: "long",
+                          year: "numeric",
+                        });
+                        return (
+                          <div
+                            key={m.month}
+                            className="flex items-center justify-between rounded-xl px-4 py-3 border border-amber-900/20"
+                            style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+                          >
+                            <span className="text-amber-300/80 text-sm font-medium">
+                              {label}
+                            </span>
+                            <div className="flex gap-4 items-center">
+                              <span className="text-emerald-400/80 text-xs">
+                                {m.orders} orders
+                              </span>
+                              <span className="text-amber-400 text-sm font-bold">
+                                GHS {m.revenue.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Reviews */}
+                <div
+                  className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
+                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
+                      Recent Customer Reviews
+                    </h3>
+                    <span className="text-amber-300/60 text-xs bg-amber-300/10 px-2 py-1 rounded-lg">
+                      {analyticsData.feedback.length} reviews
+                    </span>
+                  </div>
+                  {analyticsData.feedback.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-amber-300/30 text-sm">
+                        No reviews yet
+                      </p>
+                      <p className="text-amber-300/20 text-xs mt-1">
+                        Customer feedback will appear here after meals
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {analyticsData.feedback.map((f, i) => (
+                        <div key={i} style={{
+                          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                          border: '1px solid rgba(217, 119, 6, 0.12)',
+                          borderRadius: 16,
+                          padding: '16px 18px',
+                          marginBottom: 10,
+                        }}>
+                          {/* Top row — name + stars */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <div>
+                              <p style={{ color: '#FDFBF7', fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
+                                {f.customer_name}
+                              </p>
+                              <p style={{ color: 'rgba(253, 230, 138, 0.35)', fontSize: 11 }}>
+                                {new Date(f.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <span key={star} style={{
+                                  fontSize: 15,
+                                  color: star <= f.rating ? '#F59E0B' : 'rgba(217, 119, 6, 0.2)',
+                                }}>★</span>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Review text */}
+                          {f.review && (
+                            <p style={{
+                              color: 'rgba(253, 251, 247, 0.65)',
+                              fontSize: 13,
+                              lineHeight: 1.6,
+                              borderTop: '1px solid rgba(217, 119, 6, 0.08)',
+                              paddingTop: 8,
+                              marginTop: 4,
+                            }}>
+                              {f.review}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── PROFILE TAB ── */}
+        {tab === "profile" && (
+          <div className="px-4 pt-5 space-y-6 pb-24">
+            {/* Restaurant Info */}
+            <div
+              className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
+              style={{
+                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <h3 className="text-amber-200 font-bold text-base tracking-wide mb-5">
+                Restaurant Info
+              </h3>
+
+              {/* Logo */}
+              <div className="flex items-center gap-4 mb-5">
+                <div
+                  className="w-16 h-16 rounded-xl overflow-hidden border border-amber-900/30 flex items-center justify-center"
+                  style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+                >
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt="Logo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-amber-300/30 text-xs">No logo</span>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-amber-300 text-sm font-medium mb-1">
+                    Restaurant Logo
+                  </label>
+                  <label className="cursor-pointer px-3 py-1.5 rounded-lg border border-amber-500/40 text-amber-300 text-xs hover:bg-amber-500/10 transition-colors">
+                    {logoUploading ? "Uploading..." : "Upload Logo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Fields */}
+              {[
+                {
+                  label: "Restaurant Name",
+                  key: "name",
+                  type: "text",
+                  placeholder: "e.g. Starbite Kitchen",
+                },
+                {
+                  label: "Description / Tagline",
+                  key: "description",
+                  type: "textarea",
+                  placeholder: "A short description for your customers...",
+                },
+                {
+                  label: "Contact Number",
+                  key: "contact_number",
+                  type: "tel",
+                  placeholder: "+233 XX XXX XXXX",
+                },
+                {
+                  label: "Address",
+                  key: "address",
+                  type: "text",
+                  placeholder: "e.g. 12 High Street, Accra",
+                },
+                {
+                  label: "Opening Time",
+                  key: "opening_time",
+                  type: "time",
+                  placeholder: "",
+                },
+                {
+                  label: "Closing Time",
+                  key: "closing_time",
+                  type: "time",
+                  placeholder: "",
+                },
+              ].map(({ label, key, type, placeholder }) => (
+                <div key={key} className="mb-4">
+                  <label className="block text-amber-300/60 text-xs font-medium mb-2 tracking-wide uppercase">
+                    {label}
+                  </label>
+                  {type === "textarea" ? (
+                    <textarea
+                      value={profileForm[key as keyof typeof profileForm]}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({ ...p, [key]: e.target.value }))
+                      }
+                      placeholder={placeholder}
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        color: '#FDFBF7',
+                        fontSize: 14,
+                        outline: 'none',
+                        resize: 'none',
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type={type}
+                      value={profileForm[key as keyof typeof profileForm]}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({ ...p, [key]: e.target.value }))
+                      }
+                      placeholder={placeholder}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        color: '#FDFBF7',
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={saveProfile}
+                disabled={profileSaving}
+                className="w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
+                style={{ backgroundColor: "#D97706", color: "#022c22" }}
+              >
+                {profileSaved
+                  ? "✓ Saved!"
+                  : profileSaving
+                    ? "Saving..."
+                    : "Save Profile"}
+              </button>
+            </div>
+
+            {/* Staff Management */}
+            <div
+              className="rounded-2xl p-6 border border-amber-900/20"
+              style={{
+                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <h3 className="text-amber-200 font-bold text-lg mb-4">
+                Staff Names
+              </h3>
+              <p className="text-amber-300/50 text-xs mb-4">
+                Staff names appear in the customer feedback selector after
+                meals.
+              </p>
+              <div className="space-y-3">
+                {staffList.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      defaultValue={s.display_name ?? ""}
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => updateStaffName(s.id, e.target.value)}
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        borderRadius: 12,
+                        padding: '10px 14px',
+                        color: '#FDFBF7',
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                    <span className="text-amber-300/30 text-xs">{s.role}</span>
+                  </div>
+                ))}
+                {staffList.length === 0 && (
+                  <p className="text-amber-300/30 text-xs text-center py-4">
+                    No staff found
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Promos */}
+            <div
+              className="rounded-2xl p-6 border border-amber-900/20"
+              style={{
+                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <h3 className="text-amber-200 font-bold text-lg mb-4">
+                Promotions
+              </h3>
+              <p className="text-amber-300/50 text-xs mb-4">
+                Active promos cycle with your restaurant info on the customer
+                menu page.
+              </p>
+
+              {/* Promo form */}
+              <div className="space-y-3 mb-5">
+                <input
+                  type="text"
+                  value={promoForm.title}
+                  onChange={(e) =>
+                    setPromoForm((p) => ({ ...p, title: e.target.value }))
+                  } // No change to logic
+                  placeholder="Promo title e.g. Happy Hour 50% Off"
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(217, 119, 6, 0.2)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    color: '#FDFBF7',
+                    fontSize: 14,
+                    outline: 'none',
+                  }}
+                />
+                <textarea
+                  value={promoForm.description}
+                  onChange={(e) =>
+                    setPromoForm((p) => ({ ...p, description: e.target.value }))
+                  } // No change to logic
+                  placeholder="Promo details..."
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(217, 119, 6, 0.2)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    color: '#FDFBF7',
+                    fontSize: 14,
+                    outline: 'none',
+                    resize: 'none',
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-amber-300/50 text-xs mb-1">
+                      Start
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={promoForm.start_date} // No change to logic
+                      onChange={(e) =>
+                        setPromoForm((p) => ({
+                          ...p,
+                          start_date: e.target.value,
+                        }))
+                      } // No change to logic
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        color: '#FDFBF7',
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-amber-300/50 text-xs mb-1">
+                      End
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={promoForm.end_date} // No change to logic
+                      onChange={(e) =>
+                        setPromoForm((p) => ({
+                          ...p,
+                          end_date: e.target.value,
+                        }))
+                      } // No change to logic
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        color: '#FDFBF7',
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={savePromo}
+                  disabled={
+                    promoSaving ||
+                    !promoForm.title ||
+                    !promoForm.start_date ||
+                    !promoForm.end_date
+                  }
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
+                  style={{ backgroundColor: "#D97706", color: "#022c22" }}
+                >
+                  {promoSaving ? "Saving..." : "+ Add Promo"}
+                </button>
+              </div>
+
+              {/* Promo list */}
+              <div className="space-y-3">
+                {promos.map((p) => {
+                  const now = new Date();
+                  const isLive =
+                    new Date(p.start_date) <= now &&
+                    new Date(p.end_date) >= now;
+                  const isExpired = new Date(p.end_date) < now;
+                  return (
+                    <div
+                      key={p.id}
+                      className="rounded-xl p-3 border border-amber-900/20 flex items-start justify-between gap-3"
+                      style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-amber-200 text-sm font-semibold">
+                            {p.title}
+                          </span>
+                          {isLive && (
+                            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                              Live
+                            </span>
+                          )}
+                          {isExpired && (
+                            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
+                              Expired
+                            </span>
+                          )}
+                        </div>
+                        {p.description && (
+                          <p className="text-amber-300/50 text-xs">
+                            {p.description}
+                          </p>
+                        )}
+                        <p className="text-amber-300/30 text-xs mt-1">
+                          {new Date(p.start_date).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}{" "}
+                          →{" "}
+                          {new Date(p.end_date).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => deletePromo(p.id)}
+                        className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  );
+                })}
+                {promos.length === 0 && (
+                  <p className="text-amber-300/30 text-xs text-center py-4">
+                    No promos yet
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
