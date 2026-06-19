@@ -293,7 +293,7 @@ export default function MenuClient({
   >([]);
 
   const [promos, setPromos] = useState<
-    { title: string; description: string | null }[]
+    { title: string; description: string | null; image_url: string | null }[]
   >([]);
   const [heroIndex, setHeroIndex] = useState(0);
 
@@ -320,7 +320,7 @@ export default function MenuClient({
     async function fetchPromos() {
       const { data } = await supabaseRef.current
         .from("restaurant_promos")
-        .select("title, description")
+        .select("title, description, image_url")
         .eq("restaurant_id", restaurant.id)
         .eq("is_active", true)
         .lte("start_date", new Date().toISOString())
@@ -328,6 +328,20 @@ export default function MenuClient({
       if (data && data.length > 0) setPromos(data);
     }
     fetchPromos();
+  }, [restaurant.id, sessionId]);
+
+  // 3d. Fetch waiters for feedback form
+  useEffect(() => {
+    if (!sessionId) return;
+    async function fetchStaff() {
+      const { data } = await supabaseRef.current
+        .from("restaurant_staff")
+        .select("id, display_name, role")
+        .eq("restaurant_id", restaurant.id)
+        .eq("role", "waiter");
+      if (data && data.length > 0) setStaffList(data as any);
+    }
+    fetchStaff();
   }, [restaurant.id, sessionId]);
 
   // 3c. Hero cycling — restaurant info + all active promos
@@ -641,7 +655,7 @@ export default function MenuClient({
       {/* ── HEADER ── */}
       <header className="menu-header">
         {/* Hero — cycles restaurant info then each active promo */}
-        <div className="relative overflow-hidden" style={{ minHeight: "80px" }}>
+        <div className="relative " style={{ minHeight: "80px" }}>
           {/* Slide 0 — Restaurant info */}
           <div
             className="transition-all duration-500"
@@ -774,7 +788,7 @@ export default function MenuClient({
           {promos.map((promo, i) => (
             <div
               key={i}
-              className="transition-all duration-500 p-4"
+              className="transition-all duration-500"
               style={{
                 opacity: heroIndex === i + 1 ? 1 : 0,
                 transform:
@@ -782,29 +796,67 @@ export default function MenuClient({
                 position: heroIndex === i + 1 ? "relative" : "absolute",
                 width: "100%",
                 top: 0,
+                padding: "12px 16px 8px",
               }}
             >
               <div
-                className="rounded-xl p-4 border border-amber-500/30"
-                style={{ backgroundColor: "rgba(217, 119, 6, 0.15)" }}
+                className="relative rounded-lg overflow-hidden w-full"
+                style={{
+                  height: "200px",
+                  minHeight: "200px",
+                  display: "block",
+                }}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-amber-400 text-xs font-bold tracking-widest">
-                    PROMO
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-amber-400/50" />
-                  <span className="text-amber-300/50 text-xs">
-                    Limited time
-                  </span>
-                </div>
-                <p className="text-amber-200 font-bold text-base">
-                  {promo.title}
-                </p>
-                {promo.description && (
-                  <p className="text-amber-300/70 text-xs mt-1">
-                    {promo.description}
-                  </p>
+                {/* Full-width banner fills entire card */}
+                {promo.image_url ? (
+                  <img
+                    src={promo.image_url}
+                    alt={promo.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  /* No banner — solid fallback background */
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundColor: "rgba(217,119,6,0.12)",
+                      border: "1px solid rgba(217,119,6,0.2)",
+                      borderRadius: "1rem",
+                    }}
+                  />
                 )}
+
+                {/* Dark gradient at bottom for text legibility */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 50%, transparent 100%)",
+                    borderRadius: "1rem",
+                  }}
+                />
+
+                {/* Text pinned to bottom */}
+                {/* Text pinned to bottom */}
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 text-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-amber-400 text-xs font-bold tracking-widest">
+                      PROMO
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-amber-400/50" />
+                    <span className="text-amber-300/50 text-xs">
+                      Limited time
+                    </span>
+                  </div>
+                  <p className="text-white font-bold text-base leading-snug">
+                    {promo.title}
+                  </p>
+                  {promo.description && (
+                    <p className="text-white/40 text-xs mt-1 leading-relaxed">
+                      {promo.description}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           ))}

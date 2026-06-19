@@ -48,6 +48,13 @@ export default function SuperAdminPanel({
   const [tab, setTab] = useState<Tab>("overview");
   const [restaurantList, setRestaurantList] = useState(restaurants);
   const [ledgers, setLedgers] = useState<DailyLedger[]>(initialLedgers);
+  const [unpaidLedgers, setUnpaidLedgers] = useState<
+    {
+      restaurant_id: string;
+      ledger_date: string;
+      total_owed: number;
+    }[]
+  >([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [onboardForm, setOnboardForm] = useState({
     name: "",
@@ -59,6 +66,8 @@ export default function SuperAdminPanel({
   });
   const [onboarding, setOnboarding] = useState(false);
   const [feeForm, setFeeForm] = useState<Record<string, string>>({});
+  const [liveOrders, setLiveOrders] = useState(totalOrders);
+  const [liveSessions, setLiveSessions] = useState(totalSessions);
   const router = useRouter();
   const supabaseRef = useRef(createClient());
 
@@ -72,9 +81,34 @@ export default function SuperAdminPanel({
         .select("*")
         .eq("ledger_date", today);
       if (data) setLedgers(data as DailyLedger[]);
+
+      // Fetch all unpaid previous days across all restaurants
+      const { data: overdue } = await supabaseClient
+        .from("daily_ledger")
+        .select("restaurant_id, ledger_date, total_owed")
+        .eq("is_paid", false)
+        .lt("ledger_date", today)
+        .gt("total_owed", 0)
+        .order("ledger_date", { ascending: false });
+      setUnpaidLedgers(overdue ?? []);
     }
 
     refreshTodayLedger();
+
+    // Fetch live counts
+    async function refreshCounts() {
+      const [{ count: oc }, { count: sc }] = await Promise.all([
+        supabaseClient
+          .from("orders")
+          .select("*", { count: "exact", head: true }),
+        supabaseClient
+          .from("table_sessions")
+          .select("*", { count: "exact", head: true }),
+      ]);
+      if (oc !== null) setLiveOrders(oc);
+      if (sc !== null) setLiveSessions(sc);
+    }
+    refreshCounts();
 
     const channel = supabaseClient
       .channel("superadmin-ledger")
@@ -85,7 +119,7 @@ export default function SuperAdminPanel({
           schema: "public",
           table: "daily_ledger",
         },
-        refreshTodayLedger
+        refreshTodayLedger,
       )
       .subscribe((status) => {
         console.log("SuperAdmin ledger channel status:", status);
@@ -101,7 +135,7 @@ export default function SuperAdminPanel({
 
   const totalSettledToday = ledgers.reduce(
     (s, l) => s + Number(l.platform_fees_paid ?? l.paid_amount ?? 0),
-    0
+    0,
   );
 
   const overdueRestaurants = restaurantList.filter((r) => r.payment_overdue);
@@ -109,23 +143,33 @@ export default function SuperAdminPanel({
   async function toggleSuspend(restaurant: Restaurant) {
     setUpdatingId(restaurant.id);
     const newActive = !restaurant.is_active;
-    const { error } = await supabaseRef.current
-      .from("restaurants")
-      .update({
-        is_active: newActive,
-        suspended_at: newActive ? null : new Date().toISOString(),
-        suspension_reason: newActive ? null : "Suspended by NovaNode admin",
-      })
-      .eq("id", restaurant.id);
-
-    if (!error) {
-      setRestaurantList((prev) =>
-        prev.map((r) =>
-          r.id === restaurant.id ? { ...r, is_active: newActive } : r
-        )
-      );
+    try {
+      const res = await fetch('/api/admin/update-restaurant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          updates: {
+            is_active: newActive,
+            suspended_at: newActive ? null : new Date().toISOString(),
+            suspension_reason: newActive ? null : "Suspended by NovaNode admin",
+            payment_overdue: newActive ? false : restaurant.payment_overdue,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRestaurantList((prev) =>
+          prev.map((r) =>
+            r.id === restaurant.id ? { ...r, is_active: newActive } : r
+          )
+        );
+      }
+    } catch (err) {
+      console.error('toggleSuspend failed:', err);
+    } finally {
+      setUpdatingId(null);
     }
-    setUpdatingId(null);
   }
 
   async function updateSessionFee(restaurantId: string) {
@@ -142,7 +186,9 @@ export default function SuperAdminPanel({
 
     if (!error) {
       setRestaurantList((prev) =>
-        prev.map((r) => (r.id === restaurantId ? { ...r, session_fee: fee } : r))
+        prev.map((r) =>
+          r.id === restaurantId ? { ...r, session_fee: fee } : r,
+        ),
       );
       setFeeForm((prev) => {
         const n = { ...prev };
@@ -154,14 +200,30 @@ export default function SuperAdminPanel({
   }
 
   async function clearOverdue(restaurantId: string) {
+    // Verify all ledger rows are paid before clearing overdue flag
+    const { data: unpaidRows } = await supabaseRef.current
+      .from("daily_ledger")
+      .select("id")
+      .eq("restaurant_id", restaurantId)
+      .eq("is_paid", false)
+      .gt("total_owed", 0)
+      .limit(1);
+
+    if (unpaidRows && unpaidRows.length > 0) {
+      alert(
+        "Outstanding balance must be fully settled before marking as resolved.",
+      );
+      return;
+    }
+
     await supabaseRef.current
       .from("restaurants")
-      .update({ payment_overdue: false })
+      .update({ payment_overdue: false } as never)
       .eq("id", restaurantId);
     setRestaurantList((prev) =>
       prev.map((r) =>
-        r.id === restaurantId ? { ...r, payment_overdue: false } : r
-      )
+        r.id === restaurantId ? { ...r, payment_overdue: false } : r,
+      ),
     );
   }
 
@@ -177,17 +239,18 @@ export default function SuperAdminPanel({
     }
     setOnboarding(true);
     try {
-      const { data: newRestaurant, error: restError } = await supabaseRef.current
-        .from("restaurants")
-        .insert({
-          name: onboardForm.name,
-          slug: onboardForm.slug.toLowerCase().replace(/\s+/g, "-"),
-          currency: onboardForm.currency,
-          is_active: true,
-          // No flat session_fee — platform uses 1% dynamic rate
-        })
-        .select()
-        .maybeSingle();
+      const { data: newRestaurant, error: restError } =
+        await supabaseRef.current
+          .from("restaurants")
+          .insert({
+            name: onboardForm.name,
+            slug: onboardForm.slug.toLowerCase().replace(/\s+/g, "-"),
+            currency: onboardForm.currency,
+            is_active: true,
+            // No flat session_fee — platform uses 1% dynamic rate
+          })
+          .select()
+          .maybeSingle();
 
       if (restError) throw restError;
       if (!newRestaurant) throw new Error("Restaurant was not created");
@@ -215,7 +278,7 @@ export default function SuperAdminPanel({
       });
       setTab("restaurants");
       alert(
-        `${newRestaurant.name} onboarded successfully! Platform fee: 1% per session (max GHS 5.00)`
+        `${newRestaurant.name} onboarded successfully! Platform fee: 1% per session (max GHS 5.00)`,
       );
     } catch (err) {
       console.error(err);
@@ -323,12 +386,22 @@ export default function SuperAdminPanel({
         }}
         className="scrollbar-hide"
       >
-        {([
-          { id: "overview", label: "Overview", icon: <TrendingUp size={15} /> },
-          { id: "restaurants", label: "Restaurants", icon: <Building2 size={15} /> },
-          { id: "ledger", label: "Ledger", icon: <DollarSign size={15} /> },
-          { id: "onboard", label: "Onboard", icon: <Plus size={15} /> },
-        ] as { id: Tab; label: string; icon: React.ReactNode }[]).map((t) => (
+        {(
+          [
+            {
+              id: "overview",
+              label: "Overview",
+              icon: <TrendingUp size={15} />,
+            },
+            {
+              id: "restaurants",
+              label: "Restaurants",
+              icon: <Building2 size={15} />,
+            },
+            { id: "ledger", label: "Ledger", icon: <DollarSign size={15} /> },
+            { id: "onboard", label: "Onboard", icon: <Plus size={15} /> },
+          ] as { id: Tab; label: string; icon: React.ReactNode }[]
+        ).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -373,7 +446,9 @@ export default function SuperAdminPanel({
               {[
                 {
                   label: "Active Restaurants",
-                  value: String(restaurantList.filter((r) => r.is_active).length),
+                  value: String(
+                    restaurantList.filter((r) => r.is_active).length,
+                  ),
                   icon: <Building2 size={20} />,
                   sub: `${restaurantList.length} total`,
                 },
@@ -385,13 +460,13 @@ export default function SuperAdminPanel({
                 },
                 {
                   label: "Total Orders",
-                  value: String(totalOrders),
+                  value: String(liveOrders),
                   icon: <ShoppingBag size={20} />,
                   sub: "all time",
                 },
                 {
                   label: "Total Sessions",
-                  value: String(totalSessions),
+                  value: String(liveSessions),
                   icon: <Users2 size={20} />,
                   sub: "all time",
                 },
@@ -414,13 +489,19 @@ export default function SuperAdminPanel({
                   >
                     {card.icon}
                   </div>
-                  <p className="t-heading" style={{ fontSize: 22, marginBottom: 4 }}>
+                  <p
+                    className="t-heading"
+                    style={{ fontSize: 22, marginBottom: 4 }}
+                  >
                     {card.value}
                   </p>
                   <p className="t-caption" style={{ marginBottom: 2 }}>
                     {card.label}
                   </p>
-                  <p className="t-eyebrow" style={{ fontSize: 10, opacity: 0.7 }}>
+                  <p
+                    className="t-eyebrow"
+                    style={{ fontSize: 10, opacity: 0.7 }}
+                  >
                     {card.sub}
                   </p>
                 </div>
@@ -431,11 +512,16 @@ export default function SuperAdminPanel({
               <div className="dash-section">
                 <div className="dash-section-head">
                   <AlertTriangle size={17} color="#f87171" />
-                  <span className="t-title" style={{ fontSize: 15, color: "#f87171" }}>
+                  <span
+                    className="t-title"
+                    style={{ fontSize: 15, color: "#f87171" }}
+                  >
                     Payment Overdue
                   </span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
                   {overdueRestaurants.map((r) => (
                     <div
                       key={r.id}
@@ -568,7 +654,8 @@ export default function SuperAdminPanel({
                           </span>
                         )}
                         {Number(
-                          (r as Restaurant & { owing_funds?: number }).owing_funds ?? 0
+                          (r as Restaurant & { owing_funds?: number })
+                            .owing_funds ?? 0,
                         ) > 0 && (
                           <span
                             style={{
@@ -584,7 +671,7 @@ export default function SuperAdminPanel({
                             Owes GHS{" "}
                             {Number(
                               (r as Restaurant & { owing_funds?: number })
-                                .owing_funds
+                                .owing_funds,
                             ).toFixed(2)}
                           </span>
                         )}
@@ -599,12 +686,17 @@ export default function SuperAdminPanel({
                             {Number(ledger.total_owed).toFixed(2)} owed
                           </p>
                           {Number(
-                            ledger.platform_fees_paid ?? ledger.paid_amount ?? 0
+                            ledger.platform_fees_paid ??
+                              ledger.paid_amount ??
+                              0,
                           ) > 0 && (
-                            <p className="t-caption" style={{ color: "#34d399" }}>
+                            <p
+                              className="t-caption"
+                              style={{ color: "#34d399" }}
+                            >
                               ✓ {r.currency}{" "}
                               {Number(
-                                ledger.platform_fees_paid ?? ledger.paid_amount
+                                ledger.platform_fees_paid ?? ledger.paid_amount,
                               ).toFixed(2)}{" "}
                               settled today
                             </p>
@@ -652,7 +744,9 @@ export default function SuperAdminPanel({
                   </div>
 
                   <div className="divider" style={{ marginBottom: 14 }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     <div style={{ flex: 1 }}>
                       <p className="t-caption" style={{ marginBottom: 6 }}>
                         Platform fee: 1% per session (max {r.currency} 5.00)
@@ -665,7 +759,10 @@ export default function SuperAdminPanel({
                           padding: "10px 14px",
                         }}
                       >
-                        <p className="t-body" style={{ fontSize: 13, opacity: 0.7 }}>
+                        <p
+                          className="t-body"
+                          style={{ fontSize: 13, opacity: 0.7 }}
+                        >
                           Dynamic — calculated automatically on table close
                         </p>
                       </div>
@@ -706,7 +803,8 @@ export default function SuperAdminPanel({
                     GHS {totalOwedToday.toFixed(2)}
                   </p>
                   <p className="t-caption" style={{ marginTop: 4 }}>
-                    outstanding · GHS {totalSettledToday.toFixed(2)} settled today
+                    outstanding · GHS {totalSettledToday.toFixed(2)} settled
+                    today
                   </p>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -718,11 +816,126 @@ export default function SuperAdminPanel({
               </div>
             </div>
 
+            {/* Overdue section — unpaid previous days */}
+            {unpaidLedgers.length > 0 && (
+              <div
+                style={{
+                  background: "rgba(2, 44, 34, 0.95)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 20,
+                  marginBottom: 16,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "16px 20px",
+                    borderBottom: "1px solid rgba(239, 68, 68, 0.15)",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "rgba(252, 165, 165, 0.7)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    OVERDUE BALANCES
+                  </p>
+                  <p
+                    style={{
+                      color: "#fca5a5",
+                      fontSize: 26,
+                      fontWeight: 800,
+                      lineHeight: 1.1,
+                      marginBottom: 2,
+                    }}
+                  >
+                    GHS{" "}
+                    {unpaidLedgers
+                      .reduce((s, l) => s + l.total_owed, 0)
+                      .toFixed(2)}
+                  </p>
+                  <p
+                    style={{ color: "rgba(252, 165, 165, 0.4)", fontSize: 12 }}
+                  >
+                    Unpaid from{" "}
+                    {
+                      [...new Set(unpaidLedgers.map((l) => l.restaurant_id))]
+                        .length
+                    }{" "}
+                    restaurant(s) across previous days
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  {unpaidLedgers.map((l, i) => {
+                    const r = restaurantList.find(
+                      (r) => r.id === l.restaurant_id,
+                    );
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <p
+                            style={{
+                              color: "rgba(253, 251, 247, 0.7)",
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {r?.name ?? "Unknown"}
+                          </p>
+                          <p
+                            style={{
+                              color: "rgba(252, 165, 165, 0.4)",
+                              fontSize: 11,
+                            }}
+                          >
+                            {new Date(
+                              l.ledger_date + "T12:00:00",
+                            ).toLocaleDateString("en-GB", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                        </div>
+                        <p
+                          style={{
+                            color: "#fde68a",
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          GHS {l.total_owed.toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {restaurantList.map((r) => {
                 const ledger = ledgers.find((l) => l.restaurant_id === r.id);
                 const settled = Number(
-                  ledger?.platform_fees_paid ?? ledger?.paid_amount ?? 0
+                  ledger?.platform_fees_paid ?? ledger?.paid_amount ?? 0,
                 );
                 const owed = Number(ledger?.total_owed ?? 0);
                 return (
@@ -773,7 +986,9 @@ export default function SuperAdminPanel({
                             style={{
                               fontSize: 10,
                               fontWeight: 800,
-                              color: ledger.is_paid ? "#34d399" : "var(--gold-glow)",
+                              color: ledger.is_paid
+                                ? "#34d399"
+                                : "var(--gold-glow)",
                             }}
                           >
                             {ledger.is_paid ? "PAID" : "UNPAID"}
@@ -812,7 +1027,8 @@ export default function SuperAdminPanel({
                   className="t-caption"
                   style={{ color: "var(--gold-glow)", fontWeight: 700 }}
                 >
-                  Platform Fee: 1% of each session total (max GHS 5.00 per session)
+                  Platform Fee: 1% of each session total (max GHS 5.00 per
+                  session)
                 </p>
                 <p className="t-caption" style={{ marginTop: 4, opacity: 0.7 }}>
                   This is automatically calculated and charged. No manual setup
@@ -894,7 +1110,10 @@ export default function SuperAdminPanel({
                     placeholder="admin@restaurant.com"
                     value={onboardForm.staff_email}
                     onChange={(e) =>
-                      setOnboardForm((f) => ({ ...f, staff_email: e.target.value }))
+                      setOnboardForm((f) => ({
+                        ...f,
+                        staff_email: e.target.value,
+                      }))
                     }
                   />
                 </div>

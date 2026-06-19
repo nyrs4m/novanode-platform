@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { restaurant_id, ledger_date, amount_kobo, email } = await req.json();
+  const { restaurant_id, ledger_date, amount_kobo, email, settle_all_unpaid } =
+    await req.json();
 
   const response = await fetch(
     "https://api.paystack.co/transaction/initialize",
@@ -23,9 +24,9 @@ export async function POST(req: NextRequest) {
         email,
         amount: amount_kobo,
         currency: "GHS",
-        reference: `novanode-${restaurant_id}-${ledger_date}-${Date.now()}`,
+        reference: `novanode-${restaurant_id}-${settle_all_unpaid ? "outstanding" : ledger_date}-${Date.now()}`,
         metadata: { restaurant_id, ledger_date },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/paystack/callback`
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/paystack/callback`,
       }),
     },
   );

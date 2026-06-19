@@ -7,21 +7,24 @@ export async function proxy(request: NextRequest) {
 
   // Only check suspension for dashboard/kds routes
   const suspendedMatch = request.nextUrl.pathname.match(
-    /^\/(dashboard|kds)\/([^/]+)/,
-  );
-  if (suspendedMatch) {
-    const slug = suspendedMatch[2];
+  /^\/(?!dashboard|kds|api|novanode|_next)([^/]+)(?!\/suspended)/,
+);
+
+  if (suspendedMatch && !request.nextUrl.pathname.includes('/suspended')) {
+    const slug = suspendedMatch[1];
     try {
       const { createClient } = await import("@/lib/supabase/server");
       const supabase = await createClient();
-      const { data: r } = await supabase
+      const { data: r } = (await supabase
         .from("restaurants")
         .select("suspended_at")
         .eq("slug", slug)
         .not("suspended_at", "is", null)
-        .maybeSingle() as never;
+        .maybeSingle()) as never;
       if (r) {
-        return NextResponse.redirect(new URL("/suspended", request.url));
+        return NextResponse.redirect(
+          new URL(`/${slug}/suspended`, request.url),
+        );
       }
     } catch {
       // If check fails, let the page handle it

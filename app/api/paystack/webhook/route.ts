@@ -16,23 +16,37 @@ export async function POST(req: NextRequest) {
   const event = JSON.parse(body);
   if (event.event !== "charge.success") return NextResponse.json({ ok: true });
 
-  const { restaurant_id, ledger_date } = event.data.metadata ?? {};
-  if (!restaurant_id || !ledger_date) return NextResponse.json({ ok: true });
+  const { restaurant_id } = event.data.metadata ?? {};
+  if (!restaurant_id) return NextResponse.json({ ok: true });
 
   const supabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  await supabase
+  // Fetch all unpaid ledger rows for this restaurant
+  const { data: unpaidRows } = await supabase
     .from("daily_ledger")
-    .update({
-      is_paid: true,
-      paystack_reference: event.data.reference,
-      paid_at: new Date().toISOString(),
-    })
+    .select("ledger_date, total_owed, paid_amount, platform_fees_paid")
     .eq("restaurant_id", restaurant_id)
-    .eq("ledger_date", ledger_date);
+    .eq("is_paid", false)
+    .gt("total_owed", 0);
+
+  for (const row of unpaidRows ?? []) {
+    const amountPaid = Number(row.total_owed ?? 0);
+    await supabase
+      .from("daily_ledger")
+      .update({
+        is_paid: true,
+        paystack_reference: event.data.reference,
+        paid_at: new Date().toISOString(),
+        paid_amount: Number(row.paid_amount ?? 0) + amountPaid,
+        total_owed: 0,
+        platform_fees_paid: Number(row.platform_fees_paid ?? 0) + amountPaid,
+      } as never)
+      .eq("restaurant_id", restaurant_id)
+      .eq("ledger_date", row.ledger_date);
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import QRGenerator from "./QRGenerator";
-import { uploadMenuImage } from "@/lib/compress-image";
+import { uploadMenuImage, compressImage } from "@/lib/compress-image";
 import type {
   Tables,
   RestaurantStats,
@@ -111,9 +111,10 @@ export default function DashboardHome({
     monthly?: { month: string; revenue: number; orders: number }[];
     feedback: {
       rating: number;
-      review: string;
+      review: string | null;
       customer_name: string;
       created_at: string;
+      staff_name: string | null;
     }[];
   } | null>(null);
 
@@ -149,8 +150,10 @@ export default function DashboardHome({
     description: "",
     start_date: "",
     end_date: "",
+    image_url: "",
   });
   const [promoSaving, setPromoSaving] = useState(false);
+  const [promoBannerUploading, setPromoBannerUploading] = useState(false);
   const [staffList, setStaffList] = useState<
     {
       id: string;
@@ -160,6 +163,7 @@ export default function DashboardHome({
   >([]);
   const [newStaffName, setNewStaffName] = useState("");
   const [staffSaving, setStaffSaving] = useState(false);
+  const [staffDeleting, setStaffDeleting] = useState<string | null>(null);
 
   // ── CRITICAL: singleton supabase client in ref ────────────────────────
   const supabaseRef = useRef(createClient());
@@ -392,11 +396,12 @@ export default function DashboardHome({
 
   // ── Static computed values from server-rendered props ─────────────────
   const mRevenue = monthRevenue;
-  const mOrders = 0;
+  const today = new Date().toISOString().split('T')[0];
+  const dOrders = analyticsData?.daily?.find(d => d.date === today)?.orders ?? 0;
+  const mOrders = analyticsData?.daily?.reduce((sum, d) => sum + (d.orders ?? 0), 0) ?? 0;
   const mTables = monthCount;
   const mFees = 0;
   const dRevenue = todayRevenue ?? dailyStats?.gross_revenue ?? 0;
-  const dOrders = dailyStats?.total_orders ?? 0;
   const dTables = dailyStats?.tables_served ?? 0;
 
   const maxQty = topItems[0]?.total_quantity ?? 1;
@@ -422,44 +427,45 @@ export default function DashboardHome({
     const { data } = await supabaseRef.current
       .from("restaurant_staff")
       .select("id, display_name, role")
-      .eq("restaurant_id", restaurant.id);
+      .eq("restaurant_id", restaurant.id)
+      .eq("role", "waiter");
     setStaffList((data as any) ?? []);
   }
 
-async function saveProfile() {
-  setProfileSaving(true)
-  try {
-    console.log('[Profile] Saving:', profileForm, 'id:', restaurant.id)
-    
-    const { data, error } = await supabaseRef.current
-      .from('restaurants')
-      .update({
-        name: profileForm.name,
-        description: profileForm.description,
-        opening_time: profileForm.opening_time || null,
-        closing_time: profileForm.closing_time || null,
-        contact_number: profileForm.contact_number,
-        address: profileForm.address,
-      } as any)
-      .eq('id', restaurant.id)
-      .select()
+  async function saveProfile() {
+    setProfileSaving(true);
+    try {
+      console.log("[Profile] Saving:", profileForm, "id:", restaurant.id);
 
-    console.log('[Profile] Result:', data, error)
+      const { data, error } = await supabaseRef.current
+        .from("restaurants")
+        .update({
+          name: profileForm.name,
+          description: profileForm.description,
+          opening_time: profileForm.opening_time || null,
+          closing_time: profileForm.closing_time || null,
+          contact_number: profileForm.contact_number,
+          address: profileForm.address,
+        } as any)
+        .eq("id", restaurant.id)
+        .select();
 
-    if (error) {
-      console.error('[Profile] Save failed:', error)
-      return
+      console.log("[Profile] Result:", data, error);
+
+      if (error) {
+        console.error("[Profile] Save failed:", error);
+        return;
+      }
+
+      await fetch("/api/revalidate?tag=restaurant", { method: "POST" });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } catch (e) {
+      console.error("[Profile] Unexpected error:", e);
+    } finally {
+      setProfileSaving(false);
     }
-
-    await fetch('/api/revalidate?tag=restaurant', { method: 'POST' })
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 3000)
-  } catch (e) {
-    console.error('[Profile] Unexpected error:', e)
-  } finally {
-    setProfileSaving(false)
   }
-}
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -497,6 +503,7 @@ async function saveProfile() {
         description: promoForm.description,
         start_date: promoForm.start_date,
         end_date: promoForm.end_date,
+        image_url: promoForm.image_url || null,
         is_active: true,
       } as any);
       setPromoForm({
@@ -504,6 +511,7 @@ async function saveProfile() {
         description: "",
         start_date: "",
         end_date: "",
+        image_url: "",
       });
       await fetchPromos();
     } finally {
@@ -516,12 +524,65 @@ async function saveProfile() {
     await fetchPromos();
   }
 
+  async function handleBannerUpload(file: File) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) return;
+    if (file.size > 5 * 1024 * 1024) return; // pre-compression guard
+    setPromoBannerUploading(true);
+    try {
+      const compressed = await compressImage(file, 1200, 800);
+      const safeName = `${restaurant.id}/${Date.now()}.webp`;
+      const { error } = await supabaseRef.current.storage
+        .from("promo-banners")
+        .upload(safeName, compressed, {
+          contentType: "image/webp",
+          upsert: true,
+        });
+      if (error) throw error;
+      const { data: urlData } = supabaseRef.current.storage
+        .from("promo-banners")
+        .getPublicUrl(safeName);
+      setPromoForm((prev) => ({ ...prev, image_url: urlData.publicUrl }));
+    } catch (err) {
+      console.error("Banner upload failed:", err);
+    } finally {
+      setPromoBannerUploading(false);
+    }
+  }
+
   async function updateStaffName(id: string, name: string) {
     await supabaseRef.current
       .from("restaurant_staff")
       .update({ display_name: name } as any)
       .eq("id", id);
     await fetchStaff();
+  }
+
+  async function addStaff() {
+    if (!newStaffName.trim()) return;
+    setStaffSaving(true);
+    try {
+      await supabaseRef.current.from("restaurant_staff").insert({
+        restaurant_id: restaurant.id,
+        display_name: newStaffName.trim(),
+        role: "waiter",
+        user_id: null,
+      } as any);
+      setNewStaffName("");
+      await fetchStaff();
+    } finally {
+      setStaffSaving(false);
+    }
+  }
+
+  async function deleteStaff(id: string) {
+    setStaffDeleting(id);
+    try {
+      await supabaseRef.current.from("restaurant_staff").delete().eq("id", id);
+      await fetchStaff();
+    } finally {
+      setStaffDeleting(null);
+    }
   }
 
   // Quick actions use live counts from state (not initial props)
@@ -636,6 +697,29 @@ async function saveProfile() {
         }}
       />
 
+      {/* Suspension banner */}
+      {!restaurant.is_active && (
+        <div style={{
+          background: 'rgba(239,68,68,0.1)',
+          border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: 16,
+          padding: '16px 20px',
+          margin: '16px 16px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div>
+            <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+              Restaurant Suspended
+            </p>
+            <p style={{ color: 'rgba(252,165,165,0.6)', fontSize: 12 }}>
+              This restaurant is currently suspended. Customers cannot access the menu until the outstanding balance is settled.
+            </p>
+          </div>
+        </div>
+      )}
       {/* HEADER */}
       <header className="dash-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1644,42 +1728,94 @@ async function saveProfile() {
                   ) : (
                     <div className="space-y-3">
                       {analyticsData.feedback.map((f, i) => (
-                        <div key={i} style={{
-                          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                          border: '1px solid rgba(217, 119, 6, 0.12)',
-                          borderRadius: 16,
-                          padding: '16px 18px',
-                          marginBottom: 10,
-                        }}>
+                        <div
+                          key={i}
+                          style={{
+                            backgroundColor: "rgba(0, 0, 0, 0.2)",
+                            border: "1px solid rgba(217, 119, 6, 0.12)",
+                            borderRadius: 16,
+                            padding: "16px 18px",
+                            marginBottom: 10,
+                          }}
+                        >
                           {/* Top row — name + stars */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              marginBottom: 8,
+                            }}
+                          >
                             <div>
-                              <p style={{ color: '#FDFBF7', fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
+                              <p
+                                style={{
+                                  color: "#FDFBF7",
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  marginBottom: 2,
+                                }}
+                              >
                                 {f.customer_name}
                               </p>
-                              <p style={{ color: 'rgba(253, 230, 138, 0.35)', fontSize: 11 }}>
-                                {new Date(f.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              <p
+                                style={{
+                                  color: "rgba(253, 230, 138, 0.35)",
+                                  fontSize: 11,
+                                }}
+                              >
+                                {new Date(f.created_at).toLocaleDateString(
+                                  "en-GB",
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  },
+                                )}
                               </p>
+                              {f.staff_name && (
+                                <p
+                                  style={{
+                                    color: "rgba(217, 119, 6, 0.55)",
+                                    fontSize: 11,
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  Served by {f.staff_name}
+                                </p>
+                              )}
                             </div>
-                            <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
-                              {[1, 2, 3, 4, 5].map(star => (
-                                <span key={star} style={{
-                                  fontSize: 15,
-                                  color: star <= f.rating ? '#F59E0B' : 'rgba(217, 119, 6, 0.2)',
-                                }}>★</span>
+                            <div
+                              style={{ display: "flex", gap: 2, marginTop: 2 }}
+                            >
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span
+                                  key={star}
+                                  style={{
+                                    fontSize: 15,
+                                    color:
+                                      star <= f.rating
+                                        ? "#F59E0B"
+                                        : "rgba(217, 119, 6, 0.2)",
+                                  }}
+                                >
+                                  ★
+                                </span>
                               ))}
                             </div>
                           </div>
                           {/* Review text */}
                           {f.review && (
-                            <p style={{
-                              color: 'rgba(253, 251, 247, 0.65)',
-                              fontSize: 13,
-                              lineHeight: 1.6,
-                              borderTop: '1px solid rgba(217, 119, 6, 0.08)',
-                              paddingTop: 8,
-                              marginTop: 4,
-                            }}>
+                            <p
+                              style={{
+                                color: "rgba(253, 251, 247, 0.65)",
+                                fontSize: 13,
+                                lineHeight: 1.6,
+                                borderTop: "1px solid rgba(217, 119, 6, 0.08)",
+                                paddingTop: 8,
+                                marginTop: 4,
+                              }}
+                            >
                               {f.review}
                             </p>
                           )}
@@ -1792,15 +1928,15 @@ async function saveProfile() {
                       placeholder={placeholder}
                       rows={2}
                       style={{
-                        width: '100%',
-                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        width: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.3)",
+                        border: "1px solid rgba(217, 119, 6, 0.2)",
                         borderRadius: 12,
-                        padding: '12px 16px',
-                        color: '#FDFBF7',
+                        padding: "12px 16px",
+                        color: "#FDFBF7",
                         fontSize: 14,
-                        outline: 'none',
-                        resize: 'none',
+                        outline: "none",
+                        resize: "none",
                       }}
                     />
                   ) : (
@@ -1812,14 +1948,14 @@ async function saveProfile() {
                       }
                       placeholder={placeholder}
                       style={{
-                        width: '100%',
-                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        width: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.3)",
+                        border: "1px solid rgba(217, 119, 6, 0.2)",
                         borderRadius: 12,
-                        padding: '12px 16px',
-                        color: '#FDFBF7',
+                        padding: "12px 16px",
+                        color: "#FDFBF7",
                         fontSize: 14,
-                        outline: 'none',
+                        outline: "none",
                       }}
                     />
                   )}
@@ -1849,39 +1985,84 @@ async function saveProfile() {
                 backdropFilter: "blur(10px)",
               }}
             >
-              <h3 className="text-amber-200 font-bold text-lg mb-4">
-                Staff Names
-              </h3>
+              <h3 className="text-amber-200 font-bold text-lg mb-1">Waiters</h3>
               <p className="text-amber-300/50 text-xs mb-4">
-                Staff names appear in the customer feedback selector after
-                meals.
+                Add your waiters' names. Customers select who served them in the
+                post-meal feedback form.
               </p>
-              <div className="space-y-3">
+
+              {/* Existing waiters */}
+              <div className="space-y-2 mb-4">
+                {staffList.length === 0 && (
+                  <p className="text-amber-300/30 text-xs text-center py-3">
+                    No waiters added yet
+                  </p>
+                )}
                 {staffList.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3">
+                  <div key={s.id} className="flex items-center gap-2">
                     <input
                       type="text"
                       defaultValue={s.display_name ?? ""}
-                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => updateStaffName(s.id, e.target.value)}
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
+                        updateStaffName(s.id, e.target.value)
+                      }
                       style={{
                         flex: 1,
-                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                        border: "1px solid rgba(217,119,6,0.2)",
                         borderRadius: 12,
-                        padding: '10px 14px',
-                        color: '#FDFBF7',
+                        padding: "10px 14px",
+                        color: "#FDFBF7",
                         fontSize: 14,
-                        outline: 'none',
+                        outline: "none",
                       }}
                     />
-                    <span className="text-amber-300/30 text-xs">{s.role}</span>
+                    <button
+                      type="button"
+                      onClick={() => deleteStaff(s.id)}
+                      disabled={staffDeleting === s.id}
+                      className="text-red-400/50 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded-lg disabled:opacity-30"
+                    >
+                      {staffDeleting === s.id ? "..." : "Remove"}
+                    </button>
                   </div>
                 ))}
-                {staffList.length === 0 && (
-                  <p className="text-amber-300/30 text-xs text-center py-4">
-                    No staff found
-                  </p>
-                )}
+              </div>
+
+              {/* Add new waiter */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newStaffName}
+                  onChange={(e) => setNewStaffName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addStaff();
+                  }}
+                  placeholder="Waiter name e.g. Kofi"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(0,0,0,0.3)",
+                    border: "1px solid rgba(217,119,6,0.2)",
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    color: "#FDFBF7",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addStaff}
+                  disabled={staffSaving || !newStaffName.trim()}
+                  className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
+                  style={{
+                    backgroundColor: "#D97706",
+                    color: "#022c22",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {staffSaving ? "..." : "+ Add"}
+                </button>
               </div>
             </div>
 
@@ -1903,43 +2084,111 @@ async function saveProfile() {
 
               {/* Promo form */}
               <div className="space-y-3 mb-5">
+                {/* Banner upload */}
+                <div>
+                  <label className="block text-amber-300/50 text-xs mb-2">
+                    Banner Image{" "}
+                    <span className="text-amber-300/20">(optional)</span>
+                  </label>
+                  {promoForm.image_url ? (
+                    <div
+                      className="relative rounded-xl overflow-hidden"
+                      style={{ height: "140px" }}
+                    >
+                      <img
+                        src={promoForm.image_url}
+                        alt="Promo banner preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPromoForm((prev) => ({ ...prev, image_url: "" }))
+                        }
+                        className="absolute top-2 right-2 text-xs px-3 py-1 rounded-lg font-medium"
+                        style={{
+                          backgroundColor: "rgba(0,0,0,0.7)",
+                          color: "#FDFBF7",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className="flex flex-col items-center justify-center w-full rounded-xl border border-dashed cursor-pointer transition-colors"
+                      style={{
+                        height: "80px",
+                        backgroundColor: "rgba(0,0,0,0.2)",
+                        borderColor: promoBannerUploading
+                          ? "rgba(217,119,6,0.6)"
+                          : "rgba(217,119,6,0.25)",
+                      }}
+                    >
+                      <span className="text-amber-300/40 text-xs">
+                        {promoBannerUploading
+                          ? "Uploading..."
+                          : "＋ Upload banner image"}
+                      </span>
+                      <span className="text-amber-300/20 text-xs mt-1">
+                        JPG, PNG, WEBP · max 5MB
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={promoBannerUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) await handleBannerUpload(file);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Title */}
                 <input
                   type="text"
                   value={promoForm.title}
                   onChange={(e) =>
                     setPromoForm((p) => ({ ...p, title: e.target.value }))
-                  } // No change to logic
+                  }
                   placeholder="Promo title e.g. Happy Hour 50% Off"
                   style={{
-                    width: '100%',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    border: '1px solid rgba(217, 119, 6, 0.2)',
+                    width: "100%",
+                    backgroundColor: "rgba(0,0,0,0.3)",
+                    border: "1px solid rgba(217,119,6,0.2)",
                     borderRadius: 12,
-                    padding: '12px 16px',
-                    color: '#FDFBF7',
+                    padding: "12px 16px",
+                    color: "#FDFBF7",
                     fontSize: 14,
-                    outline: 'none',
+                    outline: "none",
                   }}
                 />
+
+                {/* Description */}
                 <textarea
                   value={promoForm.description}
                   onChange={(e) =>
                     setPromoForm((p) => ({ ...p, description: e.target.value }))
-                  } // No change to logic
+                  }
                   placeholder="Promo details..."
                   rows={2}
                   style={{
-                    width: '100%',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    border: '1px solid rgba(217, 119, 6, 0.2)',
+                    width: "100%",
+                    backgroundColor: "rgba(0,0,0,0.3)",
+                    border: "1px solid rgba(217,119,6,0.2)",
                     borderRadius: 12,
-                    padding: '12px 16px',
-                    color: '#FDFBF7',
+                    padding: "12px 16px",
+                    color: "#FDFBF7",
                     fontSize: 14,
-                    outline: 'none',
-                    resize: 'none',
+                    outline: "none",
+                    resize: "none",
                   }}
                 />
+
+                {/* Date range */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-amber-300/50 text-xs mb-1">
@@ -1947,22 +2196,22 @@ async function saveProfile() {
                     </label>
                     <input
                       type="datetime-local"
-                      value={promoForm.start_date} // No change to logic
+                      value={promoForm.start_date}
                       onChange={(e) =>
                         setPromoForm((p) => ({
                           ...p,
                           start_date: e.target.value,
                         }))
-                      } // No change to logic
+                      }
                       style={{
-                        width: '100%',
-                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        width: "100%",
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                        border: "1px solid rgba(217,119,6,0.2)",
                         borderRadius: 12,
-                        padding: '12px 16px',
-                        color: '#FDFBF7',
+                        padding: "12px 16px",
+                        color: "#FDFBF7",
                         fontSize: 14,
-                        outline: 'none',
+                        outline: "none",
                       }}
                     />
                   </div>
@@ -1972,31 +2221,34 @@ async function saveProfile() {
                     </label>
                     <input
                       type="datetime-local"
-                      value={promoForm.end_date} // No change to logic
+                      value={promoForm.end_date}
                       onChange={(e) =>
                         setPromoForm((p) => ({
                           ...p,
                           end_date: e.target.value,
                         }))
-                      } // No change to logic
+                      }
                       style={{
-                        width: '100%',
-                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(217, 119, 6, 0.2)',
+                        width: "100%",
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                        border: "1px solid rgba(217,119,6,0.2)",
                         borderRadius: 12,
-                        padding: '12px 16px',
-                        color: '#FDFBF7',
+                        padding: "12px 16px",
+                        color: "#FDFBF7",
                         fontSize: 14,
-                        outline: 'none',
+                        outline: "none",
                       }}
                     />
                   </div>
                 </div>
+
+                {/* Submit */}
                 <button
                   type="button"
                   onClick={savePromo}
                   disabled={
                     promoSaving ||
+                    promoBannerUploading ||
                     !promoForm.title ||
                     !promoForm.start_date ||
                     !promoForm.end_date

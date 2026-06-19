@@ -60,7 +60,8 @@ export default function ReceiptModal({
   const supabaseRef = useRef(createClient());
 
   const subtotal = orders.reduce((s, o) => s + Number(o.total_amount), 0);
-  const sessionFee = Math.min(Math.round(subtotal * 0.01 * 100) / 100, 5);  const grandTotal = subtotal + sessionFee;
+  const sessionFee = Math.min(Math.round(subtotal * 0.01 * 100) / 100, 5);
+  const grandTotal = subtotal + sessionFee;
 
   const allItems = orders.flatMap((o) =>
     Array.isArray(o.items) ? (o.items as OrderItem[]) : [],
@@ -178,7 +179,7 @@ export default function ReceiptModal({
     setSubmittingFeedback(true);
     try {
       const { error } = await supabaseRef.current
-        .from('order_feedback')
+        .from("order_feedback")
         .insert({
           restaurant_id: restaurant.id,
           session_token: sessionToken,
@@ -187,11 +188,11 @@ export default function ReceiptModal({
           rating,
           review: review.trim() || null,
           staff_id: selectedStaff || null,
-        })
+        });
 
       if (error) {
-        console.error('[ReceiptModal] Feedback insert failed:', error)
-        return
+        console.error("[ReceiptModal] Feedback insert failed:", error);
+        return;
       }
 
       setFeedbackDone(true);
@@ -616,7 +617,7 @@ export default function ReceiptModal({
                           transition: "all 0.2s",
                         }}
                       >
-                        {s.role ? s.role : `Staff ${s.id.slice(0, 4)}`}
+                        {s.display_name ?? `Waiter ${s.id.slice(0, 4)}`}
                       </button>
                     ))}
                   </div>

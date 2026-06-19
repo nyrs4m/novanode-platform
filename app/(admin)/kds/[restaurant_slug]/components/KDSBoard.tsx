@@ -29,6 +29,7 @@ import {
   playStarterAlert,
   playBillAlert,
 } from "@/lib/sounds";
+import TimeAgo from "./TimeAgo"
 
 type Restaurant = Tables<"restaurants">;
 type Order = Tables<"orders">;
@@ -77,14 +78,6 @@ const STATUS_TEXT: Record<string, string> = {
   Ready: "#34d399",
   Served: "var(--cream-35)",
 };
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
-}
 
 function signalIcon(type: string) {
   switch (type) {
@@ -249,10 +242,12 @@ export default function KDSBoard({
   const [ledger, setLedger] = useState<LedgerRow | null>(null);
   const [payingLedger, setPayingLedger] = useState(false);
   const [closingTable, setClosingTable] = useState<string | null>(null);
-  const [unpaidLedgers, setUnpaidLedgers] = useState<{
-    ledger_date: string;
-    total_owed: number;
-  }[]>([]);
+  const [unpaidLedgers, setUnpaidLedgers] = useState<
+    {
+      ledger_date: string;
+      total_owed: number;
+    }[]
+  >([]);
 
   const [activeTab, setActiveTab] = useState<KDSTab>("orders");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -285,16 +280,18 @@ export default function KDSBoard({
 
       if (diffMins <= 0) {
         // Only show overdue if there's an unpaid balance
-        const hasOutstanding = (ledger && Number(ledger.total_owed ?? 0) > 0) || unpaidLedgers.length > 0;
+        const hasOutstanding =
+          (ledger && Number(ledger.total_owed ?? 0) > 0) ||
+          unpaidLedgers.length > 0;
         if (hasOutstanding) {
-          setClosingWarning('overdue');
+          setClosingWarning("overdue");
           supabaseRef.current
-            .from('restaurants')
+            .from("restaurants")
             .update({ payment_overdue: true } as any)
-            .eq('id', restaurant.id)
-            .then(() => {})
+            .eq("id", restaurant.id)
+            .then(() => {});
         } else {
-          setClosingWarning(null)
+          setClosingWarning(null);
         }
       } else if (diffMins <= 30) {
         setClosingWarning("approaching");
@@ -446,25 +443,6 @@ export default function KDSBoard({
     setClosingTable(null);
   }
 
-  // ── TimeAgo: client-only to avoid hydration mismatch ──────────────────
-  function TimeAgo({ date }: { date: string }) {
-    const [display, setDisplay] = useState(() => {
-      const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
-      return diff < 1 ? 'just now' : `${diff}m ago`
-    })
-
-    useEffect(() => {
-      const update = () => {
-        const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
-        setDisplay(diff < 1 ? 'just now' : `${diff}m ago`)
-      }
-      const interval = setInterval(update, 60000)
-      return () => clearInterval(interval)
-    }, [date])
-
-    return <span>{display}</span>
-  }
-
   // ── Realtime channel ───────────────────────────────────────────────────
   useEffect(() => {
     // Fetch today's ledger
@@ -604,7 +582,9 @@ export default function KDSBoard({
           console.log("[KDS] Realtime channel connected");
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("[KDS] Realtime channel error — will retry on next event");
+          console.warn(
+            "[KDS] Realtime channel error — will retry on next event",
+          );
         }
       });
     // ── CRITICAL: clean up channel on unmount ──
@@ -670,6 +650,86 @@ export default function KDSBoard({
         }}
       />
 
+     {/* Suspension overlay */}
+{!restaurant.is_active && (
+  <div style={{
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    background: 'rgba(2,20,12,0.97)',
+    backdropFilter: 'blur(12px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'Inter, sans-serif',
+    padding: 24,
+  }}>
+    <div style={{ textAlign: 'center', maxWidth: 420 }}>
+      <p style={{ fontSize: 48, marginBottom: 16 }}>🔒</p>
+      <h1 style={{ color: '#FDFBF7', fontWeight: 900, fontSize: 24, marginBottom: 8 }}>
+        {restaurant.name}
+      </h1>
+      <p style={{ color: 'rgba(253,251,247,0.5)', fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+        This restaurant has been suspended. Settle all outstanding balance to restore service.
+      </p>
+      {unpaidLedgers.length > 0 && (
+        <>
+          <p style={{ color: '#fca5a5', fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+            {restaurant.currency} {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+          </p>
+          <p style={{ color: 'rgba(252,165,165,0.4)', fontSize: 12, marginBottom: 24 }}>
+            Outstanding from {unpaidLedgers.length} previous {unpaidLedgers.length === 1 ? 'day' : 'days'}
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              const totalOutstanding = unpaidLedgers.reduce((s, l) => s + l.total_owed, 0)
+              const amountKobo = Math.round(totalOutstanding * 100)
+              try {
+                const res = await fetch('/api/paystack/initialize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    restaurant_id: restaurant.id,
+                    ledger_date: unpaidLedgers[0].ledger_date,
+                    amount_kobo: amountKobo,
+                    email: 'settlement@novanode.app',
+                    settle_all_unpaid: true,
+                  }),
+                })
+                const data = await res.json()
+                if (data.authorization_url) {
+                  window.location.href = data.authorization_url
+                }
+              } catch (e) {
+                console.error('Settlement init failed:', e)
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '16px 20px',
+              borderRadius: 14,
+              fontWeight: 700,
+              fontSize: 15,
+              backgroundColor: 'rgba(239,68,68,0.15)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239,68,68,0.35)',
+              cursor: 'pointer',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Settle Outstanding — {restaurant.currency} {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+          </button>
+        </>
+      )}
+      {unpaidLedgers.length === 0 && (
+        <p style={{ color: 'rgba(253,251,247,0.3)', fontSize: 12 }}>
+          Contact NovaNode support to restore access.
+        </p>
+      )}
+    </div>
+  </div>
+)}
       {/* HEADER */}
       <header
         className="dash-header"
@@ -1758,35 +1818,95 @@ export default function KDSBoard({
             </div>
 
             {unpaidLedgers.length > 0 && (
-              <div style={{
-                background: 'rgba(2, 44, 34, 0.95)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 20,
-                marginBottom: 12,
-                overflow: 'hidden',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
-              }}>
+              <div
+                style={{
+                  background: "rgba(2, 44, 34, 0.95)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 20,
+                  marginBottom: 12,
+                  overflow: "hidden",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+                }}
+              >
                 {/* Header */}
-                <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(239, 68, 68, 0.15)' }}>
-                  <p style={{ color: 'rgba(252, 165, 165, 0.7)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8 }}>
+                <div
+                  style={{
+                    padding: "20px 20px 16px",
+                    borderBottom: "1px solid rgba(239, 68, 68, 0.15)",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "rgba(252, 165, 165, 0.7)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      marginBottom: 8,
+                    }}
+                  >
                     OUTSTANDING BALANCE
                   </p>
-                  <p style={{ color: '#fca5a5', fontSize: 30, fontWeight: 800, lineHeight: 1.1, marginBottom: 4 }}>
-                    GHS {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+                  <p
+                    style={{
+                      color: "#fca5a5",
+                      fontSize: 30,
+                      fontWeight: 800,
+                      lineHeight: 1.1,
+                      marginBottom: 4,
+                    }}
+                  >
+                    GHS{" "}
+                    {unpaidLedgers
+                      .reduce((s, l) => s + l.total_owed, 0)
+                      .toFixed(2)}
                   </p>
-                  <p style={{ color: 'rgba(252, 165, 165, 0.4)', fontSize: 12 }}>
-                    Unpaid from {unpaidLedgers.length} previous {unpaidLedgers.length === 1 ? 'day' : 'days'}
+                  <p
+                    style={{ color: "rgba(252, 165, 165, 0.4)", fontSize: 12 }}
+                  >
+                    Unpaid from {unpaidLedgers.length} previous{" "}
+                    {unpaidLedgers.length === 1 ? "day" : "days"}
                   </p>
                 </div>
 
                 {/* Day breakdown */}
-                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {unpaidLedgers.map(l => (
-                    <div key={l.ledger_date} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: 'rgba(253, 230, 138, 0.6)', fontSize: 13 }}>
-                        {new Date(l.ledger_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                <div
+                  style={{
+                    padding: "16px 20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  {unpaidLedgers.map((l) => (
+                    <div
+                      key={l.ledger_date}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "rgba(253, 230, 138, 0.6)",
+                          fontSize: 13,
+                        }}
+                      >
+                        {new Date(
+                          l.ledger_date + "T12:00:00",
+                        ).toLocaleDateString("en-GB", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
                       </span>
-                      <span style={{ color: '#fde68a', fontSize: 13, fontWeight: 700 }}>
+                      <span
+                        style={{
+                          color: "#fde68a",
+                          fontSize: 13,
+                          fontWeight: 700,
+                        }}
+                      >
                         GHS {l.total_owed.toFixed(2)}
                       </span>
                     </div>
@@ -1794,47 +1914,55 @@ export default function KDSBoard({
                 </div>
 
                 {/* Settle button */}
-                <div style={{ padding: '0 20px 20px' }}>
+                <div style={{ padding: "0 20px 20px" }}>
                   <button
                     type="button"
                     onClick={async () => {
-                      const totalOutstanding = unpaidLedgers.reduce((s, l) => s + l.total_owed, 0)
-                      const amountKobo = Math.round(totalOutstanding * 100)
+                      const totalOutstanding = unpaidLedgers.reduce(
+                        (s, l) => s + l.total_owed,
+                        0,
+                      );
+                      const amountKobo = Math.round(totalOutstanding * 100);
                       try {
-                        const res = await fetch('/api/paystack/initialize', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
+                        const res = await fetch("/api/paystack/initialize", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             restaurant_id: restaurant.id,
                             ledger_date: unpaidLedgers[0].ledger_date,
                             amount_kobo: amountKobo,
-                            email: 'settlement@novanode.app',
+                            email: "settlement@novanode.app",
                             settle_all_unpaid: true,
-                            unpaid_dates: unpaidLedgers.map(l => l.ledger_date),
+                            unpaid_dates: unpaidLedgers.map(
+                              (l) => l.ledger_date,
+                            ),
                           }),
-                        })
-                        const data = await res.json()
+                        });
+                        const data = await res.json();
                         if (data.authorization_url) {
-                          window.location.href = data.authorization_url
+                          window.location.href = data.authorization_url;
                         }
                       } catch (e) {
-                        console.error('Settlement init failed:', e)
+                        console.error("Settlement init failed:", e);
                       }
                     }}
                     style={{
-                      width: '100%',
-                      padding: '14px 20px',
+                      width: "100%",
+                      padding: "14px 20px",
                       borderRadius: 14,
                       fontWeight: 700,
                       fontSize: 14,
-                      backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                      color: '#fca5a5',
-                      border: '1px solid rgba(239, 68, 68, 0.35)',
-                      cursor: 'pointer',
-                      letterSpacing: '0.02em',
+                      backgroundColor: "rgba(239, 68, 68, 0.15)",
+                      color: "#fca5a5",
+                      border: "1px solid rgba(239, 68, 68, 0.35)",
+                      cursor: "pointer",
+                      letterSpacing: "0.02em",
                     }}
                   >
-                    Settle Outstanding — GHS {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
+                    Settle Outstanding — GHS{" "}
+                    {unpaidLedgers
+                      .reduce((s, l) => s + l.total_owed, 0)
+                      .toFixed(2)}
                   </button>
                 </div>
               </div>

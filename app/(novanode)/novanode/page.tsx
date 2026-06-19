@@ -27,7 +27,7 @@ export default async function NovaNodeAdminPage() {
   }
 
   // Fetch all restaurants
-  const { data: restaurants } = await supabase
+  const { data: restaurants } = await serviceClient
     .from("restaurants")
     .select("*")
     .order("owing_funds", { ascending: false })
@@ -35,7 +35,7 @@ export default async function NovaNodeAdminPage() {
 
   // Fetch today's ledger for all restaurants
   const today = new Date().toISOString().split("T")[0];
-  const { data: ledgers } = await supabase
+  const { data: ledgers } = await serviceClient
     .from("daily_ledger")
     .select("*")
     .eq("ledger_date", today);

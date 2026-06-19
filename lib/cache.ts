@@ -7,7 +7,7 @@ export const getRestaurantBySlug = unstable_cache(
   async (slug: string) => {
     const { data } = await supabase
       .from('restaurants').select('*')
-      .eq('slug', slug).eq('is_active', true).single()
+      .eq('slug', slug).single()
     return data
   },
   ['restaurant-by-slug'],

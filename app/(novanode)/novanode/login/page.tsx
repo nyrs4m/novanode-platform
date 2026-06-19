@@ -64,53 +64,58 @@ function NovaNodeLoginInner() {
           <p className="t-eyebrow">Super Admin Access</p>
         </div>
         <div className="divider" style={{ marginBottom: 28 }} />
-        <div style={{ marginBottom: 14 }}>
-          <label className="nn-label">Email</label>
-          <input
-            type="email"
-            className="nn-input"
-            placeholder="admin@novanode.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label className="nn-label">Password</label>
-          <input
-            type="password"
-            className="nn-input"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError("");
-            }}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-          />
-        </div>
-        {error && (
-          <p className="nn-error" style={{ marginBottom: 14 }}>
-            {error}
-          </p>
-        )}
-        <button
-          className="btn-primary"
-          onClick={handleLogin}
-          disabled={loading}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin();
+          }}
         >
-          {loading ? (
-            <>
-              <Loader2 size={16} className="animate-spin" /> Verifying...
-            </>
-          ) : (
-            <>
-              Access Panel <ChevronRight size={16} />
-            </>
+          <div style={{ marginBottom: 14 }}>
+            <label className="nn-label">Email</label>
+            <input
+              type="email"
+              className="nn-input"
+              placeholder="admin@novanode.com"
+              value={email}
+              onChange={(e) => {
+                // It's generally good practice to use autocomplete="email" or "username" for email fields.
+                setEmail(e.target.value);
+                setError("");
+              }}
+            />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label className="nn-label">Password</label>
+            <input
+              type="password" // Corrected: autocomplete to autoComplete
+              autoComplete="current-password"
+              className="nn-input"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            />
+          </div>
+          {error && (
+            <p className="nn-error" style={{ marginBottom: 14 }}>
+              {error}
+            </p>
           )}
-        </button>
+          <button className="btn-primary" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Verifying...
+              </>
+            ) : (
+              <>
+                Access Panel <ChevronRight size={16} />
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );

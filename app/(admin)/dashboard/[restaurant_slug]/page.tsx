@@ -50,7 +50,7 @@ export default async function DashboardPage({ params }: PageProps) {
     .limit(1);
 
   const staff = staffRows?.[0] ?? null;
-
+  console.log('[dashboard] restaurant:', restaurant?.name, 'is_active:', restaurant?.is_active, 'staff:', staff)
   if (!staff) {
     return notFound();
   }
