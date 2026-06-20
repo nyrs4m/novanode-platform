@@ -29,7 +29,7 @@ import {
   playStarterAlert,
   playBillAlert,
 } from "@/lib/sounds";
-import TimeAgo from "./TimeAgo"
+import TimeAgo from "./TimeAgo";
 
 type Restaurant = Tables<"restaurants">;
 type Order = Tables<"orders">;
@@ -245,7 +245,7 @@ export default function KDSBoard({
   const [unpaidLedgers, setUnpaidLedgers] = useState<
     {
       ledger_date: string;
-      total_owed: number;
+      total_owed: number | null;
     }[]
   >([]);
 
@@ -389,7 +389,12 @@ export default function KDSBoard({
       .lt("ledger_date", today)
       .gt("total_owed", 0)
       .order("ledger_date", { ascending: false });
-    setUnpaidLedgers(unpaid ?? []);
+    setUnpaidLedgers(
+      (unpaid ?? []).map((l) => ({
+        ...l,
+        total_owed: l.total_owed ?? 0,
+      })),
+    );
   }
 
   async function closeTable(sessionId: string) {
@@ -650,86 +655,126 @@ export default function KDSBoard({
         }}
       />
 
-     {/* Suspension overlay */}
-{!restaurant.is_active && (
-  <div style={{
-    position: 'fixed',
-    inset: 0,
-    zIndex: 9999,
-    background: 'rgba(2,20,12,0.97)',
-    backdropFilter: 'blur(12px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif',
-    padding: 24,
-  }}>
-    <div style={{ textAlign: 'center', maxWidth: 420 }}>
-      <p style={{ fontSize: 48, marginBottom: 16 }}>🔒</p>
-      <h1 style={{ color: '#FDFBF7', fontWeight: 900, fontSize: 24, marginBottom: 8 }}>
-        {restaurant.name}
-      </h1>
-      <p style={{ color: 'rgba(253,251,247,0.5)', fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-        This restaurant has been suspended. Settle all outstanding balance to restore service.
-      </p>
-      {unpaidLedgers.length > 0 && (
-        <>
-          <p style={{ color: '#fca5a5', fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-            {restaurant.currency} {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
-          </p>
-          <p style={{ color: 'rgba(252,165,165,0.4)', fontSize: 12, marginBottom: 24 }}>
-            Outstanding from {unpaidLedgers.length} previous {unpaidLedgers.length === 1 ? 'day' : 'days'}
-          </p>
-          <button
-            type="button"
-            onClick={async () => {
-              const totalOutstanding = unpaidLedgers.reduce((s, l) => s + l.total_owed, 0)
-              const amountKobo = Math.round(totalOutstanding * 100)
-              try {
-                const res = await fetch('/api/paystack/initialize', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    restaurant_id: restaurant.id,
-                    ledger_date: unpaidLedgers[0].ledger_date,
-                    amount_kobo: amountKobo,
-                    email: 'settlement@novanode.app',
-                    settle_all_unpaid: true,
-                  }),
-                })
-                const data = await res.json()
-                if (data.authorization_url) {
-                  window.location.href = data.authorization_url
-                }
-              } catch (e) {
-                console.error('Settlement init failed:', e)
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '16px 20px',
-              borderRadius: 14,
-              fontWeight: 700,
-              fontSize: 15,
-              backgroundColor: 'rgba(239,68,68,0.15)',
-              color: '#fca5a5',
-              border: '1px solid rgba(239,68,68,0.35)',
-              cursor: 'pointer',
-              letterSpacing: '0.02em',
-            }}
-          >
-            Settle Outstanding — {restaurant.currency} {unpaidLedgers.reduce((s, l) => s + l.total_owed, 0).toFixed(2)}
-          </button>
-        </>
+      {/* Suspension overlay */}
+      {!restaurant.is_active && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(2,20,12,0.97)",
+            backdropFilter: "blur(12px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "Inter, sans-serif",
+            padding: 24,
+          }}
+        >
+          <div style={{ textAlign: "center", maxWidth: 420 }}>
+            <p style={{ fontSize: 48, marginBottom: 16 }}>🔒</p>
+            <h1
+              style={{
+                color: "#FDFBF7",
+                fontWeight: 900,
+                fontSize: 24,
+                marginBottom: 8,
+              }}
+            >
+              {restaurant.name}
+            </h1>
+            <p
+              style={{
+                color: "rgba(253,251,247,0.5)",
+                fontSize: 13,
+                lineHeight: 1.6,
+                marginBottom: 24,
+              }}
+            >
+              This restaurant has been suspended. Settle all outstanding balance
+              to restore service.
+            </p>
+            {unpaidLedgers.length > 0 && (
+              <>
+                <p
+                  style={{
+                    color: "#fca5a5",
+                    fontSize: 28,
+                    fontWeight: 800,
+                    marginBottom: 4,
+                  }}
+                >
+                  {restaurant.currency}{" "}
+                  {unpaidLedgers
+                    .reduce((s, l) => s + Number(l.total_owed ?? 0), 0)
+                    .toFixed(2)}
+                </p>
+                <p
+                  style={{
+                    color: "rgba(252,165,165,0.4)",
+                    fontSize: 12,
+                    marginBottom: 24,
+                  }}
+                >
+                  Outstanding from {unpaidLedgers.length} previous{" "}
+                  {unpaidLedgers.length === 1 ? "day" : "days"}
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const totalOutstanding = unpaidLedgers.reduce(
+                      (s, l) => s + Number(l.total_owed),
+                      0,
+                    );
+                    const amountKobo = Math.round(totalOutstanding * 100);
+                    try {
+                      const res = await fetch("/api/paystack/initialize", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          restaurant_id: restaurant.id,
+                          ledger_date: unpaidLedgers[0].ledger_date,
+                          amount_kobo: amountKobo,
+                          email: "settlement@novanode.app",
+                          settle_all_unpaid: true,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.authorization_url) {
+                        window.location.href = data.authorization_url;
+                      }
+                    } catch (e) {
+                      console.error("Settlement init failed:", e);
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "16px 20px",
+                    borderRadius: 14,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    backgroundColor: "rgba(239,68,68,0.15)",
+                    color: "#fca5a5",
+                    border: "1px solid rgba(239,68,68,0.35)",
+                    cursor: "pointer",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Settle Outstanding — {restaurant.currency}{" "}
+                  {unpaidLedgers
+                    .reduce((s, l) => s + Number(l.total_owed), 0)
+                    .toFixed(2)}
+                </button>
+              </>
+            )}
+            {unpaidLedgers.length === 0 && (
+              <p style={{ color: "rgba(253,251,247,0.3)", fontSize: 12 }}>
+                Contact NovaNode support to restore access.
+              </p>
+            )}
+          </div>
+        </div>
       )}
-      {unpaidLedgers.length === 0 && (
-        <p style={{ color: 'rgba(253,251,247,0.3)', fontSize: 12 }}>
-          Contact NovaNode support to restore access.
-        </p>
-      )}
-    </div>
-  </div>
-)}
       {/* HEADER */}
       <header
         className="dash-header"
@@ -1857,7 +1902,7 @@ export default function KDSBoard({
                   >
                     GHS{" "}
                     {unpaidLedgers
-                      .reduce((s, l) => s + l.total_owed, 0)
+                      .reduce((s, l) => s + Number(l.total_owed), 0)
                       .toFixed(2)}
                   </p>
                   <p
@@ -1907,8 +1952,7 @@ export default function KDSBoard({
                           fontWeight: 700,
                         }}
                       >
-                        GHS {l.total_owed.toFixed(2)}
-                      </span>
+                       GHS {Number(l.total_owed).toFixed(2)}                      </span>
                     </div>
                   ))}
                 </div>
@@ -1919,7 +1963,7 @@ export default function KDSBoard({
                     type="button"
                     onClick={async () => {
                       const totalOutstanding = unpaidLedgers.reduce(
-                        (s, l) => s + l.total_owed,
+                        (s, l) => s + Number(l.total_owed),
                         0,
                       );
                       const amountKobo = Math.round(totalOutstanding * 100);
@@ -1961,7 +2005,7 @@ export default function KDSBoard({
                   >
                     Settle Outstanding — GHS{" "}
                     {unpaidLedgers
-                      .reduce((s, l) => s + l.total_owed, 0)
+                      .reduce((s, l) => s + Number(l.total_owed), 0)
                       .toFixed(2)}
                   </button>
                 </div>

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   const tokens = sessions?.map((s) => s.session_token) ?? [];
 
   // Fetch orders for those sessions
-  let orders: { total_amount: number; created_at: string }[] = [];
+  let orders: { total_amount: number; created_at: string | null }[] = [];
   if (tokens.length > 0) {
     const { data } = await supabase
       .from("orders")
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   }
 
   orders.forEach((o) => {
-    const key = o.created_at.split("T")[0];
+    const key = (o.created_at ?? "").split("T")[0];
     if (dayMap[key]) {
       dayMap[key].revenue += o.total_amount ?? 0;
       dayMap[key].orders += 1;
@@ -78,7 +78,11 @@ export async function GET(req: NextRequest) {
 
   // Resolve staff names
   const staffIds = [
-    ...new Set((feedback ?? []).map((f) => f.staff_id).filter(Boolean)),
+    ...new Set(
+      (feedback ?? [])
+        .map((f) => f.staff_id)
+        .filter((id): id is string => !!id),
+    ),
   ];
   const staffMap: Record<string, string> = {};
   if (staffIds.length > 0) {

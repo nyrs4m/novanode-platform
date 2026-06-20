@@ -50,9 +50,9 @@ export default function SuperAdminPanel({
   const [ledgers, setLedgers] = useState<DailyLedger[]>(initialLedgers);
   const [unpaidLedgers, setUnpaidLedgers] = useState<
     {
-      restaurant_id: string;
+      restaurant_id: string | null;
       ledger_date: string;
-      total_owed: number;
+      total_owed: number | null;
     }[]
   >([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -144,9 +144,9 @@ export default function SuperAdminPanel({
     setUpdatingId(restaurant.id);
     const newActive = !restaurant.is_active;
     try {
-      const res = await fetch('/api/admin/update-restaurant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/update-restaurant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           restaurant_id: restaurant.id,
           updates: {
@@ -161,12 +161,12 @@ export default function SuperAdminPanel({
       if (data.success) {
         setRestaurantList((prev) =>
           prev.map((r) =>
-            r.id === restaurant.id ? { ...r, is_active: newActive } : r
-          )
+            r.id === restaurant.id ? { ...r, is_active: newActive } : r,
+          ),
         );
       }
     } catch (err) {
-      console.error('toggleSuspend failed:', err);
+      console.error("toggleSuspend failed:", err);
     } finally {
       setUpdatingId(null);
     }
@@ -855,7 +855,7 @@ export default function SuperAdminPanel({
                   >
                     GHS{" "}
                     {unpaidLedgers
-                      .reduce((s, l) => s + l.total_owed, 0)
+                      .reduce((s, l) => s + Number(l.total_owed), 0)
                       .toFixed(2)}
                   </p>
                   <p
@@ -922,7 +922,7 @@ export default function SuperAdminPanel({
                             fontWeight: 700,
                           }}
                         >
-                          GHS {l.total_owed.toFixed(2)}
+                          GHS {Number(l.total_owed).toFixed(2)}
                         </p>
                       </div>
                     );

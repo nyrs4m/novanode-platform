@@ -31,7 +31,7 @@ interface OrderTrackerProps {
   tableNumber: string;
 }
 
-interface TrackedOrder extends Order {
+interface TrackedOrder extends Omit<Order, 'estimated_minutes' | 'preparation_started_at'> {
   estimated_minutes?: number | null;
   preparation_started_at?: string | null;
 }
