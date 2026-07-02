@@ -5,7 +5,7 @@ export async function translateToFrench(
   descriptionEn: string,
 ): Promise<{ nameFr: string; descriptionFr: string }> {
   if (translateInProgress) {
-    console.warn("[translate] Already in progress, skipping duplicate call");
+    console.warn("[translate] Duplicate request skipped");
     return { nameFr: "", descriptionFr: "" };
   }
 
@@ -14,18 +14,18 @@ export async function translateToFrench(
   try {
     const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!geminiApiKey) {
-      console.error(
-        "[translate] NEXT_PUBLIC_GEMINI_API_KEY is not set. Please ensure it's configured correctly.",
-      );
+      console.error("[translate] Gemini API key is not configured");
       return { nameFr: "", descriptionFr: "" };
     }
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-    console.log("[translate] Attempting to fetch from:", apiUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         contents: [
           {
@@ -43,10 +43,12 @@ export async function translateToFrench(
       }),
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       const errorBody = await response.text();
       console.error(
-        `[translate] API request failed with status ${response.status}: ${errorBody}`,
+        `[translate] API request failed with status ${response.status}`,
       );
       return { nameFr: "", descriptionFr: "" };
     }
@@ -62,14 +64,15 @@ export async function translateToFrench(
         descriptionFr: parsed.descriptionFr ?? "",
       };
     } catch {
-      console.error(
-        "[translate] Failed to parse JSON response. Raw response:",
-        clean,
-      );
+      console.error("[translate] Failed to parse the API response");
       return { nameFr: "", descriptionFr: "" };
     }
   } catch (e) {
-    console.error("[translate] Failed:", e);
+    if (e instanceof Error && e.name === "AbortError") {
+      console.warn("[translate] Translation request timed out");
+    } else {
+      console.error("[translate] Translation request failed", e);
+    }
     return { nameFr: "", descriptionFr: "" };
   } finally {
     translateInProgress = false;

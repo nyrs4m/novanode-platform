@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
-import { getRestaurantChannel, releaseRestaurantChannel } from '@/lib/realtime-engine';
 import {
   Clock,
   CheckCircle,
@@ -31,7 +30,10 @@ interface OrderTrackerProps {
   tableNumber: string;
 }
 
-interface TrackedOrder extends Omit<Order, 'estimated_minutes' | 'preparation_started_at'> {
+interface TrackedOrder extends Omit<
+  Order,
+  "estimated_minutes" | "preparation_started_at"
+> {
   estimated_minutes?: number | null;
   preparation_started_at?: string | null;
 }
@@ -90,6 +92,7 @@ export default function OrderTracker({
   tableNumber,
 }: OrderTrackerProps) {
   const [orders, setOrders] = useState<TrackedOrder[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   const [expiredOrders, setExpiredOrders] = useState<Set<string>>(new Set());
@@ -103,6 +106,7 @@ export default function OrderTracker({
 
   // ── Fetch orders for this session ──────────────────────────────────────
   const fetchOrders = useCallback(async () => {
+    if (!sessionToken) return;
     const { data } = await supabase
       .from("orders")
       .select("*")
@@ -110,8 +114,11 @@ export default function OrderTracker({
       .order("created_at", { ascending: false });
 
     if (data) {
-      setOrders(data as TrackedOrder[]);
-      data.forEach((o) => {
+      const sessionOrders = (data as TrackedOrder[]).filter(
+        (order) => order.session_token === sessionToken,
+      );
+      setOrders(sessionOrders);
+      sessionOrders.forEach((o) => {
         prevStatusRef.current[o.id] = o.status ?? "";
       });
     }
@@ -122,46 +129,119 @@ export default function OrderTracker({
   }, [fetchOrders]);
 
   useEffect(() => {
-    if (!sessionToken || !restaurant?.id) return;
+    if (!sessionToken || !restaurant?.id) {
+      setSessionId(null);
+      return;
+    }
+
+    let isActive = true;
+    void supabaseRef.current
+      .from("table_sessions")
+      .select("id")
+      .eq("session_token", sessionToken)
+      .eq("restaurant_id", restaurant.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!isActive) return;
+        setSessionId(data?.id ?? null);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [sessionToken, restaurant?.id]);
+
+  useEffect(() => {
+    if (!sessionId) return;
 
     const supabase = supabaseRef.current;
-    const channel = getRestaurantChannel(restaurant.id, supabase, 'customer');
+    const channelName = `session-tracker-${sessionId}`;
 
-    channel
+    const channel = supabase
+      .channel(channelName)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        (payload) => {
+          const inserted = payload.new as TrackedOrder;
+          if (inserted.session_token !== sessionToken) return;
+          setOrders((prev) => {
+            const exists = prev.find((o) => o.id === inserted.id);
+            if (exists) return prev;
+            return [inserted, ...prev];
+          });
+          prevStatusRef.current[inserted.id] = inserted.status ?? "";
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
           filter: `session_token=eq.${sessionToken}`,
         },
         (payload) => {
           const updated = payload.new as TrackedOrder;
+          if (updated.session_token !== sessionToken) return;
           setOrders((prev) => {
             const exists = prev.find((o) => o.id === updated.id);
-            if (exists) return prev.map((o) => (o.id === updated.id ? updated : o));
+            if (exists)
+              return prev.map((o) => (o.id === updated.id ? updated : o));
             return [updated, ...prev];
           });
           const prevStatus = prevStatusRef.current[updated.id];
           if (prevStatus !== updated.status) {
-            if (updated.status === 'Ready') playOrderReady();
-            prevStatusRef.current[updated.id] = updated.status ?? '';
+            if (updated.status === "Ready") playOrderReady();
+            prevStatusRef.current[updated.id] = updated.status ?? "";
           }
         }
-      );
-    // NOTE: Do NOT call .subscribe() here — MenuClient already subscribed this channel
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "orders",
+          filter: `session_token=eq.${sessionToken}`,
+        },
+        (payload) => {
+          const deleted = payload.old as { id: string; session_token?: string | null };
+          if (deleted.session_token && deleted.session_token !== sessionToken) return;
+          setOrders((prev) => prev.filter((order) => order.id !== deleted.id));
+          delete prevStatusRef.current[deleted.id];
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "table_sessions",
+          filter: `id=eq.${sessionId}`,
+        },
+        () => {
+          // keep existing handler logic exactly as-is
+        }
+      )
+      .subscribe();
 
     return () => {
-      releaseRestaurantChannel(restaurant.id, supabase, 'customer');
+      supabase.removeChannel(channel);
     };
-  }, [sessionToken, restaurant?.id]);
+  }, [sessionId, sessionToken]);
 
   // ── Countdown timer (1s tick) ──────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdowns((prev) => {
         const next = { ...prev };
+        let changed = false;
         orders.forEach((order) => {
           if (
             order.status === "Preparing" &&
@@ -169,22 +249,27 @@ export default function OrderTracker({
             order.preparation_started_at
           ) {
             const elapsed =
-              (Date.now() -
-                new Date(order.preparation_started_at).getTime()) /
+              (Date.now() - new Date(order.preparation_started_at).getTime()) /
               1000;
             const remaining = Math.max(
               0,
-              order.estimated_minutes * 60 - elapsed
+              order.estimated_minutes * 60 - elapsed,
             );
-            next[order.id] = remaining;
+            if (next[order.id] !== remaining) {
+              next[order.id] = remaining;
+              changed = true;
+            }
 
             if (remaining === 0 && !expiredOrders.has(order.id)) {
-              setExpiredOrders((p) => new Set([...p, order.id]));
+              setExpiredOrders((p) => {
+                if (p.has(order.id)) return p;
+                return new Set([...p, order.id]);
+              });
               playCountdownBell();
             }
           }
         });
-        return next;
+        return changed ? next : prev;
       });
     }, 1000);
 
@@ -266,8 +351,7 @@ export default function OrderTracker({
               Your Orders
             </p>
             <p className="t-eyebrow" style={{ fontSize: 9, marginTop: 2 }}>
-              {activeOrders.length} active ·{" "}
-              {restaurant.currency}{" "}
+              {activeOrders.length} active · {restaurant.currency}{" "}
               {orders
                 .filter((o) => o.status !== "Cancelled")
                 .reduce((s, o) => s + Number(o.total_amount), 0)
@@ -517,9 +601,7 @@ export default function OrderTracker({
                         : "3px solid #92400e",
                       borderRadius: 12,
                       cursor: bellUsed ? "not-allowed" : "pointer",
-                      color: bellUsed
-                        ? "var(--cream-35)"
-                        : "var(--gold-glow)",
+                      color: bellUsed ? "var(--cream-35)" : "var(--gold-glow)",
                       fontSize: 13,
                       fontWeight: 800,
                       fontFamily: "Inter, sans-serif",
@@ -537,6 +619,7 @@ export default function OrderTracker({
                         ? "Call Waiter to Serve"
                         : "Notify Kitchen"}
                   </button>
+
                 )}
               </div>
             );

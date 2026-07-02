@@ -22,19 +22,35 @@ import {
   LogOut,
   QrCode,
   UtensilsCrossed,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import QRGenerator from "./QRGenerator";
 import { uploadMenuImage, compressImage } from "@/lib/compress-image";
-import type {
-  Tables,
-  RestaurantStats,
-  MenuItemStats,
-  PeakHourStats,
-} from "@/types/database.types";
+import type { Tables } from "@/types/database.types";
 
 type Restaurant = Tables<"restaurants">;
 type Order = Tables<"orders">;
+
+type RestaurantStats = {
+  gross_revenue?: number | null;
+  total_orders?: number | null;
+  tables_served?: number | null;
+  total_platform_fees?: number | null;
+};
+
+type MenuItemStats = {
+  item_id?: string | null;
+  item_name?: string | null;
+  total_quantity?: number | null;
+  total_revenue?: number | null;
+};
+
+type PeakHourStats = {
+  hour_of_day?: number | null;
+  order_count?: number | null;
+};
 
 interface Props {
   restaurant: Restaurant;
@@ -54,8 +70,9 @@ interface Props {
 type Tab = "overview" | "stats" | "menu" | "analytics" | "profile";
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "Cancelled") return <XCircle size={14} color="#f87171" />;
-  return <CheckCircle size={14} color="#34d399" />;
+  if (status === "Cancelled")
+    return <XCircle size={14} color="var(--theme-danger)" />;
+  return <CheckCircle size={14} color="var(--theme-success)" />;
 }
 
 function StatusLabel({ status }: { status: string }) {
@@ -67,12 +84,27 @@ function StatusLabel({ status }: { status: string }) {
 }
 
 type LedgerRow = {
-  total_owed: number;
-  completed_sessions: number;
-  is_paid: boolean;
-  session_fees_collected?: number;
-  platform_fees_owed?: number;
-  platform_fees_paid?: number;
+  total_owed: number | null;
+  completed_sessions: number | null;
+  is_paid: boolean | null;
+  session_fees_collected?: number | null;
+  platform_fees_owed?: number | null;
+  platform_fees_paid?: number | null;
+};
+
+type PromoRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  is_active: boolean | null;
+};
+
+type StaffRow = {
+  id: string;
+  display_name: string | null;
+  role: string | null;
 };
 
 export default function DashboardHome({
@@ -135,16 +167,7 @@ export default function DashboardHome({
   const [profileSaved, setProfileSaved] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoUrl, setLogoUrl] = useState(restaurant.logo_url ?? "");
-  const [promos, setPromos] = useState<
-    {
-      id: string;
-      title: string;
-      description: string;
-      start_date: string;
-      end_date: string;
-      is_active: boolean;
-    }[]
-  >([]);
+  const [promos, setPromos] = useState<PromoRow[]>([]);
   const [promoForm, setPromoForm] = useState({
     title: "",
     description: "",
@@ -154,16 +177,15 @@ export default function DashboardHome({
   });
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoBannerUploading, setPromoBannerUploading] = useState(false);
-  const [staffList, setStaffList] = useState<
-    {
-      id: string;
-      display_name: string;
-      role: string;
-    }[]
-  >([]);
+  const [staffList, setStaffList] = useState<StaffRow[]>([]);
   const [newStaffName, setNewStaffName] = useState("");
   const [staffSaving, setStaffSaving] = useState(false);
   const [staffDeleting, setStaffDeleting] = useState<string | null>(null);
+
+  const [selectedTheme, setSelectedTheme] = useState<string>(
+    restaurant.theme ?? "default",
+  );
+  const [themeSaving, setThemeSaving] = useState(false);
 
   // ── CRITICAL: singleton supabase client in ref ────────────────────────
   const supabaseRef = useRef(createClient());
@@ -305,7 +327,9 @@ export default function DashboardHome({
       if (tablesRes.count !== null) setActiveTablesCount(tablesRes.count);
       if (signalsRes.count !== null) setSignalsCount(signalsRes.count);
       if (recentRes.data) setRecentOrders(recentRes.data as Order[]);
-      if (ledgerRes.data) setTodayLedger(ledgerRes.data as any);
+      if (ledgerRes.data) {
+        setTodayLedger((ledgerRes.data as LedgerRow | null) ?? null);
+      }
     }
 
     // Refresh immediately on mount to catch any changes since SSR
@@ -396,9 +420,11 @@ export default function DashboardHome({
 
   // ── Static computed values from server-rendered props ─────────────────
   const mRevenue = monthRevenue;
-  const today = new Date().toISOString().split('T')[0];
-  const dOrders = analyticsData?.daily?.find(d => d.date === today)?.orders ?? 0;
-  const mOrders = analyticsData?.daily?.reduce((sum, d) => sum + (d.orders ?? 0), 0) ?? 0;
+  const today = new Date().toISOString().split("T")[0];
+  const dOrders =
+    analyticsData?.daily?.find((d) => d.date === today)?.orders ?? 0;
+  const mOrders =
+    analyticsData?.daily?.reduce((sum, d) => sum + (d.orders ?? 0), 0) ?? 0;
   const mTables = monthCount;
   const mFees = 0;
   const dRevenue = todayRevenue ?? dailyStats?.gross_revenue ?? 0;
@@ -420,7 +446,7 @@ export default function DashboardHome({
       .select("*")
       .eq("restaurant_id", restaurant.id)
       .order("created_at", { ascending: false });
-    setPromos((data as any) ?? []);
+    setPromos((data ?? []) as PromoRow[]);
   }
 
   async function fetchStaff() {
@@ -429,14 +455,12 @@ export default function DashboardHome({
       .select("id, display_name, role")
       .eq("restaurant_id", restaurant.id)
       .eq("role", "waiter");
-    setStaffList((data as any) ?? []);
+    setStaffList((data ?? []) as StaffRow[]);
   }
 
   async function saveProfile() {
     setProfileSaving(true);
     try {
-      console.log("[Profile] Saving:", profileForm, "id:", restaurant.id);
-
       const { data, error } = await supabaseRef.current
         .from("restaurants")
         .update({
@@ -446,12 +470,9 @@ export default function DashboardHome({
           closing_time: profileForm.closing_time || null,
           contact_number: profileForm.contact_number,
           address: profileForm.address,
-        } as any)
+        })
         .eq("id", restaurant.id)
         .select();
-
-      console.log("[Profile] Result:", data, error);
-
       if (error) {
         console.error("[Profile] Save failed:", error);
         return;
@@ -464,6 +485,23 @@ export default function DashboardHome({
       console.error("[Profile] Unexpected error:", e);
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  async function saveTheme(theme: string) {
+    setThemeSaving(true);
+    try {
+      await supabaseRef.current
+        .from("restaurants")
+        .update({ theme })
+        .eq("id", restaurant.id);
+      setSelectedTheme(theme);
+      // Revalidate customer page cache
+      await fetch("/api/revalidate?tag=restaurant");
+    } catch (err) {
+      console.error("Theme save failed:", err);
+    } finally {
+      setThemeSaving(false);
     }
   }
 
@@ -480,7 +518,7 @@ export default function DashboardHome({
       if (url) {
         await supabaseRef.current
           .from("restaurants")
-          .update({ logo_url: url } as any)
+          .update({ logo_url: url })
           .eq("id", restaurant.id);
         setLogoUrl(url);
         await fetch("/api/revalidate?tag=restaurant", { method: "POST" });
@@ -505,7 +543,7 @@ export default function DashboardHome({
         end_date: promoForm.end_date,
         image_url: promoForm.image_url || null,
         is_active: true,
-      } as any);
+      });
       setPromoForm({
         title: "",
         description: "",
@@ -553,7 +591,7 @@ export default function DashboardHome({
   async function updateStaffName(id: string, name: string) {
     await supabaseRef.current
       .from("restaurant_staff")
-      .update({ display_name: name } as any)
+      .update({ display_name: name })
       .eq("id", id);
     await fetchStaff();
   }
@@ -567,7 +605,7 @@ export default function DashboardHome({
         display_name: newStaffName.trim(),
         role: "waiter",
         user_id: null,
-      } as any);
+      });
       setNewStaffName("");
       await fetchStaff();
     } finally {
@@ -609,7 +647,7 @@ export default function DashboardHome({
         startTransition(() => {
           router.push(`/kds/${restaurant.slug}`);
         }),
-      color: "#60a5fa",
+      color: "var(--theme-info)",
     },
     {
       label: "Signals",
@@ -633,7 +671,7 @@ export default function DashboardHome({
         startTransition(() => {
           router.push(`/kds/${restaurant.slug}`);
         }),
-      color: "#34d399",
+      color: "var(--theme-success)",
     },
   ];
 
@@ -699,23 +737,41 @@ export default function DashboardHome({
 
       {/* Suspension banner */}
       {!restaurant.is_active && (
-        <div style={{
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid rgba(239,68,68,0.3)',
-          borderRadius: 16,
-          padding: '16px 20px',
-          margin: '16px 16px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}>
+        <div
+          style={{
+            background:
+              "color-mix(in srgb, var(--theme-danger) 10%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--theme-danger) 30%, transparent)",
+            borderRadius: 16,
+            padding: "16px 20px",
+            margin: "16px 16px 0",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
           <span style={{ fontSize: 20 }}>⚠️</span>
           <div>
-            <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+            <p
+              style={{
+                color: "var(--theme-danger)",
+                fontWeight: 700,
+                fontSize: 14,
+                marginBottom: 2,
+              }}
+            >
               Restaurant Suspended
             </p>
-            <p style={{ color: 'rgba(252,165,165,0.6)', fontSize: 12 }}>
-              This restaurant is currently suspended. Customers cannot access the menu until the outstanding balance is settled.
+            <p
+              style={{
+                color:
+                  "color-mix(in srgb, var(--theme-danger) 60%, transparent)",
+                fontSize: 12,
+              }}
+            >
+              This restaurant is currently suspended. Customers cannot access
+              the menu until the outstanding balance is settled.
             </p>
           </div>
         </div>
@@ -778,7 +834,7 @@ export default function DashboardHome({
           display: "flex",
           gap: 8,
           borderBottom: "1px solid var(--gold-dim)",
-          background: "rgba(2,44,34,0.6)",
+          background: "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
           position: "sticky",
           top: 73,
           zIndex: 40,
@@ -830,7 +886,7 @@ export default function DashboardHome({
                 tab === t.id
                   ? "linear-gradient(135deg, var(--gold-glow), var(--gold))"
                   : "var(--cream-06)",
-              color: tab === t.id ? "#1a0e00" : "var(--cream-35)",
+              color: tab === t.id ? "var(--theme-contrast)" : "var(--cream-35)",
               transition: "all 0.2s",
             }}
           >
@@ -901,7 +957,9 @@ export default function DashboardHome({
                     >
                       {card.icon}
                     </div>
-                    {card.up && <ArrowUpRight size={16} color="#34d399" />}
+                    {card.up && (
+                      <ArrowUpRight size={16} color="var(--theme-success)" />
+                    )}
                   </div>
                   <p
                     className="t-heading"
@@ -940,7 +998,7 @@ export default function DashboardHome({
                   onClick={action.onClick}
                   style={{
                     background: "var(--surface)",
-                    border: `1px solid ${action.badgeUrgent ? "var(--gold-dim)" : "rgba(253,251,247,0.08)"}`,
+                    border: `1px solid ${action.badgeUrgent ? "var(--gold-dim)" : "var(--cream-06)"}`,
                     borderRadius: 18,
                     padding: "18px 16px",
                     cursor: "pointer",
@@ -1104,7 +1162,7 @@ export default function DashboardHome({
                     return Array.from(sessionMap.entries()).map(([key, s]) => (
                       <div key={key} className="order-row">
                         <div className="order-icon">
-                          <CheckCircle size={14} color="#34d399" />
+                          <CheckCircle size={14} color="var(--theme-success)" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div
@@ -1393,279 +1451,323 @@ export default function DashboardHome({
 
         {/* ── ANALYTICS TAB ── */}
         {tab === "analytics" && (
-          <div className="px-3 pt-5 space-y-6 pb-24">
+          <div className="px-3 pt-5 space-y-6 pb-24 max-w-7xl mx-auto">
             {analyticsLoading && (
-              <div className="text-center text-amber-300/60 py-12 text-sm">
-                Loading analytics...
+              <div className="text-center text-amber-300/60 py-12 text-sm font-medium">
+                Loading business intelligence data...
               </div>
             )}
 
             {!analyticsLoading && analyticsData && (
-              <>
-                {/* Revenue Chart */}
-                <div
-                  className="rounded-2xl p-6 border border-amber-900/20"
-                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
-                      Revenue —{" "}
-                      {new Date().toLocaleDateString("en-GB", {
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </h3>
-                    <span className="text-amber-400 text-sm font-bold bg-amber-400/10 px-2 py-1 rounded-lg">
-                      GHS{" "}
-                      {analyticsData.daily
-                        .reduce((s, d) => s + d.revenue, 0)
-                        .toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="relative h-48 mt-3">
-                    <div className="absolute inset-0 flex items-end gap-[2px]">
-                      {analyticsData.daily.map((d) => {
-                        const maxRev = Math.max(
-                          ...analyticsData.daily.map((x) => x.revenue),
-                          1,
-                        );
-                        if (d.revenue === 0)
+              <div className="space-y-6">
+                {/* Visual Chart Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Revenue Card */}
+                  <div
+                    className="rounded-2xl p-6 transition-all border shadow-lg"
+                    style={{
+                      backgroundColor:
+                        "var(--theme-surface, rgba(15, 15, 15, 0.6))",
+                      borderColor:
+                        "color-mix(in srgb, var(--theme-border, #ffd700) 15%, transparent)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    }}
+                  >
+                    <div className="flex flex-col mb-4">
+                      <span className="text-[10px] tracking-widest uppercase text-amber-300/40 font-bold mb-1">
+                        REVENUE —{" "}
+                        {new Date().toLocaleDateString("en-GB", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <h2
+                        className="text-3xl md:text-4xl font-black text-amber-500"
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        GHS{" "}
+                        {analyticsData.daily
+                          .reduce((s, d) => s + d.revenue, 0)
+                          .toFixed(2)}
+                      </h2>
+                    </div>
+
+                    {/* Integrated Tap-Friendly Chart */}
+                    <div className="relative h-44 mt-6 overflow-x-auto scrollbar-hide">
+                      <div className="absolute inset-0 flex items-end gap-1 pb-1">
+                        {analyticsData.daily.map((d) => {
+                          const maxRev = Math.max(
+                            ...analyticsData.daily.map((x) => x.revenue),
+                            1,
+                          );
+                          const heightPct = Math.max(
+                            (d.revenue / maxRev) * 100,
+                            4,
+                          );
+                          const dateLabel = new Date(
+                            d.date + "T12:00:00",
+                          ).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          });
                           return (
                             <div
                               key={d.date}
-                              className="flex-1"
-                              style={{ minWidth: "4px" }}
-                            />
+                              className="flex-1 min-w-[28px] h-full flex flex-col justify-end items-center group cursor-pointer transition-all px-0.5 rounded-lg hover:bg-amber-500/5"
+                              title={`${dateLabel}: GHS ${d.revenue.toFixed(2)}`}
+                            >
+                              <div className="absolute bottom-full mb-1 scale-0 group-hover:scale-100 transition-all bg-black/90 text-[10px] text-amber-400 py-1 px-2 rounded-md font-mono whitespace-nowrap z-20 pointer-events-none border border-amber-900/20">
+                                GHS {d.revenue.toFixed(2)}
+                              </div>
+                              <div
+                                className="w-full rounded-t-md transition-all group-hover:bg-amber-400"
+                                style={{
+                                  height: `${heightPct}%`,
+                                  backgroundColor:
+                                    d.revenue > 0
+                                      ? "var(--gold-glow, #D97706)"
+                                      : "rgba(217, 119, 6, 0.1)",
+                                }}
+                              />
+                              <span className="text-[9px] text-amber-300/30 mt-2 font-mono group-hover:text-amber-300/70">
+                                {new Date(d.date + "T12:00:00").getDate()}
+                              </span>
+                            </div>
                           );
-                        const heightPct = Math.max(
-                          (d.revenue / maxRev) * 100,
-                          4,
-                        );
-                        const dateLabel = new Date(
-                          d.date + "T12:00:00",
-                        ).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        });
-                        return (
-                          <div
-                            key={d.date}
-                            className="flex-1 rounded-t-sm cursor-default transition-all hover:opacity-80"
-                            style={{
-                              height: `${heightPct}%`,
-                              backgroundColor: "#D97706",
-                              minWidth: "4px",
-                            }}
-                            title={`${dateLabel}: GHS ${d.revenue.toFixed(2)}`}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs text-amber-300/40 mt-2 px-1">
-                    <span>
-                      1{" "}
-                      {new Date().toLocaleDateString("en-GB", {
-                        month: "short",
-                      })}
-                    </span>
-                    <span>Today</span>
-                  </div>
-
-                  {/* Daily breakdown table */}
-                  <div className="mt-5 space-y-1">
-                    <div className="flex justify-between text-xs text-amber-300/40 px-1 pb-1 border-b border-amber-900/20">
-                      <span>Day</span>
-                      <div className="flex gap-6">
-                        <span>Orders</span>
-                        <span>Revenue</span>
+                        })}
                       </div>
                     </div>
-                    {(showAllRevDays
-                      ? analyticsData.daily
-                      : analyticsData.daily
-                          .filter((d) => d.revenue > 0 || d.orders > 0)
-                          .slice(-7)
-                    ).map((d) => (
-                      <div
-                        key={d.date}
-                        className="flex justify-between items-center px-1 py-1"
-                      >
-                        <span className="text-amber-300/60 text-xs">
-                          {new Date(d.date + "T12:00:00").toLocaleDateString(
-                            "en-GB",
-                            {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "short",
-                            },
-                          )}
-                        </span>
-                        <div className="flex gap-6">
-                          <span className="text-emerald-400 text-xs w-12 text-right">
-                            {d.orders}
-                          </span>
-                          <span className="text-amber-400 text-xs w-20 text-right">
-                            GHS {d.revenue.toFixed(2)}
-                          </span>
+
+                    <div className="flex justify-between text-[10px] text-amber-300/20 mt-2 px-1 border-b border-amber-900/10 pb-4">
+                      <span>1st of Month</span>
+                      <span>Today</span>
+                    </div>
+
+                    {/* Aligned Breakdown Table */}
+                    <div className="mt-5 space-y-1">
+                      <div className="flex justify-between text-[10px] uppercase tracking-wider text-amber-300/30 font-bold px-2 pb-2 border-b border-amber-900/10">
+                        <span>Day</span>
+                        <div className="flex gap-8">
+                          <span>Orders</span>
+                          <span>Revenue</span>
                         </div>
                       </div>
-                    ))}
-                    {analyticsData.daily.every((d) => d.revenue === 0) && (
-                      <p className="text-amber-300/30 text-xs text-center py-3">
-                        No data yet this month
-                      </p>
+                      {(showAllRevDays
+                        ? analyticsData.daily
+                        : analyticsData.daily
+                            .filter((d) => d.revenue > 0 || d.orders > 0)
+                            .slice(-7)
+                      ).map((d) => (
+                        <div
+                          key={d.date}
+                          className="flex justify-between items-center px-2 py-2.5 rounded-lg transition-all hover:bg-amber-500/5 group"
+                        >
+                          <span className="text-amber-300/60 text-xs font-semibold">
+                            {new Date(d.date + "T12:00:00").toLocaleDateString(
+                              "en-GB",
+                              {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                              },
+                            )}
+                          </span>
+                          <div className="flex gap-8 items-center">
+                            <span className="text-emerald-400 text-xs w-12 text-right font-bold">
+                              {d.orders}
+                            </span>
+                            <span
+                              className="text-amber-400 text-xs w-24 text-right font-mono font-bold"
+                              style={{ fontVariantNumeric: "tabular-nums" }}
+                            >
+                              GHS {d.revenue.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {analyticsData.daily.every((d) => d.revenue === 0) && (
+                        <p className="text-amber-300/20 text-xs text-center py-4 italic">
+                          No revenue activity recorded this month
+                        </p>
+                      )}
+                    </div>
+                    {analyticsData.daily.filter((d) => d.revenue > 0).length >
+                      7 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRevDays((p) => !p)}
+                        className="w-full text-center text-amber-400/50 hover:text-amber-400 text-xs py-3 transition-colors mt-2 font-bold tracking-wide"
+                      >
+                        {showAllRevDays
+                          ? "▲ Show less"
+                          : `▼ Show all ${analyticsData.daily.filter((d) => d.revenue > 0).length} active days`}
+                      </button>
                     )}
                   </div>
-                  {analyticsData.daily.filter((d) => d.revenue > 0).length >
-                    7 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllRevDays((p) => !p)}
-                      className="w-full text-center text-amber-400/60 text-xs py-2 hover:text-amber-400 transition-colors mt-1"
-                    >
-                      {showAllRevDays
-                        ? "▲ Show less"
-                        : `▼ Show all ${analyticsData.daily.filter((d) => d.revenue > 0).length} days`}
-                    </button>
-                  )}
-                </div>
 
-                {/* Orders Chart */}
-                <div
-                  className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
-                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
-                      Orders —{" "}
-                      {new Date().toLocaleDateString("en-GB", {
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </h3>
-                    <span className="text-emerald-400 text-sm font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">
-                      {analyticsData.daily.reduce((s, d) => s + d.orders, 0)}{" "}
-                      total
-                    </span>
-                  </div>
-                  <div className="relative h-48 mt-3">
-                    <div className="absolute inset-0 flex items-end gap-[2px]">
-                      {analyticsData.daily.map((d) => {
-                        const maxOrd = Math.max(
-                          ...analyticsData.daily.map((x) => x.orders),
-                          1,
-                        );
-                        if (d.orders === 0)
+                  {/* Orders Card */}
+                  <div
+                    className="rounded-2xl p-6 transition-all border shadow-lg"
+                    style={{
+                      backgroundColor:
+                        "var(--theme-surface, rgba(15, 15, 15, 0.6))",
+                      borderColor:
+                        "color-mix(in srgb, var(--theme-border, #ffd700) 15%, transparent)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    }}
+                  >
+                    <div className="flex flex-col mb-4">
+                      <span className="text-[10px] tracking-widest uppercase text-emerald-300/40 font-bold mb-1">
+                        ORDERS —{" "}
+                        {new Date().toLocaleDateString("en-GB", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <h2
+                        className="text-3xl md:text-4xl font-black text-emerald-400"
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        {analyticsData.daily.reduce((s, d) => s + d.orders, 0)}{" "}
+                        <span className="text-sm font-semibold text-emerald-300/30 tracking-wider uppercase">
+                          total
+                        </span>
+                      </h2>
+                    </div>
+
+                    {/* Integrated Tap-Friendly Chart */}
+                    <div className="relative h-44 mt-6 overflow-x-auto scrollbar-hide">
+                      <div className="absolute inset-0 flex items-end gap-1 pb-1">
+                        {analyticsData.daily.map((d) => {
+                          const maxOrd = Math.max(
+                            ...analyticsData.daily.map((x) => x.orders),
+                            1,
+                          );
+                          const heightPct = Math.max(
+                            (d.orders / maxOrd) * 100,
+                            4,
+                          );
+                          const dateLabel = new Date(
+                            d.date + "T12:00:00",
+                          ).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          });
                           return (
                             <div
                               key={d.date}
-                              className="flex-1"
-                              style={{ minWidth: "4px" }}
-                            />
+                              className="flex-1 min-w-[28px] h-full flex flex-col justify-end items-center group cursor-pointer transition-all px-0.5 rounded-lg hover:bg-emerald-500/5"
+                              title={`${dateLabel}: ${d.orders} orders`}
+                            >
+                              <div className="absolute bottom-full mb-1 scale-0 group-hover:scale-100 transition-all bg-black/90 text-[10px] text-emerald-400 py-1 px-2 rounded-md font-mono whitespace-nowrap z-20 pointer-events-none border border-emerald-950/20">
+                                {d.orders} orders
+                              </div>
+                              <div
+                                className="w-full rounded-t-md transition-all group-hover:bg-emerald-400"
+                                style={{
+                                  height: `${heightPct}%`,
+                                  backgroundColor:
+                                    d.orders > 0
+                                      ? "#10b981"
+                                      : "rgba(16, 185, 129, 0.1)",
+                                }}
+                              />
+                              <span className="text-[9px] text-emerald-300/30 mt-2 font-mono group-hover:text-emerald-300/70">
+                                {new Date(d.date + "T12:00:00").getDate()}
+                              </span>
+                            </div>
                           );
-                        const heightPct = Math.max(
-                          (d.orders / maxOrd) * 100,
-                          4,
-                        );
-                        const dateLabel = new Date(
-                          d.date + "T12:00:00",
-                        ).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        });
-                        return (
-                          <div
-                            key={d.date}
-                            className="flex-1 rounded-t-sm cursor-default transition-all hover:opacity-80"
-                            style={{
-                              height: `${heightPct}%`,
-                              backgroundColor: "#10b981",
-                              minWidth: "4px",
-                            }}
-                            title={`${dateLabel}: ${d.orders} orders`}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs text-emerald-300/40 mt-2 px-1">
-                    <span>
-                      1{" "}
-                      {new Date().toLocaleDateString("en-GB", {
-                        month: "short",
-                      })}
-                    </span>
-                    <span>Today</span>
-                  </div>
-
-                  {/* Daily breakdown table */}
-                  <div className="mt-5 space-y-1">
-                    <div className="flex justify-between text-xs text-amber-300/40 px-1 pb-1 border-b border-amber-900/20">
-                      <span>Day</span>
-                      <div className="flex gap-6">
-                        <span>Orders</span>
-                        <span>Revenue</span>
+                        })}
                       </div>
                     </div>
-                    {(showAllOrdDays
-                      ? analyticsData.daily
-                      : analyticsData.daily
-                          .filter((d) => d.revenue > 0 || d.orders > 0)
-                          .slice(-7)
-                    ).map((d) => (
-                      <div
-                        key={d.date}
-                        className="flex justify-between items-center px-1 py-1"
-                      >
-                        <span className="text-amber-300/60 text-xs">
-                          {new Date(d.date + "T12:00:00").toLocaleDateString(
-                            "en-GB",
-                            {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "short",
-                            },
-                          )}
-                        </span>
-                        <div className="flex gap-6">
-                          <span className="text-emerald-400 text-xs w-12 text-right">
-                            {d.orders}
-                          </span>
-                          <span className="text-amber-400 text-xs w-20 text-right">
-                            GHS {d.revenue.toFixed(2)}
-                          </span>
+
+                    <div className="flex justify-between text-[10px] text-emerald-300/20 mt-2 px-1 border-b border-emerald-900/10 pb-4">
+                      <span>1st of Month</span>
+                      <span>Today</span>
+                    </div>
+
+                    {/* Aligned Breakdown Table */}
+                    <div className="mt-5 space-y-1">
+                      <div className="flex justify-between text-[10px] uppercase tracking-wider text-amber-300/30 font-bold px-2 pb-2 border-b border-amber-900/10">
+                        <span>Day</span>
+                        <div className="flex gap-8">
+                          <span>Orders</span>
+                          <span>Revenue</span>
                         </div>
                       </div>
-                    ))}
-
-                    {analyticsData.daily.every((d) => d.orders === 0) && (
-                      <p className="text-amber-300/30 text-xs text-center py-3">
-                        No data yet this month
-                      </p>
+                      {(showAllOrdDays
+                        ? analyticsData.daily
+                        : analyticsData.daily
+                            .filter((d) => d.revenue > 0 || d.orders > 0)
+                            .slice(-7)
+                      ).map((d) => (
+                        <div
+                          key={d.date}
+                          className="flex justify-between items-center px-2 py-2.5 rounded-lg transition-all hover:bg-emerald-500/5 group"
+                        >
+                          <span className="text-amber-300/60 text-xs font-semibold">
+                            {new Date(d.date + "T12:00:00").toLocaleDateString(
+                              "en-GB",
+                              {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                              },
+                            )}
+                          </span>
+                          <div className="flex gap-8 items-center">
+                            <span className="text-emerald-400 text-xs w-12 text-right font-bold">
+                              {d.orders}
+                            </span>
+                            <span
+                              className="text-amber-400 text-xs w-24 text-right font-mono font-bold"
+                              style={{ fontVariantNumeric: "tabular-nums" }}
+                            >
+                              GHS {d.revenue.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {analyticsData.daily.every((d) => d.orders === 0) && (
+                        <p className="text-amber-300/20 text-xs text-center py-4 italic">
+                          No ordering activity recorded this month
+                        </p>
+                      )}
+                    </div>
+                    {analyticsData.daily.filter((d) => d.orders > 0).length >
+                      7 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllOrdDays((p) => !p)}
+                        className="w-full text-center text-emerald-400/50 hover:text-emerald-400 text-xs py-3 transition-colors mt-2 font-bold tracking-wide"
+                      >
+                        {showAllOrdDays
+                          ? "▲ Show less"
+                          : `▼ Show all ${analyticsData.daily.filter((d) => d.orders > 0).length} active days`}
+                      </button>
                     )}
                   </div>
-                  {analyticsData.daily.filter((d) => d.orders > 0).length >
-                    7 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllOrdDays((p) => !p)}
-                      className="w-full text-center text-amber-400/60 text-xs py-2 hover:text-amber-400 transition-colors mt-1"
-                    >
-                      {showAllOrdDays
-                        ? "▲ Show less"
-                        : `▼ Show all ${analyticsData.daily.filter((d) => d.orders > 0).length} days`}
-                    </button>
-                  )}
                 </div>
 
-                {/* Monthly Archive */}
+                {/* Monthly History Section */}
                 {(analyticsData.monthly ?? []).length > 0 && (
                   <div
-                    className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
-                    style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                    className="rounded-2xl p-6 border shadow-lg"
+                    style={{
+                      backgroundColor:
+                        "var(--theme-surface, rgba(15, 15, 15, 0.6))",
+                      borderColor:
+                        "color-mix(in srgb, var(--theme-border, #ffd700) 15%, transparent)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    }}
                   >
-                    <h3 className="text-amber-200 font-bold text-base tracking-wide mb-4">
+                    <span className="text-[10px] tracking-widest uppercase text-amber-300/40 font-bold block mb-4">
+                      ARCHIVE PERFORMANCE
+                    </span>
+                    <h3 className="text-amber-200 font-bold text-lg mb-4">
                       Monthly History
                     </h3>
                     <div className="space-y-3">
@@ -1682,17 +1784,23 @@ export default function DashboardHome({
                         return (
                           <div
                             key={m.month}
-                            className="flex items-center justify-between rounded-xl px-4 py-3 border border-amber-900/20"
-                            style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+                            className="flex items-center justify-between rounded-xl px-5 py-4 border transition-all hover:bg-amber-500/[0.02]"
+                            style={{
+                              backgroundColor: "rgba(0,0,0,0.25)",
+                              borderColor: "rgba(217, 119, 6, 0.1)",
+                            }}
                           >
-                            <span className="text-amber-300/80 text-sm font-medium">
+                            <span className="text-neutral-200 text-sm font-semibold">
                               {label}
                             </span>
-                            <div className="flex gap-4 items-center">
-                              <span className="text-emerald-400/80 text-xs">
+                            <div className="flex gap-6 items-center">
+                              <span className="text-emerald-400/70 text-xs font-mono font-bold bg-emerald-400/5 px-2 py-1 rounded">
                                 {m.orders} orders
                               </span>
-                              <span className="text-amber-400 text-sm font-bold">
+                              <span
+                                className="text-amber-400 text-base font-black font-mono"
+                                style={{ fontVariantNumeric: "tabular-nums" }}
+                              >
                                 GHS {m.revenue.toFixed(2)}
                               </span>
                             </div>
@@ -1703,67 +1811,61 @@ export default function DashboardHome({
                   </div>
                 )}
 
-                {/* Customer Reviews */}
+                {/* Customer Feedback section */}
                 <div
-                  className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
-                  style={{ backgroundColor: "rgba(2, 44, 34, 0.7)" }}
+                  className="rounded-2xl p-6 border shadow-lg"
+                  style={{
+                    backgroundColor:
+                      "var(--theme-surface, rgba(15, 15, 15, 0.6))",
+                    borderColor:
+                      "color-mix(in srgb, var(--theme-border, #ffd700) 15%, transparent)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-amber-200 font-bold text-base tracking-wide">
-                      Recent Customer Reviews
-                    </h3>
-                    <span className="text-amber-300/60 text-xs bg-amber-300/10 px-2 py-1 rounded-lg">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] tracking-widest uppercase text-amber-300/40 font-bold mb-1">
+                        REVIEWS & FEEDBACK
+                      </span>
+                      <h3 className="text-amber-200 font-bold text-lg">
+                        Recent Customer Reviews
+                      </h3>
+                    </div>
+                    <span className="text-amber-300/70 text-xs bg-amber-300/10 px-3 py-1.5 rounded-xl font-bold border border-amber-950/20">
                       {analyticsData.feedback.length} reviews
                     </span>
                   </div>
+
                   {analyticsData.feedback.length === 0 ? (
-                    <div className="text-center py-10">
+                    <div className="text-center py-12">
                       <p className="text-amber-300/30 text-sm">
                         No reviews yet
                       </p>
-                      <p className="text-amber-300/20 text-xs mt-1">
+                      <p className="text-amber-300/20 text-xs mt-1.5">
                         Customer feedback will appear here after meals
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {analyticsData.feedback.map((f, i) => (
                         <div
                           key={i}
+                          className="flex flex-col justify-between transition-all hover:translate-y-[-2px]"
                           style={{
-                            backgroundColor: "rgba(0, 0, 0, 0.2)",
+                            backgroundColor: "rgba(0, 0, 0, 0.25)",
                             border: "1px solid rgba(217, 119, 6, 0.12)",
-                            borderRadius: 16,
-                            padding: "16px 18px",
-                            marginBottom: 10,
+                            borderRadius: 20,
+                            padding: "20px 22px",
                           }}
                         >
-                          {/* Top row — name + stars */}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              marginBottom: 8,
-                            }}
-                          >
+                          {/* Header row — author details and stars */}
+                          <div className="flex justify-between items-start mb-4 gap-3">
                             <div>
-                              <p
-                                style={{
-                                  color: "#FDFBF7",
-                                  fontSize: 14,
-                                  fontWeight: 700,
-                                  marginBottom: 2,
-                                }}
-                              >
+                              <p className="text-neutral-100 font-bold text-base mb-0.5">
                                 {f.customer_name}
                               </p>
-                              <p
-                                style={{
-                                  color: "rgba(253, 230, 138, 0.35)",
-                                  fontSize: 11,
-                                }}
-                              >
+                              <p className="text-amber-300/40 text-xs font-mono font-bold">
                                 {new Date(f.created_at).toLocaleDateString(
                                   "en-GB",
                                   {
@@ -1773,30 +1875,17 @@ export default function DashboardHome({
                                   },
                                 )}
                               </p>
-                              {f.staff_name && (
-                                <p
-                                  style={{
-                                    color: "rgba(217, 119, 6, 0.55)",
-                                    fontSize: 11,
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  Served by {f.staff_name}
-                                </p>
-                              )}
                             </div>
-                            <div
-                              style={{ display: "flex", gap: 2, marginTop: 2 }}
-                            >
+                            <div className="flex gap-1 bg-amber-500/5 px-2 py-1 rounded-lg border border-amber-500/10">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <span
                                   key={star}
+                                  className="text-sm leading-none transition-colors"
                                   style={{
-                                    fontSize: 15,
                                     color:
                                       star <= f.rating
-                                        ? "#F59E0B"
-                                        : "rgba(217, 119, 6, 0.2)",
+                                        ? "var(--gold-glow, #D97706)"
+                                        : "rgba(217, 119, 6, 0.15)",
                                   }}
                                 >
                                   ★
@@ -1804,27 +1893,31 @@ export default function DashboardHome({
                               ))}
                             </div>
                           </div>
-                          {/* Review text */}
+
+                          {/* Review Content */}
                           {f.review && (
-                            <p
-                              style={{
-                                color: "rgba(253, 251, 247, 0.65)",
-                                fontSize: 13,
-                                lineHeight: 1.6,
-                                borderTop: "1px solid rgba(217, 119, 6, 0.08)",
-                                paddingTop: 8,
-                                marginTop: 4,
-                              }}
-                            >
-                              {f.review}
+                            <p className="text-neutral-300/80 text-sm leading-relaxed mb-4 italic font-medium">
+                              &ldquo;{f.review}&rdquo;
                             </p>
+                          )}
+
+                          {/* Served by Waiter attribution */}
+                          {f.staff_name && (
+                            <div className="mt-auto pt-3 border-t border-amber-900/10 flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase tracking-wider text-amber-500/50 font-bold">
+                                Served by:
+                              </span>
+                              <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-md">
+                                {f.staff_name}
+                              </span>
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1834,172 +1927,411 @@ export default function DashboardHome({
           <div className="px-4 pt-5 space-y-6 pb-24">
             {/* Restaurant Info */}
             <div
-              className="rounded-2xl p-5 border border-amber-900/30 shadow-xl"
+              className="rounded-2xl overflow-hidden border border-amber-900/20 shadow-xl"
               style={{
-                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backgroundColor:
+                  "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
                 backdropFilter: "blur(10px)",
               }}
             >
-              <h3 className="text-amber-200 font-bold text-base tracking-wide mb-5">
-                Restaurant Info
-              </h3>
-
-              {/* Logo */}
-              <div className="flex items-center gap-4 mb-5">
-                <div
-                  className="w-16 h-16 rounded-xl overflow-hidden border border-amber-900/30 flex items-center justify-center"
-                  style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+              {/* Header */}
+              <div style={{ padding: "20px 20px 0" }}>
+                <h3
+                  style={{
+                    color: "#D97706",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    marginBottom: 20,
+                  }}
                 >
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt="Logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-amber-300/30 text-xs">No logo</span>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-amber-300 text-sm font-medium mb-1">
-                    Restaurant Logo
-                  </label>
-                  <label className="cursor-pointer px-3 py-1.5 rounded-lg border border-amber-500/40 text-amber-300 text-xs hover:bg-amber-500/10 transition-colors">
-                    {logoUploading ? "Uploading..." : "Upload Logo"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
+                  Restaurant Info
+                </h3>
+              </div>
+
+              {/* Logo Upload — centered hero */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  paddingBottom: 24,
+                  borderBottom: "1px solid rgba(217,119,6,0.1)",
+                }}
+              >
+                <label style={{ cursor: "pointer", position: "relative" }}>
+                  <div
+                    style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: "50%",
+                      overflow: "hidden",
+                      border: "2px solid rgba(217,119,6,0.4)",
+                      backgroundColor: "rgba(0,0,0,0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 0 0 4px rgba(217,119,6,0.08)",
+                    }}
+                  >
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt="Logo"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <Camera size={28} color="rgba(217,119,6,0.4)" />
+                    )}
+                  </div>
+                  {/* Upload overlay */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      right: 0,
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      backgroundColor: "#D97706",
+                      border: "2px solid #022c22",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Upload size={13} color="#022c22" />
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </label>
+                <p
+                  style={{
+                    color: "rgba(217,119,6,0.5)",
+                    fontSize: 11,
+                    marginTop: 10,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {logoUploading ? "Uploading..." : "Tap to change logo"}
+                </p>
               </div>
 
               {/* Fields */}
-              {[
-                {
-                  label: "Restaurant Name",
-                  key: "name",
-                  type: "text",
-                  placeholder: "e.g. Starbite Kitchen",
-                },
-                {
-                  label: "Description / Tagline",
-                  key: "description",
-                  type: "textarea",
-                  placeholder: "A short description for your customers...",
-                },
-                {
-                  label: "Contact Number",
-                  key: "contact_number",
-                  type: "tel",
-                  placeholder: "+233 XX XXX XXXX",
-                },
-                {
-                  label: "Address",
-                  key: "address",
-                  type: "text",
-                  placeholder: "e.g. 12 High Street, Accra",
-                },
-                {
-                  label: "Opening Time",
-                  key: "opening_time",
-                  type: "time",
-                  placeholder: "",
-                },
-                {
-                  label: "Closing Time",
-                  key: "closing_time",
-                  type: "time",
-                  placeholder: "",
-                },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key} className="mb-4">
-                  <label className="block text-amber-300/60 text-xs font-medium mb-2 tracking-wide uppercase">
-                    {label}
+              <div style={{ padding: "20px 20px 0" }}>
+                {/* Restaurant Name */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "rgba(253,251,247,0.45)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Restaurant name
                   </label>
-                  {type === "textarea" ? (
-                    <textarea
-                      value={profileForm[key as keyof typeof profileForm]}
-                      onChange={(e) =>
-                        setProfileForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
-                      placeholder={placeholder}
-                      rows={2}
-                      style={{
-                        width: "100%",
-                        backgroundColor: "rgba(0, 0, 0, 0.3)",
-                        border: "1px solid rgba(217, 119, 6, 0.2)",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                        color: "#FDFBF7",
-                        fontSize: 14,
-                        outline: "none",
-                        resize: "none",
-                      }}
-                    />
-                  ) : (
-                    <input
-                      type={type}
-                      value={profileForm[key as keyof typeof profileForm]}
-                      onChange={(e) =>
-                        setProfileForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
-                      placeholder={placeholder}
-                      style={{
-                        width: "100%",
-                        backgroundColor: "rgba(0, 0, 0, 0.3)",
-                        border: "1px solid rgba(217, 119, 6, 0.2)",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                        color: "#FDFBF7",
-                        fontSize: 14,
-                        outline: "none",
-                      }}
-                    />
-                  )}
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({ ...p, name: e.target.value }))
+                    }
+                    placeholder="e.g. Starbite Kitchen"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "13px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 15,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
-              ))}
 
-              <button
-                type="button"
-                onClick={saveProfile}
-                disabled={profileSaving}
-                className="w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
-                style={{ backgroundColor: "#D97706", color: "#022c22" }}
-              >
-                {profileSaved
-                  ? "✓ Saved!"
-                  : profileSaving
-                    ? "Saving..."
-                    : "Save Profile"}
-              </button>
+                {/* Description */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "rgba(253,251,247,0.45)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Description / tagline
+                  </label>
+                  <textarea
+                    value={profileForm.description}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({
+                        ...p,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="A short description for your customers..."
+                    rows={2}
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "13px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 15,
+                      outline: "none",
+                      resize: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                {/* Contact */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "rgba(253,251,247,0.45)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Contact number
+                  </label>
+                  <input
+                    type="tel"
+                    value={profileForm.contact_number}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({
+                        ...p,
+                        contact_number: e.target.value,
+                      }))
+                    }
+                    placeholder="+233 XX XXX XXXX"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "13px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 15,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                {/* Address */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "rgba(253,251,247,0.45)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.address}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({ ...p, address: e.target.value }))
+                    }
+                    placeholder="e.g. 12 High Street, Accra"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "13px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 15,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                {/* Opening & Closing Time — side by side */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                    marginBottom: 24,
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        color: "rgba(253,251,247,0.45)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 6,
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Opens
+                    </label>
+                    <input
+                      type="time"
+                      value={profileForm.opening_time}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({
+                          ...p,
+                          opening_time: e.target.value,
+                        }))
+                      }
+                      style={{
+                        width: "100%",
+                        backgroundColor: "rgba(0,0,0,0.25)",
+                        border: "1px solid rgba(217,119,6,0.15)",
+                        borderRadius: 14,
+                        padding: "13px 12px",
+                        color: "#FDFBF7",
+                        fontSize: 14,
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        color: "rgba(253,251,247,0.45)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 6,
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Closes
+                    </label>
+                    <input
+                      type="time"
+                      value={profileForm.closing_time}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({
+                          ...p,
+                          closing_time: e.target.value,
+                        }))
+                      }
+                      style={{
+                        width: "100%",
+                        backgroundColor: "rgba(0,0,0,0.25)",
+                        border: "1px solid rgba(217,119,6,0.15)",
+                        borderRadius: 14,
+                        padding: "13px 12px",
+                        color: "#FDFBF7",
+                        fontSize: 14,
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Save button */}
+              <div style={{ padding: "0 20px 20px" }}>
+                <button
+                  type="button"
+                  onClick={saveProfile}
+                  disabled={profileSaving}
+                  className="w-full active:scale-95 disabled:opacity-50 transition-all"
+                  style={{
+                    padding: "15px",
+                    borderRadius: 14,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    backgroundColor: "#D97706",
+                    color: "#022c22",
+                    border: "none",
+                    cursor: "pointer",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {profileSaved
+                    ? "✓ Saved!"
+                    : profileSaving
+                      ? "Saving..."
+                      : "Save Profile"}
+                </button>
+              </div>
             </div>
 
             {/* Staff Management */}
             <div
-              className="rounded-2xl p-6 border border-amber-900/20"
+              className="rounded-2xl border border-amber-900/20 overflow-hidden"
               style={{
-                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backgroundColor:
+                  "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
                 backdropFilter: "blur(10px)",
               }}
             >
-              <h3 className="text-amber-200 font-bold text-lg mb-1">Waiters</h3>
-              <p className="text-amber-300/50 text-xs mb-4">
-                Add your waiters' names. Customers select who served them in the
-                post-meal feedback form.
-              </p>
+              <div style={{ padding: 20 }}>
+                <h3
+                  style={{
+                    color: "#D97706",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    marginBottom: 16,
+                  }}
+                >
+                  WAITERS
+                </h3>
+              </div>
 
               {/* Existing waiters */}
-              <div className="space-y-2 mb-4">
+              <div>
                 {staffList.length === 0 && (
-                  <p className="text-amber-300/30 text-xs text-center py-3">
+                  <p
+                    className="text-amber-300/30 text-xs text-center"
+                    style={{ padding: "0 20px 20px" }}
+                  >
                     No waiters added yet
                   </p>
                 )}
                 {staffList.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2">
+                  <div
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px 16px",
+                      borderBottom: "1px solid rgba(217,119,6,0.08)",
+                      minWidth: 0,
+                    }}
+                  >
                     <input
                       type="text"
                       defaultValue={s.display_name ?? ""}
@@ -2008,12 +2340,13 @@ export default function DashboardHome({
                       }
                       style={{
                         flex: 1,
-                        backgroundColor: "rgba(0,0,0,0.3)",
-                        border: "1px solid rgba(217,119,6,0.2)",
-                        borderRadius: 12,
-                        padding: "10px 14px",
+                        minWidth: 0,
+                        backgroundColor: "transparent",
+                        border: "none",
+                        padding: 0,
                         color: "#FDFBF7",
                         fontSize: 14,
+                        fontWeight: 600,
                         outline: "none",
                       }}
                     />
@@ -2021,7 +2354,17 @@ export default function DashboardHome({
                       type="button"
                       onClick={() => deleteStaff(s.id)}
                       disabled={staffDeleting === s.id}
-                      className="text-red-400/50 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded-lg disabled:opacity-30"
+                      className="disabled:opacity-30"
+                      style={{
+                        color: "rgba(239,68,68,0.6)",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
                     >
                       {staffDeleting === s.id ? "..." : "Remove"}
                     </button>
@@ -2030,7 +2373,15 @@ export default function DashboardHome({
               </div>
 
               {/* Add new waiter */}
-              <div className="flex items-center gap-2">
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  padding: 20,
+                  width: "100%",
+                  overflow: "hidden",
+                }}
+              >
                 <input
                   type="text"
                   value={newStaffName}
@@ -2041,24 +2392,32 @@ export default function DashboardHome({
                   placeholder="Waiter name e.g. Kofi"
                   style={{
                     flex: 1,
-                    backgroundColor: "rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(217,119,6,0.2)",
-                    borderRadius: 12,
+                    minWidth: 0,
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    border: "1px solid rgba(217,119,6,0.15)",
+                    borderRadius: 14,
                     padding: "10px 14px",
                     color: "#FDFBF7",
                     fontSize: 14,
                     outline: "none",
+                    boxSizing: "border-box",
                   }}
                 />
                 <button
                   type="button"
                   onClick={addStaff}
                   disabled={staffSaving || !newStaffName.trim()}
-                  className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
+                  className="transition-all active:scale-95 disabled:opacity-50"
                   style={{
                     backgroundColor: "#D97706",
                     color: "#022c22",
+                    border: "none",
+                    borderRadius: 20,
+                    padding: "10px 18px",
+                    fontWeight: 700,
+                    fontSize: 13,
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                   }}
                 >
                   {staffSaving ? "..." : "+ Add"}
@@ -2068,258 +2427,568 @@ export default function DashboardHome({
 
             {/* Promos */}
             <div
-              className="rounded-2xl p-6 border border-amber-900/20"
+              className="rounded-2xl border border-amber-900/20 overflow-hidden"
               style={{
-                backgroundColor: "rgba(2, 44, 34, 0.6)",
+                backgroundColor:
+                  "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
                 backdropFilter: "blur(10px)",
+                marginTop: 16,
               }}
             >
-              <h3 className="text-amber-200 font-bold text-lg mb-4">
-                Promotions
-              </h3>
-              <p className="text-amber-300/50 text-xs mb-4">
-                Active promos cycle with your restaurant info on the customer
-                menu page.
-              </p>
+              <div style={{ padding: 20 }}>
+                <h3
+                  style={{
+                    color: "#D97706",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  PROMOTIONS
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(253,251,247,0.5)",
+                    fontSize: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  Active promos cycle with your restaurant info on the customer
+                  menu page
+                </p>
 
-              {/* Promo form */}
-              <div className="space-y-3 mb-5">
-                {/* Banner upload */}
-                <div>
-                  <label className="block text-amber-300/50 text-xs mb-2">
-                    Banner Image{" "}
-                    <span className="text-amber-300/20">(optional)</span>
-                  </label>
-                  {promoForm.image_url ? (
-                    <div
-                      className="relative rounded-xl overflow-hidden"
-                      style={{ height: "140px" }}
-                    >
-                      <img
-                        src={promoForm.image_url}
-                        alt="Promo banner preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPromoForm((prev) => ({ ...prev, image_url: "" }))
-                        }
-                        className="absolute top-2 right-2 text-xs px-3 py-1 rounded-lg font-medium"
+                {/* Promo form */}
+                <div className="space-y-3">
+                  {/* Banner upload */}
+                  <div>
+                    {promoForm.image_url ? (
+                      <div
+                        className="relative rounded-xl overflow-hidden"
+                        style={{ height: 72 }}
+                      >
+                        <img
+                          src={promoForm.image_url}
+                          alt="Promo banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPromoForm((prev) => ({ ...prev, image_url: "" }))
+                          }
+                          className="absolute top-2 right-2 text-xs px-3 py-1 rounded-lg font-medium"
+                          style={{
+                            backgroundColor: "rgba(0,0,0,0.7)",
+                            color: "#FDFBF7",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        className="flex flex-col items-center justify-center w-full rounded-xl border border-dashed cursor-pointer transition-colors"
                         style={{
-                          backgroundColor: "rgba(0,0,0,0.7)",
-                          color: "#FDFBF7",
+                          height: "72px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "rgba(0,0,0,0.2)",
+                          borderColor: promoBannerUploading
+                            ? "rgba(217,119,6,0.6)"
+                            : "rgba(217,119,6,0.25)",
                         }}
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <label
-                      className="flex flex-col items-center justify-center w-full rounded-xl border border-dashed cursor-pointer transition-colors"
-                      style={{
-                        height: "80px",
-                        backgroundColor: "rgba(0,0,0,0.2)",
-                        borderColor: promoBannerUploading
-                          ? "rgba(217,119,6,0.6)"
-                          : "rgba(217,119,6,0.25)",
-                      }}
-                    >
-                      <span className="text-amber-300/40 text-xs">
-                        {promoBannerUploading
-                          ? "Uploading..."
-                          : "＋ Upload banner image"}
-                      </span>
-                      <span className="text-amber-300/20 text-xs mt-1">
-                        JPG, PNG, WEBP · max 5MB
-                      </span>
+                        <span
+                          style={{
+                            color: "rgba(253,251,247,0.65)",
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {promoBannerUploading
+                            ? "Uploading..."
+                            : "＋ Upload banner image"}
+                        </span>
+                        <span
+                          style={{
+                            color: "rgba(253,251,247,0.25)",
+                            fontSize: 10,
+                            marginTop: 4,
+                          }}
+                        >
+                          JPG, PNG, WEBP · max 5MB
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          disabled={promoBannerUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) await handleBannerUpload(file);
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <input
+                    type="text"
+                    value={promoForm.title}
+                    onChange={(e) =>
+                      setPromoForm((p) => ({ ...p, title: e.target.value }))
+                    }
+                    placeholder="Promo title e.g. Happy Hour 50% Off"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "12px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 14,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+
+                  {/* Description */}
+                  <textarea
+                    value={promoForm.description}
+                    onChange={(e) =>
+                      setPromoForm((p) => ({
+                        ...p,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="Promo details..."
+                    rows={2}
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(0,0,0,0.25)",
+                      border: "1px solid rgba(217,119,6,0.15)",
+                      borderRadius: 14,
+                      padding: "12px 16px",
+                      color: "#FDFBF7",
+                      fontSize: 14,
+                      outline: "none",
+                      resize: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+
+                  {/* Date range */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          color: "rgba(253,251,247,0.45)",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          marginBottom: 6,
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        Start
+                      </label>
                       <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        disabled={promoBannerUploading}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) await handleBannerUpload(file);
+                        type="datetime-local"
+                        value={promoForm.start_date}
+                        onChange={(e) =>
+                          setPromoForm((p) => ({
+                            ...p,
+                            start_date: e.target.value,
+                          }))
+                        }
+                        style={{
+                          width: "100%",
+                          backgroundColor: "rgba(0,0,0,0.25)",
+                          border: "1px solid rgba(217,119,6,0.15)",
+                          borderRadius: 14,
+                          padding: 12,
+                          color: "#FDFBF7",
+                          fontSize: 14,
+                          outline: "none",
+                          boxSizing: "border-box",
+                          colorScheme: "dark",
                         }}
                       />
-                    </label>
+                    </div>
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          color: "rgba(253,251,247,0.45)",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          marginBottom: 6,
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        End
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={promoForm.end_date}
+                        onChange={(e) =>
+                          setPromoForm((p) => ({
+                            ...p,
+                            end_date: e.target.value,
+                          }))
+                        }
+                        style={{
+                          width: "100%",
+                          backgroundColor: "rgba(0,0,0,0.25)",
+                          border: "1px solid rgba(217,119,6,0.15)",
+                          borderRadius: 14,
+                          padding: 12,
+                          color: "#FDFBF7",
+                          fontSize: 14,
+                          outline: "none",
+                          boxSizing: "border-box",
+                          colorScheme: "dark",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="button"
+                    onClick={savePromo}
+                    disabled={
+                      promoSaving ||
+                      promoBannerUploading ||
+                      !promoForm.title ||
+                      !promoForm.start_date ||
+                      !promoForm.end_date
+                    }
+                    className="w-full transition-all active:scale-95 disabled:opacity-50"
+                    style={{
+                      backgroundColor: "#D97706",
+                      color: "#022c22",
+                      border: "none",
+                      borderRadius: 14,
+                      padding: 15,
+                      fontWeight: 700,
+                      fontSize: 15,
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {promoSaving ? "Saving..." : "+ Add Promo"}
+                  </button>
+                </div>
+
+                {/* Promo list */}
+                <div className="space-y-3" style={{ marginTop: 20 }}>
+                  {promos.map((p) => {
+                    const now = new Date();
+                    const isLive =
+                      new Date(p.start_date) <= now &&
+                      new Date(p.end_date) >= now;
+                    const isExpired = new Date(p.end_date) < now;
+                    return (
+                      <div
+                        key={p.id}
+                        className="rounded-xl border border-amber-900/20 flex items-start justify-between gap-3"
+                        style={{
+                          backgroundColor: "rgba(0,0,0,0.2)",
+                          padding: 12,
+                          minWidth: 0,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            className="flex items-center gap-2 mb-1"
+                            style={{ flexWrap: "wrap" }}
+                          >
+                            <span
+                              style={{
+                                color: "#FDFBF7",
+                                fontSize: 14,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {p.title}
+                            </span>
+                            {isLive && (
+                              <span
+                                style={{
+                                  color: "#34d399",
+                                  backgroundColor: "rgba(16,185,129,0.14)",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                }}
+                              >
+                                Live
+                              </span>
+                            )}
+                            {isExpired && (
+                              <span
+                                style={{
+                                  color: "#f87171",
+                                  backgroundColor: "rgba(239,68,68,0.14)",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                }}
+                              >
+                                Expired
+                              </span>
+                            )}
+                          </div>
+                          {p.description && (
+                            <p
+                              style={{
+                                color: "rgba(253,251,247,0.45)",
+                                fontSize: 12,
+                                marginBottom: 4,
+                              }}
+                            >
+                              {p.description}
+                            </p>
+                          )}
+                          <p
+                            style={{
+                              color: "rgba(217,119,6,0.45)",
+                              fontSize: 11,
+                            }}
+                          >
+                            {new Date(p.start_date).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "numeric",
+                                month: "short",
+                              },
+                            )}{" "}
+                            →{" "}
+                            {new Date(p.end_date).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deletePromo(p.id)}
+                          className="transition-colors"
+                          style={{
+                            color: "rgba(239,68,68,0.6)",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {promos.length === 0 && (
+                    <p
+                      className="text-amber-300/30 text-xs text-center"
+                      style={{ padding: "4px 0" }}
+                    >
+                      No promos yet
+                    </p>
                   )}
                 </div>
-
-                {/* Title */}
-                <input
-                  type="text"
-                  value={promoForm.title}
-                  onChange={(e) =>
-                    setPromoForm((p) => ({ ...p, title: e.target.value }))
-                  }
-                  placeholder="Promo title e.g. Happy Hour 50% Off"
-                  style={{
-                    width: "100%",
-                    backgroundColor: "rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(217,119,6,0.2)",
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                    color: "#FDFBF7",
-                    fontSize: 14,
-                    outline: "none",
-                  }}
-                />
-
-                {/* Description */}
-                <textarea
-                  value={promoForm.description}
-                  onChange={(e) =>
-                    setPromoForm((p) => ({ ...p, description: e.target.value }))
-                  }
-                  placeholder="Promo details..."
-                  rows={2}
-                  style={{
-                    width: "100%",
-                    backgroundColor: "rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(217,119,6,0.2)",
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                    color: "#FDFBF7",
-                    fontSize: 14,
-                    outline: "none",
-                    resize: "none",
-                  }}
-                />
-
-                {/* Date range */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-amber-300/50 text-xs mb-1">
-                      Start
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={promoForm.start_date}
-                      onChange={(e) =>
-                        setPromoForm((p) => ({
-                          ...p,
-                          start_date: e.target.value,
-                        }))
-                      }
-                      style={{
-                        width: "100%",
-                        backgroundColor: "rgba(0,0,0,0.3)",
-                        border: "1px solid rgba(217,119,6,0.2)",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                        color: "#FDFBF7",
-                        fontSize: 14,
-                        outline: "none",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-amber-300/50 text-xs mb-1">
-                      End
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={promoForm.end_date}
-                      onChange={(e) =>
-                        setPromoForm((p) => ({
-                          ...p,
-                          end_date: e.target.value,
-                        }))
-                      }
-                      style={{
-                        width: "100%",
-                        backgroundColor: "rgba(0,0,0,0.3)",
-                        border: "1px solid rgba(217,119,6,0.2)",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                        color: "#FDFBF7",
-                        fontSize: 14,
-                        outline: "none",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <button
-                  type="button"
-                  onClick={savePromo}
-                  disabled={
-                    promoSaving ||
-                    promoBannerUploading ||
-                    !promoForm.title ||
-                    !promoForm.start_date ||
-                    !promoForm.end_date
-                  }
-                  className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:opacity-50"
-                  style={{ backgroundColor: "#D97706", color: "#022c22" }}
-                >
-                  {promoSaving ? "Saving..." : "+ Add Promo"}
-                </button>
               </div>
+            </div>
 
-              {/* Promo list */}
-              <div className="space-y-3">
-                {promos.map((p) => {
-                  const now = new Date();
-                  const isLive =
-                    new Date(p.start_date) <= now &&
-                    new Date(p.end_date) >= now;
-                  const isExpired = new Date(p.end_date) < now;
-                  return (
+            {/* Theme Switcher */}
+            <div
+              className="rounded-2xl overflow-hidden border border-amber-900/20"
+              style={{
+                backgroundColor:
+                  "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
+                backdropFilter: "blur(10px)",
+                marginTop: 16,
+              }}
+            >
+              <div style={{ padding: "20px 20px 0" }}>
+                <h3
+                  style={{
+                    color: "#D97706",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  Restaurant Theme
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(253,251,247,0.4)",
+                    fontSize: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  Choose a theme for your customer menu page, dashboard and KDS.
+                </p>
+              </div>
+              <div
+                style={{
+                  padding: "0 20px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                {[
+                  {
+                    id: "default",
+                    name: "Obsidian & Gold",
+                    description: "Classic dark luxury",
+                    accent: "#D97706",
+                    bg: "#022c22",
+                  },
+                  {
+                    id: "carbon-lime",
+                    name: "Carbon & Lime",
+                    description: "Underground street food",
+                    accent: "#a3e635",
+                    bg: "#0a0a0a",
+                  },
+                  {
+                    id: "midnight-coral",
+                    name: "Midnight & Coral",
+                    description: "Coastal seafood vibes",
+                    accent: "#ff6b6b",
+                    bg: "#0d1b2a",
+                  },
+                  {
+                    id: "parchment-espresso",
+                    name: "Parchment & Espresso",
+                    description: "Warm artisan bistro",
+                    accent: "#c17f3a",
+                    bg: "#1a0f0a",
+                  },
+                  {
+                    id: "ember-crimson",
+                    name: "Ember & Crimson",
+                    description: "Bold BBQ steakhouse",
+                    accent: "#dc2626",
+                    bg: "#0f0a0a",
+                  },
+                  {
+                    id: "obsidian-rose",
+                    name: "Obsidian & Rose",
+                    description: "Feminine dessert luxury",
+                    accent: "#f43f5e",
+                    bg: "#0d0a0e",
+                  },
+                ].map((theme) => (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    onClick={() => saveTheme(theme.id)}
+                    disabled={themeSaving}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "14px 16px",
+                      borderRadius: 14,
+                      border:
+                        selectedTheme === theme.id
+                          ? `2px solid ${theme.accent}`
+                          : "1px solid rgba(255,255,255,0.08)",
+                      backgroundColor:
+                        selectedTheme === theme.id
+                          ? `${theme.bg}99`
+                          : "rgba(0,0,0,0.2)",
+                      cursor: themeSaving ? "wait" : "pointer",
+                      transition: "all 0.2s ease",
+                      textAlign: "left",
+                      width: "100%",
+                    }}
+                  >
+                    {/* Color preview */}
                     <div
-                      key={p.id}
-                      className="rounded-xl p-3 border border-amber-900/20 flex items-start justify-between gap-3"
-                      style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        backgroundColor: theme.bg,
+                        border: `2px solid ${theme.accent}`,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-amber-200 text-sm font-semibold">
-                            {p.title}
-                          </span>
-                          {isLive && (
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                              Live
-                            </span>
-                          )}
-                          {isExpired && (
-                            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
-                              Expired
-                            </span>
-                          )}
-                        </div>
-                        {p.description && (
-                          <p className="text-amber-300/50 text-xs">
-                            {p.description}
-                          </p>
-                        )}
-                        <p className="text-amber-300/30 text-xs mt-1">
-                          {new Date(p.start_date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}{" "}
-                          →{" "}
-                          {new Date(p.end_date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => deletePromo(p.id)}
-                        className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
-                      >
-                        Delete
-                      </button>
+                      <div
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          backgroundColor: theme.accent,
+                        }}
+                      />
                     </div>
-                  );
-                })}
-                {promos.length === 0 && (
-                  <p className="text-amber-300/30 text-xs text-center py-4">
-                    No promos yet
+                    {/* Theme info */}
+                    <div style={{ flex: 1 }}>
+                      <p
+                        style={{
+                          color: "#FDFBF7",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {theme.name}
+                      </p>
+                      <p
+                        style={{ color: "rgba(253,251,247,0.4)", fontSize: 11 }}
+                      >
+                        {theme.description}
+                      </p>
+                    </div>
+                    {/* Active indicator */}
+                    {selectedTheme === theme.id && (
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: theme.accent,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
+                {themeSaving && (
+                  <p
+                    style={{
+                      color: "rgba(253,251,247,0.3)",
+                      fontSize: 11,
+                      textAlign: "center",
+                    }}
+                  >
+                    Applying theme...
                   </p>
                 )}
               </div>

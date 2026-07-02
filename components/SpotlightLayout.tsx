@@ -74,7 +74,7 @@ export default function SpotlightLayout({
             ellipse 70vh 70vh at var(--sx, 50%) var(--sy, 40%),
             rgba(217,119,6,${goldIntensity}) 0%,
             rgba(245,158,11,${goldIntensity * 0.35}) 25%,
-            rgba(6,78,59,${goldIntensity * 0.2}) 50%,
+            color-mix(in srgb, var(--theme-surface) ${goldIntensity * 20}%, transparent) 50%,
             transparent 70%
           )`,
         }}

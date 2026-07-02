@@ -239,25 +239,25 @@ export default function SuperAdminPanel({
     }
     setOnboarding(true);
     try {
-      const { data: newRestaurant, error: restError } =
-        await supabaseRef.current
-          .from("restaurants")
-          .insert({
-            name: onboardForm.name,
-            slug: onboardForm.slug.toLowerCase().replace(/\s+/g, "-"),
-            currency: onboardForm.currency,
-            is_active: true,
-            // No flat session_fee — platform uses 1% dynamic rate
-          })
-          .select()
-          .maybeSingle();
-
-      if (restError) throw restError;
-      if (!newRestaurant) throw new Error("Restaurant was not created");
+      const onboardRes = await fetch("/api/admin/onboard-restaurant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: onboardForm.name,
+          slug: onboardForm.slug.toLowerCase().replace(/\s+/g, "-"),
+          currency: onboardForm.currency,
+          closing_time: onboardForm.closing_time,
+        }),
+      });
+      const onboardData = await onboardRes.json();
+      if (!onboardData.success)
+        throw new Error(onboardData.error ?? "Restaurant not created");
+      const newRestaurant = onboardData.restaurant;
 
       const res = await fetch("/api/admin/create-staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: onboardForm.staff_email,
           password: onboardForm.staff_password,

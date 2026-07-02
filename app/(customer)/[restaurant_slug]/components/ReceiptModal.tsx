@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 
 type Restaurant = Tables<"restaurants">;
-type StaffMember = Tables<"restaurant_staff">;
+
+interface StaffMember {
+  id: string;
+  display_name: string | null;
+  role: string | null;
+}
 
 interface OrderItem {
   name: string;

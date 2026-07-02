@@ -6,8 +6,8 @@ export async function proxy(request: NextRequest) {
   const response = await updateSession(request);
 
   // Only check suspension for dashboard/kds routes
-  const suspendedMatch = request.nextUrl.pathname.match(
-  /^\/(?!dashboard|kds|api|novanode|_next)([^/]+)(?!\/suspended)/,
+ const suspendedMatch = request.nextUrl.pathname.match(
+  /^\/(?!dashboard|kds|api|novanode|_next|login|_not-found)([^/]+)$/,
 );
 
   if (suspendedMatch && !request.nextUrl.pathname.includes('/suspended')) {

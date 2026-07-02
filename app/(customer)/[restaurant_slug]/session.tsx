@@ -14,7 +14,7 @@ interface SessionScreenProps {
   restaurant: Restaurant
   tableNumber: string
   starters: MenuItem[]
-  onSessionReady: (sessionToken: string, customerName: string) => void
+  onSessionReady: (sessionToken: string, customerName: string, accessToken: string | null) => void
 }
 
 type Step = 'welcome' | 'starters'
@@ -34,6 +34,7 @@ export default function SessionScreen({
   const [liveStarters, setLiveStarters] = useState(starters)
   const [existingSession, setExistingSession] = useState<string | null>(null)
   const [existingName, setExistingName] = useState('')
+  const [accessToken, setAccessToken] = useState<string | null>(null)
   const [lang, setLang] = useState<'en' | 'fr'>(() => {
     if (typeof window === 'undefined') return 'en'
     return (localStorage.getItem('nn_lang') as 'en' | 'fr') ?? 'en'
@@ -41,6 +42,10 @@ export default function SessionScreen({
   const resolvedName = useRef('')
   
   const supabase = useMemo(() => createClient(), [])
+  const sessionScope = useMemo(
+    () => ({ restaurantSlug: restaurant.slug, tableNumber }),
+    [restaurant.slug, tableNumber],
+  )
 
   useEffect(() => { checkExistingSession() }, [])
 
@@ -103,7 +108,7 @@ export default function SessionScreen({
 
   async function checkExistingSession() {
     setCheckingSession(true)
-    const storedToken = getStoredToken()
+    const storedToken = getStoredToken(sessionScope)
 
     if (storedToken) {
       const { data: session } = await supabase
@@ -113,7 +118,10 @@ export default function SessionScreen({
         .eq('is_active', true).maybeSingle()
       if (session) {
         resolvedName.current = session.customer_name
-        onSessionReady(session.session_token, session.customer_name)
+        const {
+          data: { session: authSession },
+        } = await supabase.auth.getSession()
+        onSessionReady(session.session_token, session.customer_name, authSession?.access_token ?? null)
         return
       }
     }
@@ -127,7 +135,7 @@ export default function SessionScreen({
     if (tableSession) {
       setExistingSession(tableSession.session_token)
       setExistingName(tableSession.customer_name)
-      storeToken(tableSession.session_token)
+      storeToken(tableSession.session_token, sessionScope)
     }
     setCheckingSession(false)
   }
@@ -147,6 +155,11 @@ export default function SessionScreen({
         console.warn('[session] Anonymous sign-in failed — realtime may be degraded:', anonError.message)
         // Do not block the flow — continue even if this fails
       }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const tokenAccessToken = session?.access_token ?? null
+      setAccessToken(tokenAccessToken)
       const { error } = await supabase.from('table_sessions').insert({
         restaurant_id: restaurant.id,
         table_number: tableNumber,
@@ -156,16 +169,16 @@ export default function SessionScreen({
         is_active: true,
       }).select().single()
       if (error) { await checkExistingSession(); return }
-      storeToken(token)
+      storeToken(token, sessionScope)
       if (liveStarters.length > 0) { setStep('starters') }
-      else { onSessionReady(token, customerName.trim()) }
+      else { onSessionReady(token, customerName.trim(), tokenAccessToken) }
     } catch { setNameError('Something went wrong. Please try again.') }
     finally { setLoading(false) }
   }
 
   async function handleStartersSubmit() {
     setLoading(true)
-    const token = getStoredToken()!
+    const token = getStoredToken(sessionScope) ?? existingSession!
     const selected = Object.entries(starterSelections)
       .filter(([, qty]) => qty > 0)
       .filter(([id]) => liveStarters.some((s) => s.id === id && s.is_available !== false))
@@ -186,7 +199,7 @@ export default function SessionScreen({
         is_starter_order: true,
       })
     }
-    onSessionReady(token, customerName.trim())
+    onSessionReady(token, customerName.trim(), accessToken)
     setLoading(false)
   }
 
@@ -246,7 +259,7 @@ export default function SessionScreen({
           </p>
           <button
             className="btn-primary"
-            onClick={() => onSessionReady(existingSession, existingName)}
+            onClick={() => onSessionReady(existingSession, existingName, accessToken)}
           >
             View Our Order
             <ChevronRight size={18} />
@@ -411,4 +424,5 @@ export default function SessionScreen({
   }
 
   return null
+
 }

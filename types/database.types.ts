@@ -795,6 +795,7 @@ export type Database = {
           suspended_at: string | null;
           suspended_by: string | null;
           suspension_reason: string | null;
+          theme: string | null;
           whatsapp_api_key: string | null;
         };
         Insert: {
@@ -818,6 +819,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_by?: string | null;
           suspension_reason?: string | null;
+          theme?: string | null;
           whatsapp_api_key?: string | null;
         };
         Update: {
@@ -841,6 +843,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_by?: string | null;
           suspension_reason?: string | null;
+          theme?: string | null;
           whatsapp_api_key?: string | null;
         };
         Relationships: [];
@@ -1153,6 +1156,47 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<
   "public"
 >];
 
+export type RestaurantStats = {
+  avg_order_value?: number | null;
+  cancelled_orders?: number | null;
+  completed_orders?: number | null;
+  gross_revenue?: number | null;
+  net_revenue?: number | null;
+  order_date?: string | null;
+  order_month?: string | null;
+  order_week?: string | null;
+  pending_orders?: number | null;
+  restaurant_id?: string | null;
+  restaurant_name?: string | null;
+  slug?: string | null;
+  tables_served?: number | null;
+  total_orders?: number | null;
+  total_platform_fees?: number | null;
+  unique_sessions?: number | null;
+};
+
+export type MenuItemStats = {
+  category_name?: string | null;
+  item_id?: string | null;
+  item_name?: string | null;
+  order_date?: string | null;
+  order_month?: string | null;
+  price?: number | null;
+  restaurant_id?: string | null;
+  restaurant_name?: string | null;
+  times_ordered?: number | null;
+  total_quantity?: number | null;
+  total_revenue?: number | null;
+};
+
+export type PeakHourStats = {
+  day_of_week?: string | null;
+  hour_of_day?: number | null;
+  order_count?: number | null;
+  restaurant_id?: string | null;
+  revenue?: number | null;
+};
+
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
@@ -1271,31 +1315,3 @@ export const Constants = {
     Enums: {},
   },
 } as const;
-
-export type RestaurantStats = {
-  restaurant_id: string
-  order_date: string
-  total_orders: number
-  total_revenue: number
-  gross_revenue: number
-  avg_order_value: number
-  tables_served: number
-  total_platform_fees: number
-}
-
-export type MenuItemStats = {
-  restaurant_id: string
-  order_month: string
-  menu_item_id: string
-  item_id: string
-  item_name: string
-  total_quantity: number
-  total_revenue: number
-}
-
-export type PeakHourStats = {
-  restaurant_id: string;
-  hour_of_day: number;
-  order_count: number;
-  avg_revenue: number;
-};

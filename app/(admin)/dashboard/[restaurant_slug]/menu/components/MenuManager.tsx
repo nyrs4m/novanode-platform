@@ -48,11 +48,12 @@ export default function MenuManager({
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null); // Corrected state variable name
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const getSupabase = () => supabaseRef.current;
 
   // Form state
   const [form, setForm] = useState({
@@ -81,8 +82,10 @@ export default function MenuManager({
         }));
       }
     } catch (err) {
-      console.error('Translation failed:', err)
-      alert('Translation failed. Please wait a moment and try again, or enter French text manually.')
+      console.error("Translation failed:", err);
+      alert(
+        "Translation failed. Please wait a moment and try again, or enter French text manually.",
+      );
     } finally {
       setIsTranslating(false); // Use setIsTranslating
     }
@@ -131,6 +134,7 @@ export default function MenuManager({
     try {
       const compressed = await compressImage(file);
       const fileName = `${restaurant.id}/${Date.now()}.webp`;
+      const supabase = getSupabase();
       const { error } = await supabase.storage
         .from("menu-images")
         .upload(fileName, compressed, { contentType: "image/webp" });
@@ -163,6 +167,7 @@ export default function MenuManager({
 
     setSaving(true);
     try {
+      const supabase = getSupabase();
       if (editingItem) {
         const { data, error } = await supabase
           .from("menu_items")
@@ -202,7 +207,7 @@ export default function MenuManager({
           .single();
         if (error) throw error;
         if (data) setItems((prev) => [data, ...prev]);
-        await fetch('/api/revalidate?tag=menu', { method: 'POST' });
+        await fetch("/api/revalidate?tag=menu", { method: "POST" });
       }
       resetForm();
       setView("list");
@@ -218,6 +223,7 @@ export default function MenuManager({
     if (!confirm("Delete this item? This cannot be undone.")) return;
     setDeletingId(id);
     try {
+      const supabase = getSupabase();
       const { error } = await supabase.from("menu_items").delete().eq("id", id);
       if (error) throw error;
       setItems((prev) => prev.filter((i) => i.id !== id));
@@ -234,6 +240,7 @@ export default function MenuManager({
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, is_available: newVal } : i)),
     );
+    const supabase = getSupabase();
     const { error } = await supabase
       .from("menu_items")
       .update({ is_available: newVal })
@@ -255,6 +262,7 @@ export default function MenuManager({
     }
     setSaving(true);
     try {
+      const supabase = getSupabase();
       const { data, error } = await supabase
         .from("categories")
         .insert({
@@ -282,6 +290,7 @@ export default function MenuManager({
       !confirm("Delete this category? Items in it will become uncategorized.")
     )
       return;
+    const supabase = getSupabase();
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) {
       alert("Failed to delete category.");

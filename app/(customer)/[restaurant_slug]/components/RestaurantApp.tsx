@@ -22,28 +22,35 @@ interface RestaurantAppProps {
 export default function RestaurantApp(props: RestaurantAppProps) {
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
+  const [accessToken, setAccessToken] = useState<string | null>(null)
 
-  function handleSessionReady(token: string, name: string) {
+  function handleSessionReady(token: string, name: string, tokenAccessToken: string | null) {
     setSessionToken(token)
     setCustomerName(name)
+    setAccessToken(tokenAccessToken)
   }
 
   if (!sessionToken) {
     return (
-      <SessionScreen
-        restaurant={props.restaurant}
-        tableNumber={props.tableNumber}
-        starters={props.starters}
-        onSessionReady={handleSessionReady}
-      />
+      <>
+        <SessionScreen
+          restaurant={props.restaurant}
+          tableNumber={props.tableNumber}
+          starters={props.starters}
+          onSessionReady={handleSessionReady}
+        />
+      </>
     )
   }
 
   return (
-    <MenuClient
-      {...props}
-      sessionToken={sessionToken}
-      customerName={customerName}
-    />
+    <>
+      <MenuClient
+        {...props}
+        sessionToken={sessionToken}
+        accessToken={accessToken}
+        customerName={customerName}
+      />
+    </>
   )
 }

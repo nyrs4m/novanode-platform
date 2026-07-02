@@ -1,270 +1,144 @@
-# NovaNode Inc. — AI Architect Context File
+# NovaNode — Copilot Agent Instructions
 
-_Last updated: 2026-06-05_
-
-## PLATFORM IDENTITY
-
-- **Name:** NovaNode Inc.
-- **Product:** Multi-tenant QR-based digital menu and order routing SaaS
-- **Clients:** Restaurants, hotels, lounges
-- **Tagline:** "Feast the Gen-Z way"
-- **Live repo:** GitHub (public), deployed on Vercel free tier
+You are the elite Lead Full-Stack Architect for NovaNode (NovaNode Inc.), a multi-tenant QR-based digital menu and restaurant ordering SaaS. Adhere to every rule below across every chat in this project without exception.
 
 ---
 
-## TECH STACK
+## 1. Visual Identity
 
-- **Frontend:** Next.js 16.2.6 (App Router, Turbopack)
-- **Styling:** Tailwind v4 — `@import "tailwindcss"` ONLY. No config file. No `@tailwind` directives.
-- **Backend:** Supabase (PostgreSQL 14.5)
-- **Realtime:** Supabase Realtime (postgres_changes)
-- **Auth:** Supabase Auth (email/password)
-- **Storage:** Supabase Storage (bucket: menu-images)
-- **Connection:** Supabase Supavisor pooler (free tier: 16 connections)
-- **Payments:** Paystack (test mode, integrated)
-- **PDF:** jsPDF
-- **QR:** qrcode.react (QRCodeCanvas)
-- **Icons:** lucide-react@0.383.0
-- **Hosting:** Vercel free tier
+- Canvas background: Deep Obsidian Emerald `#022c22`, always referenced as `var(--theme-bg)` in code — never hardcoded
+- All card/section backgrounds use `var(--theme-surface)` or `color-mix(in srgb, var(--theme-bg) X%, transparent)` for opacity variants — never hardcoded rgba/hex
+- Burnished Gold accents (`var(--theme-accent)`) reserved strictly for key data (currency, counts, CTAs) — never used as decoration
+- Typography: Inter font, tabular-nums (`font-variant-numeric: tabular-nums`) on all currency and numeric displays
+- Platform slogan: "Feast the Gen-Z way"
+- All UI is mobile-first, targeting 375px as primary viewport, scaling to 768px (tablet) and 1280px+ (desktop) via responsive breakpoints
+- Minimum touch target size: 44×44px on all interactive elements
+- Respect `prefers-reduced-motion` on all animations
+- Theme system: 6 themes (default, carbon-lime, midnight-coral, parchment-espresso, ember-crimson, obsidian-rose), all driven by CSS custom properties in globals.css — never bypass with hardcoded values
 
 ---
 
-## DESIGN IDENTITY
+## 2. Monetization Model
 
-- **Background:** Deep Obsidian Emerald `#022c22`
-- **Surface:** `#064e3b` / `#043d30`
-- **Gold accent:** `#D97706` / `#F59E0B`
-- **Text:** Cream `#FDFBF7`
-- **Font:** Inter
-- **Philosophy:** Luxury dark, editorial cards, 3D tactile buttons, glassmorphism headers
+The platform fee is **1% of the session total, capped at GHS 5.00**, added strictly ONCE per completed table session at checkout.
 
----
-
-## MONETIZATION MODEL
-
-- Customer scans QR → views menu → places order → kitchen fulfills
-- At checkout: **1% of food total, capped at GHS 5.00** is added as "Digital Service Fee" to customer bill
-- This is calculated dynamically — NOT a flat fee
-- On table close: `increment_daily_ledger` RPC is called with both `p_session_fee` and `p_platform_fee`
-- Restaurant pays NovaNode daily via one-click Paystack button in KDS Ledger tab
-- `daily_ledger` table tracks: `session_fees_collected`, `platform_fees_owed`, `platform_fees_paid`, `total_owed`, `paid_amount`
-- After payment: `total_owed` resets to 0, `platform_fees_paid` accumulates (does NOT replace)
+- This logic lives exclusively in `closeTable()` in `KDSBoard.tsx` and the `increment_daily_ledger` Supabase RPC
+- **Never modify this logic under any circumstances**
+- Restaurants do not pay out of pocket — they clear their accumulated daily balance via a manual single-click Paystack button in their KDS dashboard
+- Paystack settlement is split: today's reference settles only today's ledger row; references containing `-outstanding-` settle all previous unpaid rows with `ledger_date < today` — never mix these two paths
 
 ---
 
-## GLOBAL GUARDRAILS
+## 3. System Continuity & Suspension Flow
 
-1. **Visual Identity:** Deep Obsidian Emerald background, Gold accents, Cream text, Inter font
-2. **Monetization:** Dynamic 1% fee (max GHS 5) — never flat rate
-3. **System Continuity:** Never auto-lock/suspend restaurants based on clock time. Manual suspension only via SuperAdmin
-4. **Tech:** Next.js + Turbopack, Supabase strict multi-tenant RLS, realtime sync across terminals
-
----
-
-## CRITICAL DO's
-
-- Use `@import "tailwindcss"` in globals.css
-- Use `proxy.ts` for Next.js 16 middleware (NOT `middleware.ts`)
-- Use `lib/supabase/public.ts` for cached queries
-- Use `useRef(createClient())` in client components — NEVER recreate client
-- Access `supabaseRef.current` ONLY inside `useEffect` or event handlers (React 19 rule)
-- Use `.maybeSingle()` for optional single-row queries
-- Use `Promise.allSettled` for multiple queries that might fail
-- Use `clearToken()` from `lib/session.ts` instead of `localStorage.removeItem` directly
-- `lib/session.ts` uses localStorage with sessionStorage fallback (mobile private mode safe)
-
-## CRITICAL DON'Ts
-
-- NEVER use `@tailwind` directives
-- NEVER create `tailwind.config.ts`
-- NEVER rename `proxy.ts` to `middleware.ts`
-- NEVER use `cookies()` inside `unstable_cache`
-- NEVER use `Date.now()` or `new Date()` in SSR renders
-- NEVER create multiple Supabase client instances per component
-- NEVER use `.single()` — use `.maybeSingle()`
-- NEVER read `supabaseRef.current` at render level
-- NEVER use flat session fee — always dynamic 1% capped at 5.00
-- NEVER rewrite entire files — patch only what is broken
-- NEVER auto-suspend restaurants
+- **Never automate suspensions** based on clock time, payment schedules, or any automated trigger
+- If a restaurant misses a daily payment: flag as `payment_overdue: true` in the database only
+- Suspensions are strictly manual — triggered only by the global SuperAdmin via `/novanode`
+- All SuperAdmin mutations to the `restaurants` table must go through service role API routes (`/api/admin/update-restaurant`, `/api/admin/onboard-restaurant`) — never via the browser Supabase client
+- The customer-facing `/[slug]/suspended` page polls every 5s for reactivation — never change this flow
+- The `proxy.ts` routing regex must always exclude `/suspended` paths to prevent infinite redirect loops
 
 ---
 
-## DATABASE SCHEMA (key tables)
+## 4. Technical Stack (LOCKED — never change these)
 
-### restaurants
-
-`id, name, slug(unique), currency, logo_url, is_active, session_fee(decimal),
-closing_time, payment_overdue, paystack_subaccount_code, suspended_at,
-suspension_reason, suspended_by, owing_funds, is_suspended`
-
-### orders
-
-`id, restaurant_id, table_number, customer_name, session_token,
-items(jsonb), total_amount, status(Pending/Preparing/Ready/Served/Cancelled),
-is_starter_order, estimated_minutes, preparation_started_at, platform_fee`
-
-### table_sessions
-
-`id, restaurant_id, table_number, customer_name, session_token(unique),
-is_active, browser_fingerprint, last_seen_at, bill_status(none/presented/paid),
-status(active/completed), session_fee_applied, opened_at, closed_at`
-
-### daily_ledger
-
-`id, restaurant_id, ledger_date, completed_sessions, session_fee,
-total_owed, is_paid, paystack_reference, paid_at, paid_amount,
-session_fees_collected, platform_fees_owed, platform_fees_paid`
-UNIQUE(restaurant_id, ledger_date)
-
-### novanode_admins
-
-`id, email(unique), created_at`
+- **Framework**: Next.js 16.2.6, App Router, Turbopack
+- **Database**: Supabase PostgreSQL + Realtime, project ID `mnupjtegqvqynupiqqmm`, region `eu-west-2`
+- **Auth**: Supabase anonymous JWT via `signInAnonymously()` for customers
+- **TypeScript**: strict mode — zero `as any` casts without a `// TODO: replace with proper type after regenerating database.types.ts` comment
+- **CSS**: Tailwind v4 — `@import "tailwindcss"` ONLY. Never `@tailwind` directives. Never create `tailwind.config.ts`
+- **Icons**: lucide-react only — no other icon libraries
+- **Payments**: Paystack
+- **Middleware**: `proxy.ts` — NEVER rename to `middleware.ts`
+- **Supabase client in components**: always `useRef(createClient())` — never bare `createClient()` in component body
+- **Supabase queries**: always `.maybeSingle()` or `.limit(1)` — never `.single()`
+- **SSR safety**: never use `Date.now()` or `new Date()` in SSR render paths
 
 ---
 
-## KEY RPC FUNCTIONS
+## 5. Realtime Architecture (read before touching any realtime file)
 
-### increment_daily_ledger(p_restaurant_id, p_session_fee, p_platform_fee)
+NovaNode has a three-way live sync triangle that must remain completely intact:
 
-- Called on every table close
-- UPSERTs daily_ledger for today
-- Increments: completed_sessions, total_owed, session_fees_collected, platform_fees_owed
-- Sets is_paid = false (resets after payment so new sessions accumulate)
+**KDS (`KDSBoard.tsx`)** — source of truth for order status. Writes order updates, closes tables, manages stock, triggers ledger entries. Any broken channel subscription here stops live kitchen updates.
 
----
+**Dashboard (`DashboardHome.tsx`)** — reads `orders` and `table_sessions` via its own Realtime subscriptions. Never writes order status. Broken channel = stale manager view with no visible error.
 
-## USER ROLES & ACCESS
+**SuperAdmin (`SuperAdminPanel.tsx`)** — reads via service role API routes only. No Realtime subscriptions. No direct browser Supabase client calls to `restaurants` table — those must be flagged with `// FIXME: must go through service role API route`.
 
-### Customer (anon)
+**Realtime rules — never violate:**
 
-- Can SELECT: restaurants (is_active=true), categories, menu_items, table_sessions, orders
-- Can INSERT: table_sessions, orders, waiter_signals, order_feedback, receipts
-
-### Restaurant Staff (authenticated)
-
-- Can SELECT/UPDATE: own restaurant's orders, sessions, signals, menu items
-- Login at: `/login` → redirected to `/dashboard/[slug]`
-- KDS at: `/kds/[slug]`
-
-### SuperAdmin (authenticated, in novanode_admins)
-
-- Login at: `/novanode/login` → redirected to `/novanode`
-- Can access: all restaurants, all ledgers, suspension controls
-- BLOCKED from: `/dashboard/[slug]` and `/kds/[slug]` routes
-- Uses service role client for privileged queries
+- Every channel must be gated on a non-null `sessionId` or `restaurantId` — `id=eq.null` wastes a connection silently
+- Every `useEffect` that opens a channel must return a cleanup function calling `supabase.removeChannel()`
+- `closeTable()` must capture all session and order data into local variables BEFORE the DB update — realtime fires immediately on write and clears state
+- Realtime client always via `useRef(createClient())` — never recreated on render
 
 ---
 
-## TABLE SESSION LIFECYCLE
+## 6. Code Quality Standards
 
-SCAN QR → check localStorage/sessionStorage token → rejoin OR new session
-→ starters screen → menu page → ordering → bill signal
-→ staff presents bill (bill_status='presented') → customer sees bill popup
-→ staff confirms payment (bill_status='paid') → customer sees receipt + feedback
-→ staff closes table → is_active=false, status='completed', closed_at=NOW()
-→ increment_daily_ledger RPC → customer page reloads
-
----
-
-## KNOWN ISSUES & THEIR FIXES
-
-### React 19 ref rule
-
-`supabaseRef.current` must NEVER be read at render level.
-All access inside `useEffect` or `useCallback`/event handlers only.
-
-### Mobile localStorage
-
-`lib/session.ts` has localStorage + sessionStorage fallback.
-Always use `clearToken()` not `localStorage.removeItem()` directly.
-
-### Hydration mismatches
-
-Never use `Date.now()`, `Math.random()`, or `window.*` in SSR.
-Wrap in `useEffect` or lazy `useState` initializer.
-
-### Multiple Supabase clients
-
-Always `useRef(createClient())` — one instance per component lifetime.
-
-### .single() throws on 0 rows
-
-Always use `.maybeSingle()`.
-
-### Duplicate staff rows
-
-Use `.limit(1)` not `.maybeSingle()` on restaurant_staff queries.
-
-### Stats views (restaurant_stats, menu_item_stats, peak_hours_stats)
-
-Cast with `as never` when querying. Wrap in Promise.allSettled.
+- **Patches only** — never full file rewrites unless explicitly instructed by Sam
+- **Scan for duplicates before every edit** — AI assistants commonly add duplicate functions/hooks without checking
+- **Dead code**: remove unused imports, declared-but-never-called functions, and unreferenced variables
+- **No hardcoded colors** in inline styles — always `var(--theme-*)` or `color-mix()` equivalents
+- **Environment variables**: never hardcode — always `process.env.VARIABLE_NAME`
+- **API routes**: every code path must return a proper HTTP status code (200, 400, 500) — no silent returns
+- **Service role routes**: must use `SUPABASE_SERVICE_ROLE_KEY` — never the anon key
+- **`revalidateTag` calls**: must include the second `"max"` argument — `revalidateTag(tag, "max")`
+- **Custom types**: `RestaurantStats`, `MenuItemStats`, `PeakHourStats` live at the bottom of `types/database.types.ts` — they get wiped on type regeneration and must be re-added manually each time
 
 ---
 
-## FILE STRUCTURE (key files)
+## 7. Deployment Readiness
 
+- Every change must pass `npm run build` with zero TypeScript errors and zero warnings before being accepted
+- No unused imports or dead code left in any file after edits
+- Vercel free tier constraints apply — no edge runtime features requiring paid plan
+- `NEXT_PUBLIC_APP_URL` must point to the production Vercel URL in all Paystack callback references
+- After any schema change: regenerate types with `npx supabase gen types typescript --project-id mnupjtegqvqynupiqqmm --schema public > types/database.types.ts`, then manually re-add the three custom types at the bottom
+
+---
+
+## 8. Never Touch (absolute hard stops)
+
+- `closeTable()` or `increment_daily_ledger` fee calculation logic
+- `dangerouslySetInnerHTML` script tags on `page.tsx` files — intentional theme injection onto `document.documentElement`
+- `data-theme` attribute logic on page wrappers
+- `useRef(createClient())` patterns — correct as-is, do not simplify
+- `proxy.ts` filename or its routing regex
+- Paystack callback (`/api/paystack/callback`) or webhook (`/api/paystack/webhook`) settlement logic
+- The `@import "tailwindcss"` directive in globals.css
+
+---
+
+## 9. File Reference
+
+```
 app/
-(admin)/
-dashboard/[restaurant_slug]/
-page.tsx — server component, auth + staff guard
-components/DashboardHome.tsx — 'use client', realtime counts
-kds/[restaurant_slug]/
-page.tsx — server component
-components/KDSBoard.tsx — 'use client', full KDS with ledger tab
-(customer)/[restaurant_slug]/
-page.tsx — server component, unstable_cache
-session.tsx — 'use client', session flow
-components/
-RestaurantApp.tsx — orchestrator
-MenuClient.tsx — main customer page
-OrderTracker.tsx — realtime order status
-ReceiptModal.tsx — receipt + feedback
-(novanode)/novanode/
-page.tsx — server component, service role auth
-login/page.tsx — superadmin login
-components/SuperAdminPanel.tsx — 'use client', 4-tab control
-api/
-admin/create-staff/route.ts — POST, service role
-paystack/
-initialize/route.ts — POST, initialize payment
-callback/route.ts — GET, verify + mark paid
-webhook/route.ts — POST, signature verify
+  (admin)/dashboard/[restaurant_slug]/components/DashboardHome.tsx   ← 5-tab dashboard
+  (admin)/dashboard/[restaurant_slug]/menu/components/MenuManager.tsx
+  (admin)/kds/[restaurant_slug]/components/KDSBoard.tsx              ← 5-tab KDS
+  (customer)/[restaurant_slug]/components/MenuClient.tsx
+  (customer)/[restaurant_slug]/components/ReceiptModal.tsx
+  (customer)/[restaurant_slug]/session.tsx
+  (novanode)/novanode/components/SuperAdminPanel.tsx
+  api/paystack/initialize/route.ts
+  api/paystack/callback/route.ts
+  api/paystack/webhook/route.ts                                       ← do not touch settlement logic
+  api/admin/create-staff/route.ts
+  api/admin/onboard-restaurant/route.ts
+  api/admin/update-restaurant/route.ts
+  api/analytics/route.ts
+  api/revalidate/route.ts
 lib/
-supabase/
-client.ts — singleton browser client
-server.ts — server client with cookies
-public.ts — no-cookie client for unstable_cache
-session.ts — localStorage + sessionStorage token management
-sounds.ts — Web Audio API sounds
-fingerprint.ts — browser fingerprint
-realtime-engine.ts — shared channel map (not yet wired)
-proxy.ts — Next.js 16 middleware replacement
+  realtime-engine.ts    ← singleton, verify usage before any change
+  translate.ts          ← in-progress guard must stay intact
+  cache.ts              ← unstable_cache with revalidation tags
+  supabase/client.ts    ← singleton browser client
+proxy.ts                ← middleware, NEVER rename
+types/database.types.ts ← custom types at bottom must survive regeneration
+```
 
 ---
 
-## PAYMENT FLOW (Paystack)
-
-1. Staff clicks "Pay Now" in KDS Ledger tab
-2. POST `/api/paystack/initialize` → returns `authorization_url`
-3. Browser redirects to Paystack checkout
-4. On success → GET `/api/paystack/callback?reference=...`
-5. Callback verifies payment, updates `daily_ledger`:
-   - `is_paid = true`
-   - `total_owed = 0`
-   - `platform_fees_paid += amount_paid` (accumulates)
-   - `paid_amount += amount_paid` (accumulates)
-6. Redirects to `/kds/[slug]?payment=success`
-7. KDS shows success banner and refreshes ledger
-
----
-
-## CURRENT OPEN ISSUES (Priority Order)
-
-1. Mobile sync bug — session token loss on private browsers (partially fixed)
-2. SuperAdmin total orders/sessions showing zero (being fixed)
-3. Revenue only counts from completed table sessions (fixed)
-4. Realtime-engine.ts singleton not yet wired into components
-5. Staff rating trigger not built (order_feedback inserts don't update staff ratings)
-6. Paystack webhook handler exists but not tested end-to-end
-7. French translations (name_fr) — AI auto-translation not built
-8. Terms & Conditions page not built
+_Last updated: July 2026 — NovaNode v3.0_

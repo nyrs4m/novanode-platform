@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react";
 
- function TimeAgo({ dateStr }: { dateStr: string | null }) {
+function TimeAgo({ dateStr }: { dateStr: string | null }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return null
+
+  return <TimeAgoDisplay dateStr={dateStr} />;
+}
+
+function TimeAgoDisplay({ dateStr }: { dateStr: string | null }) {
+
   const [display, setDisplay] = useState(() => {
     if (!dateStr) return "just now";
     const ms = Date.now() - new Date(dateStr).getTime();

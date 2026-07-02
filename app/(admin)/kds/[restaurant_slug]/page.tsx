@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import KDSBoard from "./components/KDSBoard";
 import type { Tables } from "@/types/database.types";
+import Script from "next/script";
 
 type RevenueOrder = Pick<Tables<"orders">, "total_amount">;
 
@@ -108,14 +109,19 @@ export default async function KDSPage({ params }: PageProps) {
   const todayCount = todayRevenueOrders?.length ?? 0;
 
   return (
-    <KDSBoard
-      restaurant={restaurant}
-      initialOrders={orders ?? []}
-      initialSessions={sessions ?? []}
-      initialSignals={signals ?? []}
-      menuItems={menuItems ?? []}
-      todayRevenue={todayRevenue}
-      todayCount={todayCount}
-    />
+    <div
+      data-theme={restaurant.theme ?? "default"}
+      style={{ minHeight: "100dvh", background: "var(--theme-bg)" }}
+    >
+      <KDSBoard
+        restaurant={restaurant}
+        initialOrders={orders ?? []}
+        initialSessions={sessions ?? []}
+        initialSignals={signals ?? []}
+        menuItems={menuItems ?? []}
+        todayRevenue={todayRevenue}
+        todayCount={todayCount}
+      />
+    </div>
   );
 }

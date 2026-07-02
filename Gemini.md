@@ -43,7 +43,7 @@ _Last updated: 2026-06-05_
 ## MONETIZATION MODEL
 
 - Customer scans QR → views menu → places order → kitchen fulfills
-- At checkout: **1% of food total, capped at GHS 5.00** is added as "Digital Service Fee" to customer bill
+- At checkout: a dynamic platform fee of 1% of the session total, capped at GHS 5.00, is added strictly once per completed table session at checkout inside closeTable()
 - This is calculated dynamically — NOT a flat fee
 - On table close: `increment_daily_ledger` RPC is called with both `p_session_fee` and `p_platform_fee`
 - Restaurant pays NovaNode daily via one-click Paystack button in KDS Ledger tab

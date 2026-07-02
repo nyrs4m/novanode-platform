@@ -287,7 +287,7 @@ export default function KDSBoard({
           setClosingWarning("overdue");
           supabaseRef.current
             .from("restaurants")
-            .update({ payment_overdue: true } as any)
+            .update({ payment_overdue: true })
             .eq("id", restaurant.id)
             .then(() => {});
         } else {
@@ -411,10 +411,8 @@ export default function KDSBoard({
       (o) =>
         o.session_token === session.session_token && o.status !== "Cancelled",
     );
-    const foodTotal = sessionOrders.reduce(
-      (s, o) => s + Number(o.total_amount),
-      0,
-    );
+    const orderData = [...sessionOrders];
+    const foodTotal = orderData.reduce((s, o) => s + Number(o.total_amount), 0);
     const dynamicFee = Math.min(Math.round(foodTotal * 0.01 * 100) / 100, 5);
 
     await supabaseRef.current
@@ -434,13 +432,7 @@ export default function KDSBoard({
       } as any);
       // Update revenue and order count instantly
       setRevenue((prev) => prev + foodTotal);
-      setOrderCount((prev) => prev + sessionOrders.length);
-      console.log(
-        "CLOSE TABLE — foodTotal:",
-        foodTotal,
-        "orders:",
-        sessionOrders.length,
-      );
+      setOrderCount((prev) => prev + orderData.length);
 
       await fetchLedger();
     }
@@ -1952,7 +1944,8 @@ export default function KDSBoard({
                           fontWeight: 700,
                         }}
                       >
-                       GHS {Number(l.total_owed).toFixed(2)}                      </span>
+                        GHS {Number(l.total_owed).toFixed(2)}{" "}
+                      </span>
                     </div>
                   ))}
                 </div>

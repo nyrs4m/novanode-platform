@@ -36,13 +36,20 @@ export default async function RestaurantMenuPage({
   ]);
 
   return (
-    <RestaurantApp
-      restaurant={restaurant}
-      categories={categories}
-      menuItems={menuItems}
-      starters={starters}
-      dailySpecial={dailySpecial}
-      tableNumber={tableNumber}
-    />
+    <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.documentElement.setAttribute('data-theme', '${restaurant.theme ?? 'default'}')`,
+        }}
+      />
+      <RestaurantApp
+        restaurant={restaurant}
+        categories={categories}
+        menuItems={menuItems}
+        starters={starters}
+        dailySpecial={dailySpecial}
+        tableNumber={tableNumber}
+      />
+    </>
   );
 }

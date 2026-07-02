@@ -20,10 +20,6 @@ export async function GET(req: NextRequest) {
   }
 
   const { restaurant_id, ledger_date } = data.data.metadata;
-  console.log(
-    "Callback metadata received:",
-    JSON.stringify(data.data.metadata),
-  );
 
   if (!restaurant_id || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error(
@@ -114,12 +110,10 @@ export async function GET(req: NextRequest) {
     .select("slug")
     .eq("id", restaurant_id)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!restaurant?.slug) {
-    return NextResponse.redirect(
-      new URL("/?payment=success", process.env.NEXT_PUBLIC_APP_URL!),
-    );
+    return NextResponse.json({ error: "Record not found" }, { status: 400 });
   }
 
   return NextResponse.redirect(

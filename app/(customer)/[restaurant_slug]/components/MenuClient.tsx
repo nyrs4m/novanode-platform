@@ -27,12 +27,29 @@ import {
   Loader2,
   DollarSign,
   UtensilsCrossed,
+  ShoppingBag,
 } from "lucide-react";
 
 type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
 type DailySpecial = Tables<"daily_specials">;
+
+interface StaffMember {
+  id: string;
+  display_name: string | null;
+  role: string | null;
+}
+
+interface SessionOrder {
+  id: string;
+  session_token: string | null;
+  total_amount: number;
+  items: unknown;
+  is_starter_order: boolean | null;
+  status: string | null;
+  estimated_ready_at: string | null;
+}
 
 const UI_TEXT = {
   en: {
@@ -140,6 +157,7 @@ interface MenuClientProps {
   starters: MenuItem[];
   dailySpecial: DailySpecial | null;
   sessionToken: string;
+  accessToken: string | null;
   customerName: string;
   tableNumber: string;
 }
@@ -264,6 +282,7 @@ export default function MenuClient({
   menuItems,
   dailySpecial,
   sessionToken,
+  accessToken,
   customerName,
   tableNumber,
 }: MenuClientProps) {
@@ -277,25 +296,39 @@ export default function MenuClient({
   const [billLocked, setBillLocked] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [staffList, setStaffList] = useState<Tables<"restaurant_staff">[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [liveMenuItems, setLiveMenuItems] = useState<MenuItem[]>(menuItems);
   const [lang, setLang] = useState<"en" | "fr">(() => {
     if (typeof window === "undefined") return "en";
     return (localStorage.getItem("nn_lang") as "en" | "fr") ?? "en";
   });
-  const [allOrders, setAllOrders] = useState<
-    {
-      total_amount: number;
-      items: unknown;
-      is_starter_order: boolean | null;
-      status: string | null;
-    }[]
-  >([]);
+  const [allOrders, setAllOrders] = useState<SessionOrder[]>([]);
 
   const [promos, setPromos] = useState<
     { title: string; description: string | null; image_url: string | null }[]
   >([]);
   const [heroIndex, setHeroIndex] = useState(0);
+
+  const [navVisible, setNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const navVisibleRef = useRef(true);
+  const rafRef = useRef<number | null>(null);
+  const [pillsExpanded, setPillsExpanded] = useState(false);
+  const isMountedRef = useRef(true);
+
+  // Track mount state to prevent updates on unmounted component
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Use refs to track values inside event listeners without re-binding
+  const pillsExpandedRef = useRef(pillsExpanded);
+  useEffect(() => {
+    pillsExpandedRef.current = pillsExpanded;
+  }, [pillsExpanded]);
 
   // ── CRITICAL FIX: supabase client in a ref, never re-created ──
   const supabaseRef = useRef(createClient());
@@ -339,7 +372,7 @@ export default function MenuClient({
         .select("id, display_name, role")
         .eq("restaurant_id", restaurant.id)
         .eq("role", "waiter");
-      if (data && data.length > 0) setStaffList(data as any);
+      if (data && data.length > 0) setStaffList(data as StaffMember[]);
     }
     fetchStaff();
   }, [restaurant.id, sessionId]);
@@ -365,22 +398,30 @@ export default function MenuClient({
       .eq("is_active", true)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
+        if (data && isMountedRef.current) {
           setSessionId(data.id);
           if (data.bill_status !== "none" && data.bill_status)
             setBillLocked(true);
         }
       });
   }, [sessionToken, restaurant?.id]);
+
   // ── Fetch all non-cancelled session orders ─────────────────────────────
   const fetchSessionOrders = useCallback(async () => {
+    if (!sessionId) return;
     const { data } = await supabaseRef.current
       .from("orders")
-      .select("total_amount, items, is_starter_order, status")
+      .select("*")
       .eq("session_token", sessionToken)
       .neq("status", "Cancelled");
-    if (data) setAllOrders(data as typeof allOrders);
-  }, [sessionToken]);
+    if (data && isMountedRef.current) {
+      setAllOrders(
+        ((data as unknown as SessionOrder[]) ?? []).filter(
+          (order) => order.session_token === sessionToken,
+        ),
+      );
+    }
+  }, [sessionId, sessionToken]);
 
   const fetchSessionOrdersThrottled = useCallback(() => {
     if (fetchTimerRef.current) return;
@@ -391,80 +432,198 @@ export default function MenuClient({
   }, [fetchSessionOrders]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    fetchSessionOrders().then(async () => {
+      if (!sessionId || cancelled) return;
+      const { data } = await supabaseRef.current
+        .from("table_sessions")
+        .select("bill_status")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (cancelled || !isMountedRef.current) return;
+      if (data?.bill_status === "presented") {
+        setBillLocked(true);
+        setShowBillPopup(true);
+      } else if (data?.bill_status === "paid") {
+        setBillLocked(true);
+        setShowBillPopup(false);
+        setShowReceipt(true);
+      }
+    });
+
+    const timer = setTimeout(() => fetchSessionOrders(), 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [fetchSessionOrders, sessionId]);
+
+  // ── Session Table Realtime Channel ──────────────────────────────────────
+  useEffect(() => {
+    if (!sessionId) return;
     // FIX 2: Update realtime filter to use id instead of session_token
-    if (!sessionId || !restaurant?.id || realtimeSetupDone.current) return;
-    realtimeSetupDone.current = true;
+    if (!restaurant?.id || realtimeSetupDone.current) return;
     const supabase = supabaseRef.current;
-    const channel = getRestaurantChannel(restaurant.id, supabase, "customer");
+    let channel: ReturnType<typeof getRestaurantChannel> | null = null;
+    let cancelled = false;
 
-    channel
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "table_sessions",
-          filter: `id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const updated = payload.new as {
-            bill_status: string | null;
-            is_active: boolean;
-            status: string;
-            id: string; // Add id to updated type for clarity
-          };
+    const setup = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
 
-          if (updated.bill_status === "presented") {
-            setBillLocked(true);
-            fetchSessionOrdersThrottled();
-            setTimeout(() => setShowBillPopup(true), 400);
-          } else if (updated.bill_status === "paid") {
-            setBillLocked(true);
-            fetchSessionOrdersThrottled();
-            setTimeout(() => {
-              setShowBillPopup(false);
-              setShowReceipt(true);
-            }, 400);
-          } else if (!updated.is_active || updated.status === "completed") {
-            clearToken();
-            setTimeout(() => window.location.reload(), 1500);
+      realtimeSetupDone.current = true;
+      channel = getRestaurantChannel(restaurant.id, supabase, "customer");
+
+      channel
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "table_sessions",
+            filter: `id=eq.${sessionId}`,
+          },
+          (payload) => {
+            const updated = payload.new as {
+              bill_status: string | null;
+              is_active: boolean;
+              status: string;
+              id: string; // Add id to updated type for clarity
+            };
+
+            if (updated.bill_status === "presented") {
+              setBillLocked(true);
+              fetchSessionOrdersThrottled();
+              setTimeout(() => {
+                if (isMountedRef.current) setShowBillPopup(true);
+              }, 400);
+            } else if (updated.bill_status === "paid") {
+              setBillLocked(true);
+              fetchSessionOrdersThrottled();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  setShowBillPopup(false);
+                  setShowReceipt(true);
+                }
+              }, 400);
+            } else if (!updated.is_active || updated.status === "completed") {
+              clearToken();
+              setTimeout(() => {
+                if (isMountedRef.current) window.location.reload();
+              }, 1500);
+            }
+          },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn(
+              "[MenuClient] Realtime degraded — polling fallback active",
+            );
           }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        () => fetchSessionOrdersThrottled(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `session_token=eq.${sessionToken}`,
-        },
-        () => fetchSessionOrdersThrottled(),
-      )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn(
-            "[MenuClient] Realtime degraded — polling fallback active",
-          );
-        }
-      });
+        });
+    };
+
+    setup();
 
     return () => {
+      cancelled = true;
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
       realtimeSetupDone.current = false;
-      releaseRestaurantChannel(restaurant.id, supabase, "customer");
+      if (channel) releaseRestaurantChannel(restaurant.id, supabase, "customer");
     };
   }, [sessionId, sessionToken, restaurant?.id, fetchSessionOrdersThrottled]);
+
+  // ── Realtime Subscription to synchronise Orders array directly ────────
+  useEffect(() => {
+    const supabase = supabaseRef.current;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    const setup = async () => {
+      if (!sessionId || !accessToken || cancelled) return;
+
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: accessToken,
+      });
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`orders-${sessionId}`)
+        .on(
+        "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "orders",
+            filter: `session_token=eq.${sessionToken}`,
+          },
+          (payload) => {
+            const inserted = payload.new as SessionOrder;
+            if (inserted.session_token !== sessionToken) return;
+            if (inserted.status !== "Cancelled") {
+              setAllOrders((prev) => {
+                const exists = prev.some((o) => o.id === inserted.id);
+                if (exists) return prev;
+                return [...prev, inserted];
+              });
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
+            filter: `session_token=eq.${sessionToken}`,
+          },
+          (payload) => {
+            const updated = payload.new as SessionOrder;
+            if (updated.session_token !== sessionToken) return;
+            if (updated.status === "Cancelled") {
+              setAllOrders((prev) => prev.filter((o) => o.id !== updated.id));
+            } else {
+              setAllOrders((prev) =>
+                prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+              );
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "orders",
+            filter: `session_token=eq.${sessionToken}`,
+          },
+          (payload) => {
+            const oldPayload = payload.old as { id: string; session_token?: string | null };
+            if (oldPayload.session_token && oldPayload.session_token !== sessionToken) return;
+            setAllOrders((prev) => prev.filter((o) => o.id !== oldPayload.id));
+          }
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("[MenuClient] Realtime connected");
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.log("[MenuClient] Realtime degraded — polling fallback active");
+          }
+        });
+    };
+
+    setup();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [sessionId, sessionToken, accessToken]);
 
   // Fallback Polling for bill_status
   useEffect(() => {
@@ -477,13 +636,55 @@ export default function MenuClient({
         .maybeSingle();
 
       if (data?.bill_status === "presented" && !showBillPopup) {
-        fetchSessionOrders().then(() =>
-          setTimeout(() => setShowBillPopup(true), 400),
-        );
+        fetchSessionOrders().then(() => {
+          setTimeout(() => {
+            if (isMountedRef.current) setShowBillPopup(true);
+          }, 400);
+        });
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [sessionId, restaurant?.id, showBillPopup, fetchSessionOrdersThrottled]);
+  }, [sessionId, restaurant?.id, showBillPopup, fetchSessionOrders]);
+
+  // Knife nav — hide on scroll down, show on scroll up (Throttled with requestAnimationFrame)
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+
+          if (currentY < 50) {
+            if (!navVisibleRef.current) {
+              navVisibleRef.current = true;
+              setNavVisible(true);
+            }
+            if (pillsExpandedRef.current) {
+              setPillsExpanded(false);
+            }
+          } else if (currentY > lastScrollY.current + 8) {
+            if (navVisibleRef.current) {
+              navVisibleRef.current = false;
+              setNavVisible(false);
+            }
+            if (pillsExpandedRef.current) {
+              setPillsExpanded(false);
+            }
+          } else if (currentY < lastScrollY.current - 8) {
+            if (!navVisibleRef.current) {
+              navVisibleRef.current = true;
+              setNavVisible(true);
+            }
+          }
+          lastScrollY.current = currentY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ── Cart helpers ───────────────────────────────────────────────────────
   function addItem(item: MenuItem) {
@@ -495,16 +696,6 @@ export default function MenuClient({
         );
       return [...prev, { item, quantity: 1 }];
     });
-  }
-
-  function removeItem(id: string) {
-    setOrder((prev) =>
-      prev
-        .map((ci) =>
-          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci,
-        )
-        .filter((ci) => ci.quantity > 0),
-    );
   }
 
   // ── Place Order ────────────────────────────────────────────────────────
@@ -566,9 +757,11 @@ export default function MenuClient({
       setPlacingOrder(false);
 
       setTimeout(() => {
-        setOrderSuccess(false);
-        setShowOrder(false);
-        setOrder([]);
+        if (isMountedRef.current) {
+          setOrderSuccess(false);
+          setShowOrder(false);
+          setOrder([]);
+        }
       }, 2500);
     } catch (err) {
       console.error("Unexpected error placing order:", err);
@@ -588,11 +781,16 @@ export default function MenuClient({
       signal_type: type,
     });
     setTimeout(
-      () => setSentSignals((prev) => prev.filter((s) => s !== type)),
+      () => {
+        if (isMountedRef.current) {
+          setSentSignals((prev) => prev.filter((s) => s !== type));
+        }
+      },
       5000,
     );
   }
 
+  // ── Language Toggle ────────────────────────────────────────────────────
   function toggleLang() {
     setLang((prev) => {
       const next = prev === "en" ? "fr" : "en";
@@ -625,37 +823,274 @@ export default function MenuClient({
   const sessionFee = Math.min(Math.round(runningTotal * 0.01 * 100) / 100, 5);
   const grandTotal = runningTotal + sessionFee;
 
+  function removeItem(id: string) {
+    setOrder((prev) =>
+      prev
+        .map((ci) =>
+          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci,
+        )
+        .filter((ci) => ci.quantity > 0),
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="menu-page">
-      {/* Ambient glows */}
+    <div
+      className="menu-page"
+      data-theme={restaurant.theme ?? "default"}
+      style={{
+        background: "var(--theme-bg)",
+        willChange: "scroll-position",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {/* ── MOTION BACKGROUNDS ── */}
+      {/* Default + Carbon Lime — orb 1 */}
       <div
-        className="ambient-gold"
+        className="ambient-gold motion-orb-1"
         style={{
-          width: 350,
-          height: 350,
-          top: -100,
-          left: -100,
+          width: 500,
+          height: 500,
+          top: -120,
+          left: -120,
           position: "fixed",
           zIndex: 0,
+          background: "var(--theme-orb-1)",
+          borderRadius: "50%",
+          filter: "blur(60px)",
         }}
       />
+      {/* Default + Carbon Lime — orb 2 */}
       <div
-        className="ambient-emerald"
+        className="ambient-emerald motion-orb-2"
         style={{
-          width: 250,
-          height: 250,
-          top: 400,
-          right: -80,
+          width: 400,
+          height: 400,
+          top: 350,
+          right: -100,
           position: "fixed",
           zIndex: 0,
+          background: "var(--theme-orb-2, var(--theme-accent-glow))",
+          borderRadius: "50%",
+          filter: "blur(50px)",
         }}
       />
+
+      {/* Carbon & Lime — scan line */}
+      {restaurant.theme === "carbon-lime" && (
+        <div
+          className="motion-scan"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "2px",
+            background:
+              "linear-gradient(90deg, transparent, var(--theme-accent), transparent)",
+            zIndex: 1,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Midnight & Coral — ocean wave + bioluminescent pulse */}
+      {restaurant.theme === "midnight-coral" && (
+        <>
+          <div
+            className="motion-wave motion-orb-1"
+            style={{
+              position: "fixed",
+              width: 600,
+              height: 300,
+              bottom: -100,
+              left: -100,
+              background:
+                "radial-gradient(ellipse, rgba(255,107,107,0.2) 0%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+            }}
+          />
+          <div
+            className="motion-coral-pulse"
+            style={{
+              position: "fixed",
+              width: 500,
+              height: 500,
+              top: -150,
+              right: -150,
+              background:
+                "radial-gradient(circle, rgba(255,107,107,0.18) 0%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+            }}
+          />
+          <div
+            className="motion-wave"
+            style={{
+              position: "fixed",
+              width: 400,
+              height: 200,
+              top: "40%",
+              right: -80,
+              background:
+                "radial-gradient(ellipse, rgba(255,107,107,0.1) 0%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+              animationDelay: "4s",
+            }}
+          />
+        </>
+      )}
+
+      {/* Void & Violet — deep space nebula */}
+      {restaurant.theme === "void-violet" && (
+        <>
+          <div
+            className="motion-nebula"
+            style={{
+              position: "fixed",
+              width: 600,
+              height: 600,
+              top: -200,
+              left: -200,
+              background:
+                "radial-gradient(circle, rgba(124,58,237,0.25) 0%, rgba(167,139,250,0.1) 50%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+            }}
+          />
+          <div
+            className="motion-nebula"
+            style={{
+              position: "fixed",
+              width: 500,
+              height: 500,
+              bottom: -150,
+              right: -150,
+              background:
+                "radial-gradient(circle, rgba(167,139,250,0.2) 0%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+              animationDelay: "8s",
+            }}
+          />
+          <div className="motion-star" style={{ top: "15%", left: "20%" }} />
+          <div
+            className="motion-star"
+            style={{ top: "30%", left: "70%", animationDelay: "0.5s" }}
+          />
+          <div
+            className="motion-star"
+            style={{ top: "55%", left: "40%", animationDelay: "1.2s" }}
+          />
+          <div
+            className="motion-star"
+            style={{ top: "70%", left: "80%", animationDelay: "2.1s" }}
+          />
+          <div
+            className="motion-star"
+            style={{ top: "85%", left: "15%", animationDelay: "2.8s" }}
+          />
+        </>
+      )}
+
+      {/* Ember & Crimson — fire heat + rising embers */}
+      {restaurant.theme === "ember-crimson" && (
+        <>
+          <div
+            className="motion-fire-glow"
+            style={{
+              position: "fixed",
+              width: 500,
+              height: 500,
+              bottom: -200,
+              left: "50%",
+              transform: "translateX(-50%)",
+              background:
+                "radial-gradient(circle, rgba(220,38,38,0.3) 0%, rgba(239,68,68,0.1) 50%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+            }}
+          />
+          <div
+            className="motion-fire-glow"
+            style={{
+              position: "fixed",
+              width: 400,
+              height: 400,
+              top: -100,
+              right: -100,
+              background:
+                "radial-gradient(circle, rgba(220,38,38,0.2) 0%, transparent 70%)",
+              borderRadius: "50%",
+              zIndex: 0,
+              animationDelay: "2.5s",
+            }}
+          />
+          <div className="motion-heat" style={{ left: "10%", bottom: 0 }} />
+          <div
+            className="motion-heat"
+            style={{ left: "30%", bottom: 0, animationDelay: "1s" }}
+          />
+          <div
+            className="motion-heat"
+            style={{ left: "60%", bottom: 0, animationDelay: "2s" }}
+          />
+          <div
+            className="motion-heat"
+            style={{ left: "85%", bottom: 0, animationDelay: "3s" }}
+          />
+        </>
+      )}
+
+      {/* Obsidian & Rose — petal drift + aurora shimmer */}
+      {restaurant.theme === "obsidian-rose" && (
+        <>
+          <div
+            className="motion-aurora"
+            style={{
+              position: "fixed",
+              width: "120%",
+              height: 300,
+              top: -100,
+              left: "-10%",
+              background:
+                "linear-gradient(180deg, rgba(244,63,94,0.15) 0%, rgba(251,207,232,0.08) 50%, transparent 100%)",
+              zIndex: 0,
+            }}
+          />
+          <div
+            className="motion-aurora"
+            style={{
+              position: "fixed",
+              width: "120%",
+              height: 250,
+              bottom: -80,
+              left: "-10%",
+              background:
+                "linear-gradient(0deg, rgba(244,63,94,0.12) 0%, transparent 100%)",
+              zIndex: 0,
+              animationDelay: "5s",
+            }}
+          />
+          <div className="motion-petal" style={{ left: "10%", bottom: -10 }} />
+          <div
+            className="motion-petal"
+            style={{ left: "35%", bottom: -10, animationDelay: "3s" }}
+          />
+          <div className="motion-petal" style={{ left: "60%", bottom: -10, animationDelay: "7s" }} />
+          <div
+            className="motion-petal"
+            style={{ left: "85%", bottom: -10, animationDelay: "11s" }}
+          />
+        </>
+      )}
 
       {/* ── HEADER ── */}
       <header className="menu-header">
         {/* Hero — cycles restaurant info then each active promo */}
-        <div className="relative " style={{ minHeight: "80px" }}>
+        <div className="relative " style={{ minHeight: "220px" }}>
           {/* Slide 0 — Restaurant info */}
           <div
             className="transition-all duration-500"
@@ -685,7 +1120,7 @@ export default function MenuClient({
                     height: 72,
                     borderRadius: 18,
                     overflow: "hidden",
-                    border: "1.5px solid rgba(217, 119, 6, 0.35)",
+                    border: "1.5px solid var(--gold-dim)",
                     flexShrink: 0,
                     boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
                   }}
@@ -711,7 +1146,7 @@ export default function MenuClient({
                         backgroundColor: "rgba(0,0,0,0.3)",
                       }}
                     >
-                      <UtensilsCrossed size={26} color="rgba(217,119,6,0.35)" />
+                      <UtensilsCrossed size={26} color="var(--gold-dim)" />
                     </div>
                   )}
                 </div>
@@ -720,7 +1155,7 @@ export default function MenuClient({
                 <div style={{ flex: 1, paddingTop: 4 }}>
                   <p
                     style={{
-                      color: "rgba(217, 119, 6, 0.8)",
+                      color: "var(--gold-glow)",
                       fontSize: 10,
                       fontWeight: 700,
                       letterSpacing: "0.14em",
@@ -748,7 +1183,7 @@ export default function MenuClient({
                 (restaurant as any).contact_number) && (
                 <div
                   style={{
-                    borderTop: "1px solid rgba(217, 119, 6, 0.1)",
+                    borderTop: "1px solid var(--gold-dim)",
                     paddingTop: 10,
                     display: "flex",
                     flexDirection: "column",
@@ -769,7 +1204,7 @@ export default function MenuClient({
                   {(restaurant as any).contact_number && (
                     <p
                       style={{
-                        color: "rgba(217, 119, 6, 0.55)",
+                        color: "var(--gold-dim)",
                         fontSize: 12,
                         display: "flex",
                         alignItems: "center",
@@ -796,11 +1231,11 @@ export default function MenuClient({
                 position: heroIndex === i + 1 ? "relative" : "absolute",
                 width: "100%",
                 top: 0,
-                padding: "12px 16px 8px",
+                padding: "0 16px 8px",
               }}
             >
               <div
-                className="relative rounded-lg overflow-hidden w-full"
+                className="relative rounded-xl overflow-hidden w-full"
                 style={{
                   height: "200px",
                   minHeight: "200px",
@@ -819,8 +1254,8 @@ export default function MenuClient({
                   <div
                     className="absolute inset-0"
                     style={{
-                      backgroundColor: "rgba(217,119,6,0.12)",
-                      border: "1px solid rgba(217,119,6,0.2)",
+                      backgroundColor: "var(--gold-dim)",
+                      border: "1px solid var(--gold-dim)",
                       borderRadius: "1rem",
                     }}
                   />
@@ -837,14 +1272,22 @@ export default function MenuClient({
                 />
 
                 {/* Text pinned to bottom */}
-                {/* Text pinned to bottom */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 text-center">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-amber-400 text-xs font-bold tracking-widest">
+                    <span
+                      className="text-xs font-bold tracking-widest"
+                      style={{ color: "var(--gold-glow)" }}
+                    >
                       PROMO
                     </span>
-                    <span className="w-1 h-1 rounded-full bg-amber-400/50" />
-                    <span className="text-amber-300/50 text-xs">
+                    <span
+                      className="w-1 h-1 rounded-full"
+                      style={{ backgroundColor: "var(--gold-dim)" }}
+                    />
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--cream-35)" }}
+                    >
                       Limited time
                     </span>
                   </div>
@@ -863,11 +1306,18 @@ export default function MenuClient({
 
           {/* Dot indicators */}
           {promos.length > 0 && (
-            <div className="flex justify-center gap-1.5 mt-2">
+            <div
+              className="flex justify-center gap-1.5 mt-2"
+              style={{ paddingBottom: "12px" }}
+            >
               {[...Array(1 + promos.length)].map((_, i) => (
                 <div
                   key={i}
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${heroIndex === i ? "bg-amber-400" : "bg-amber-400/30"}`}
+                  className="w-1.5 h-1.5 rounded-full transition-all"
+                  style={{
+                    backgroundColor:
+                      heroIndex === i ? "var(--gold-glow)" : "var(--gold-dim)",
+                  }}
                 />
               ))}
             </div>
@@ -923,7 +1373,7 @@ export default function MenuClient({
         <div
           style={{
             margin: "16px 16px 0",
-            background: "var(--gold-faint)", // Do not translate CSS values
+            background: "var(--gold-faint)",
             border: "1px solid var(--gold-dim)",
             borderRadius: 16,
             padding: "12px 16px",
@@ -943,37 +1393,296 @@ export default function MenuClient({
         </div>
       )}
 
-      {/* ── WAITER SIGNALS ── */}
-      <div className="signals-grid">
-        {signals.map((s) => {
-          const sent = sentSignals.includes(s.type);
-          return (
-            <button
-              key={s.type}
-              className={`signal-btn ${sent ? "sent" : ""}`}
-              onClick={() => sendSignal(s.type)}
-            >
-              {" "}
-              {/* s.label is already translated */}
-              {sent ? <CheckCircle size={22} /> : s.icon}
-              {sent ? ui.sent : s.label}
-            </button>
-          );
-        })}
+      {/* ── KNIFE NAV ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 16,
+          left: "50%",
+          transform: navVisible
+            ? "translateX(-50%) translateY(0)"
+            : "translateX(-50%) translateY(120px)",
+          zIndex: 200,
+          display: "flex",
+          alignItems: "center",
+          width: "calc(100% - 24px)",
+          maxWidth: 420,
+          height: 68,
+          borderRadius: 999,
+          background: "var(--theme-nav-bg, rgba(2,44,34,0.95))",
+          border: "1px solid var(--theme-nav-border, rgba(217,119,6,0.25))",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          boxShadow:
+            "0 -1px 0 rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)",
+          overflow: "hidden",
+          transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+        }}
+      >
+        {/* Blade — signal buttons */}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "space-around",
+            padding: "0 4px 0 16px",
+            height: "100%",
+            background:
+              "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Blade shine */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "1px",
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.1) 70%, transparent 100%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {signals.map((s) => {
+            const sent = sentSignals.includes(s.type);
+            return (
+              <button
+                key={s.type}
+                type="button"
+                onClick={() => sendSignal(s.type)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  borderRadius: 16,
+                  transition: "all 0.2s ease",
+                  minWidth: 52,
+                  minHeight: 52,
+                  backgroundColor: sent
+                    ? "var(--theme-accent-glow, rgba(217,119,6,0.15))"
+                    : "transparent",
+                }}
+              >
+                <span
+                  style={{
+                    color: sent
+                      ? "var(--theme-accent, #D97706)"
+                      : "rgba(255,255,255,0.6)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transform: sent ? "scale(1.1)" : "scale(1)",
+                  }}
+                >
+                  {sent ? <CheckCircle size={20} /> : s.icon}
+                </span>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    color: sent
+                      ? "var(--theme-accent, #D97706)"
+                      : "rgba(255,255,255,0.35)",
+                    transition: "color 0.2s ease",
+                    textTransform: "uppercase",
+                    lineHeight: 1,
+                  }}
+                >
+                  {sent ? ui.sent : s.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Handle divider */}
+        <div
+          style={{
+            width: 1,
+            height: 40,
+            backgroundColor: "var(--theme-border, rgba(217,119,6,0.2))",
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Handle — order count badge */}
+        <div
+          style={{
+            width: 80,
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            position: "relative",
+            cursor: count > 0 ? "pointer" : "default",
+            background:
+              "linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.25) 100%)",
+            borderRadius: "0 999px 999px 0",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
+          }}
+          onClick={() => count > 0 && setShowOrder(true)}
+        >
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background:
+                count > 0
+                  ? "var(--theme-accent, #D97706)"
+                  : "rgba(255,255,255,0.06)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+              boxShadow:
+                count > 0
+                  ? "0 4px 20px var(--theme-accent-glow, rgba(217,119,6,0.4))"
+                  : "none",
+            }}
+          >
+            {count > 0 ? (
+              <span
+                style={{
+                  color: "#022c22",
+                  fontWeight: 900,
+                  fontSize: count > 9 ? 13 : 16,
+                  lineHeight: 1,
+                }}
+              >
+                {count}
+              </span>
+            ) : (
+              <ShoppingBag size={20} color="rgba(255,255,255,0.3)" />
+            )}
+          </div>
+          {count > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "var(--theme-accent, #D97706)",
+                animation: "pulseGold 1.5s infinite",
+              }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* ── CATEGORY PILLS ── */}
-      <div className="pills-wrap scrollbar-hide">
-        {[{ id: null, name_en: "All", name_fr: "Tout" }, ...categories].map(
-          (cat) => (
+      {/* ── CATEGORY PILLS — animated expand/collapse ── */}
+      <div
+        style={{
+          padding: "6px 16px 0",
+          position: "relative",
+          minHeight: 36,
+        }}
+        onClick={() => !pillsExpanded && setPillsExpanded(true)}
+      >
+        {!pillsExpanded ? (
+          /* Collapsed — show active pill + hint */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+            }}
+          >
+            {/* Active category pill */}
             <button
-              key={cat.id ?? "all"}
-              className={`pill ${activeCategory === (cat.id ?? null) ? "active" : ""}`}
-              onClick={() => setActiveCategory(cat.id ?? null)}
+              type="button"
+              className="pill active"
+              style={{ pointerEvents: "none" }}
             >
-              {t(cat.name_en, (cat as any).name_fr)}
+              {t(
+                [
+                  { id: null, name_en: "All", name_fr: "Tout" },
+                  ...categories,
+                ].find((c) => (c.id ?? null) === activeCategory)?.name_en ??
+                  "All",
+                (
+                  [
+                    { id: null, name_en: "All", name_fr: "Tout" },
+                    ...categories,
+                  ].find((c) => (c.id ?? null) === activeCategory) as any
+                )?.name_fr,
+              )}
             </button>
-          ),
+            {/* Hint dots */}
+            <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+              {[...Array(Math.min(3, categories.length))].map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: "50%",
+                    backgroundColor: "var(--cream-15)",
+                    transform: `scale(${1 - i * 0.2})`,
+                  }}
+                />
+              ))}
+            </div>
+            <span
+              style={{
+                fontSize: 10,
+                color: "var(--cream-35)",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+              }}
+            >
+              {categories.length} categories
+            </span>
+          </div>
+        ) : (
+          /* Expanded — all pills in animated wrap */
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              animation: "fadeUp 0.25s ease",
+            }}
+          >
+            {[{ id: null, name_en: "All", name_fr: "Tout" }, ...categories].map(
+              (cat, index) => (
+                <button
+                  key={cat.id ?? "all"}
+                  type="button"
+                  className={`pill ${activeCategory === (cat.id ?? null) ? "active" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCategory(cat.id ?? null);
+                    setPillsExpanded(false);
+                  }}
+                  style={{
+                    animation: `fadeUp 0.2s ease ${index * 0.04}s both`,
+                  }}
+                >
+                  {t(cat.name_en, (cat as any).name_fr)}
+                </button>
+              ),
+            )}
+          </div>
         )}
       </div>
 
@@ -998,7 +1707,7 @@ export default function MenuClient({
                     alt={t(item.name_en, item.name_fr)}
                   />
                   <div className="hero-overlay" />
-                  <span /* Do not translate item.image_url, item.name_en, item.name_fr */
+                  <span
                     className="badge-gold"
                     style={{ position: "absolute", top: 16, left: 16 }}
                   >
@@ -1054,7 +1763,7 @@ export default function MenuClient({
                           className="qty-btn"
                           onClick={() => {
                             if (!billLocked) addItem(item);
-                          }} /* Do not translate item.id */
+                          }}
                         >
                           <Plus size={16} />
                         </button>
@@ -1064,7 +1773,7 @@ export default function MenuClient({
                         className="btn-add btn-add-full"
                         onClick={() => {
                           if (!billLocked) addItem(item);
-                        }} /* Do not translate item.id */
+                        }}
                       >
                         + {ui.addToOrder}
                       </button>
@@ -1152,7 +1861,7 @@ export default function MenuClient({
                           className="qty-btn"
                           onClick={() => {
                             if (!billLocked) addItem(item);
-                          }} /* Do not translate item.id */
+                          }}
                         >
                           <Plus size={13} />
                         </button>
@@ -1160,7 +1869,7 @@ export default function MenuClient({
                     ) : (
                       <button className="btn-add" onClick={() => addItem(item)}>
                         {ui.addToOrder} +
-                      </button> /* Do not translate item.id */
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1170,9 +1879,12 @@ export default function MenuClient({
         )}
       </div>
 
+      {/* Knife nav spacer — prevents content hiding behind fixed nav */}
+      <div style={{ height: 100 }} />
+
       {/* ── FLOATING ORDER BAR ── */}
       {count > 0 && (
-        <div className="order-bar">
+        <div className="order-bar" style={{ bottom: navVisible ? 96 : 16 }}>
           <div>
             <p className="t-caption">
               {count} {count !== 1 ? ui.items : ui.item}
@@ -1192,118 +1904,239 @@ export default function MenuClient({
       )}
 
       {/* ── ORDER DRAWER ── */}
-      {showOrder && (
-        <div className="drawer-overlay">
-          <div className="drawer-scrim" onClick={() => setShowOrder(false)} />
-          <div className="drawer">
-            <div className="drawer-head">
-              <div>
-                <h2 className="t-heading" style={{ fontSize: 20 }}></h2>
-                <p className="t-eyebrow" style={{ marginTop: 4 }}>
-                  {customerName} · {count} item{count !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <button className="btn-icon" onClick={() => setShowOrder(false)}>
-                <X size={18} />
-              </button>
-            </div>
+      {showOrder && (() => {
+        const hasAnyExpired = order.some((ci) => {
+          const liveOrder = allOrders.find(o => 
+            Array.isArray(o.items) && o.items.some((item: any) => 
+              item.menu_item_id === ci.item.id || item.id === ci.item.id
+            )
+          );
+          const status = liveOrder?.status ?? null;
+          const estimatedReadyAt = liveOrder?.estimated_ready_at ?? null;
+          return (
+            estimatedReadyAt &&
+            status === "Preparing" &&
+            Date.now() > new Date(estimatedReadyAt).getTime()
+          );
+        });
 
-            <div className="drawer-items">
-              {order.map((ci) => (
-                <div key={ci.item.id} className="drawer-item">
-                  <img
-                    src={ci.item.image_url}
-                    alt={t(
-                      ci.item.name_en,
-                      ci.item.name_fr,
-                    )} /* Do not translate ci.item.image_url */
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 12,
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
-                      className="t-title"
-                      style={{
-                        fontSize: 14,
-                        marginBottom: 3,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {t(ci.item.name_en, ci.item.name_fr)}
-                    </p>
-                    <p className="t-price-sm">
-                      {restaurant.currency}{" "}
-                      {(ci.item.price * ci.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                  <div
-                    className="qty-control"
-                    style={{ flexShrink: 0, padding: "4px 10px" }}
-                  >
-                    <button
-                      className="qty-btn" /* Do not translate ci.item.id */
-                      onClick={() => removeItem(ci.item.id)}
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span className="qty-num" style={{ fontSize: 13 }}>
-                      {ci.quantity}
-                    </span>
-                    <button
-                      className="qty-btn" /* Do not translate ci.item.id */
-                      onClick={() => addItem(ci.item)}
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
+        return (
+          <div className="drawer-overlay">
+            <div className="drawer-scrim" onClick={() => setShowOrder(false)} />
+            <div
+              className="drawer"
+              style={
+                hasAnyExpired
+                  ? {
+                      border: "2px solid var(--theme-accent)",
+                      boxShadow: "0 0 15px var(--theme-accent-glow, rgba(217,119,6,0.4))",
+                      animation: "pulseGold 2s infinite",
+                    }
+                  : {}
+              }
+            >
+              <div className="drawer-head">
+                <div>
+                  <h2 className="t-heading" style={{ fontSize: 20 }}>{ui.yourOrder}</h2>
+                  <p className="t-eyebrow" style={{ marginTop: 4 }}>
+                    {customerName} · {count} item{count !== 1 ? "s" : ""}
+                  </p>
                 </div>
-              ))}
-            </div>
-
-            <div className="drawer-foot">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 20,
-                }}
-              >
-                <span className="t-body">{ui.total}</span>
-                <span className="t-price">
-                  {restaurant.currency} {total.toFixed(2)}
-                </span>
+                <button className="btn-icon" onClick={() => setShowOrder(false)}>
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                className="btn-primary"
-                onClick={placeOrder}
-                disabled={placingOrder || orderSuccess || billLocked}
-              >
-                {orderSuccess ? (
-                  <>
-                    <CheckCircle size={18} /> {ui.orderSent}
-                  </>
-                ) : placingOrder ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" /> {ui.sending}
-                  </>
-                ) : (
-                  <>
-                    {ui.sendToKitchen} <ChevronRight size={18} />
-                  </>
-                )}
-              </button>
+
+              <div className="drawer-items">
+                {order.map((ci) => {
+                  const liveOrder = allOrders.find(o => 
+                    Array.isArray(o.items) && o.items.some((item: any) => 
+                      item.menu_item_id === ci.item.id || item.id === ci.item.id
+                    )
+                  );
+                  const status = liveOrder?.status ?? null;
+                  const estimatedReadyAt = liveOrder?.estimated_ready_at ?? null;
+                  const isExpired =
+                    estimatedReadyAt &&
+                    status === "Preparing" &&
+                    Date.now() > new Date(estimatedReadyAt).getTime();
+
+                  return (
+                    <div key={ci.item.id} className="drawer-item">
+                      <img
+                        src={ci.item.image_url}
+                        alt={t(ci.item.name_en, ci.item.name_fr)}
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 12,
+                          objectFit: "cover",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          className="t-title"
+                          style={{
+                            fontSize: 14,
+                            marginBottom: 3,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {t(ci.item.name_en, ci.item.name_fr)}
+                        </p>
+                        <p className="t-price-sm">
+                          {restaurant.currency}{" "}
+                          {(ci.item.price * ci.quantity).toFixed(2)}
+                        </p>
+
+                        {/* Status label */}
+                        {status && status !== "Pending" && (
+                          <div style={{ marginTop: 6 }}>
+                            {status === "Preparing" && (
+                              <span
+                                style={{
+                                  color: "var(--theme-accent)",
+                                  background:
+                                    "color-mix(in srgb, var(--theme-accent) 15%, transparent)",
+                                  borderRadius: 999,
+                                  padding: "2px 8px",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                }}
+                              >
+                                Preparing
+                              </span>
+                            )}
+                            {status === "Served" && (
+                              <span
+                                style={{
+                                  color: "var(--theme-success)",
+                                  background:
+                                    "color-mix(in srgb, var(--theme-success) 15%, transparent)",
+                                  borderRadius: 999,
+                                  padding: "2px 8px",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                }}
+                              >
+                                Served
+                              </span>
+                            )}
+                            {status === "Cancelled" && (
+                              <span
+                                style={{
+                                  color: "var(--theme-danger)",
+                                  background:
+                                    "color-mix(in srgb, var(--theme-danger) 15%, transparent)",
+                                  borderRadius: 999,
+                                  padding: "2px 8px",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                }}
+                              >
+                                Cancelled
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Expired Call Waiter Trigger */}
+                        {isExpired && (
+                          <button
+                            type="button"
+                            onClick={() => sendSignal("call_waiter")}
+                            style={{
+                              marginTop: 8,
+                              padding: "4px 10px",
+                              background: "var(--theme-accent)",
+                              color: "#022c22",
+                              border: "none",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              width: "fit-content",
+                            }}
+                          >
+                            <Bell size={12} /> Call Waiter
+                          </button>
+                        )}
+                      </div>
+                      <div
+                        className="qty-control"
+                        style={{ flexShrink: 0, padding: "4px 10px" }}
+                      >
+                        <button
+                          className="qty-btn"
+                          onClick={() => removeItem(ci.item.id)}
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="qty-num" style={{ fontSize: 13 }}>
+                          {ci.quantity}
+                        </span>
+                        <button
+                          className="qty-btn"
+                          onClick={() => addItem(ci.item)}
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="drawer-foot">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <span className="t-body">{ui.total}</span>
+                  <span className="t-price">
+                    {restaurant.currency} {total.toFixed(2)}
+                  </span>
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={placeOrder}
+                  disabled={placingOrder || orderSuccess || billLocked}
+                >
+                  {orderSuccess ? (
+                    <>
+                      <CheckCircle size={18} /> {ui.orderSent}
+                    </>
+                  ) : placingOrder ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> {ui.sending}
+                    </>
+                  ) : (
+                    <>
+                      {ui.sendToKitchen} <ChevronRight size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── BILL POPUP ── */}
       {showBillPopup && (
@@ -1380,7 +2213,7 @@ export default function MenuClient({
                   : [];
                 return (
                   <div key={i}>
-                    <p /* Do not translate o.is_starter_order, i */
+                    <p
                       className="t-eyebrow"
                       style={{ fontSize: 9, marginBottom: 6 }}
                     >
@@ -1447,7 +2280,7 @@ export default function MenuClient({
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span /* Do not translate sessionFee */
+                <span
                   style={{
                     color: "var(--gold-glow)",
                     fontSize: 13,
@@ -1543,9 +2376,9 @@ export default function MenuClient({
         onClick={toggleLang}
         className="fixed bottom-24 right-4 z-50 flex items-center justify-center w-12 h-12 rounded-full transition-all active:scale-95 hover:scale-105"
         style={{
-          backgroundColor: "#D97706",
-          color: "#022c22",
-          boxShadow: "0 4px 20px rgba(217, 119, 6, 0.4)",
+          backgroundColor: "var(--gold)",
+          color: "var(--bg)",
+          boxShadow: "0 4px 20px var(--gold-dim)",
         }}
         title={lang === "en" ? "Switch to French" : "Switch to English"}
       >
