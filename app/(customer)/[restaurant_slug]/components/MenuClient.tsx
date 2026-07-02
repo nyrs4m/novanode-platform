@@ -2,7 +2,7 @@
 import OrderTracker from "./OrderTracker";
 import { playOrderConfirmed } from "@/lib/sounds";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient as createClient } from "@supabase/ssr";
 import ReceiptModal from "./ReceiptModal";
 import { getStoredToken } from "@/lib/session";
 import { clearToken } from "@/lib/session";
@@ -10,7 +10,7 @@ import {
   getRestaurantChannel,
   releaseRestaurantChannel,
 } from "@/lib/realtime-engine";
-import { Tables } from "@/types/database.types";
+import { Database, Tables } from "@/types/database.types";
 import {
   Phone,
   X,
@@ -331,7 +331,17 @@ export default function MenuClient({
   }, [pillsExpanded]);
 
   // ── CRITICAL FIX: supabase client in a ref, never re-created ──
-  const supabaseRef = useRef(createClient());
+  const supabaseRef = useRef(
+    createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {},
+        },
+      },
+    ),
+  );
   const realtimeSetupDone = useRef(false);
   const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -539,20 +549,17 @@ export default function MenuClient({
 
   // ── Realtime Subscription to synchronise Orders array directly ────────
   useEffect(() => {
-    const supabase = supabaseRef.current;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    const client = supabaseRef.current;
+    let channel: ReturnType<typeof client.channel> | null = null;
     let cancelled = false;
 
     const setup = async () => {
       if (!sessionId || !accessToken || cancelled) return;
 
-      await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: accessToken,
-      });
+      client.realtime.setAuth(accessToken);
       if (cancelled) return;
 
-      channel = supabase
+      channel = client
         .channel(`orders-${sessionId}`)
         .on(
         "postgres_changes",
@@ -621,7 +628,7 @@ export default function MenuClient({
 
     return () => {
       cancelled = true;
-      if (channel) supabase.removeChannel(channel);
+      if (channel) client.removeChannel(channel);
     };
   }, [sessionId, sessionToken, accessToken]);
 

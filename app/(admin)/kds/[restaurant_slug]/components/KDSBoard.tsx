@@ -436,6 +436,19 @@ export default function KDSBoard({
 
       await fetchLedger();
     }
+    // Burn old table token and generate new one after close
+    try {
+      await fetch("/api/admin/rotate-table-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          table_number: session.table_number,
+        }),
+      });
+    } catch {
+      // Non-critical — don't block table close if token rotation fails
+    }
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     setClosingTable(null);
   }

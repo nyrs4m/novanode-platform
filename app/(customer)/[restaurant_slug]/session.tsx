@@ -35,6 +35,7 @@ export default function SessionScreen({
   const [existingSession, setExistingSession] = useState<string | null>(null)
   const [existingName, setExistingName] = useState('')
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState('')
   const [lang, setLang] = useState<'en' | 'fr'>(() => {
     if (typeof window === 'undefined') return 'en'
     return (localStorage.getItem('nn_lang') as 'en' | 'fr') ?? 'en'
@@ -126,6 +127,12 @@ export default function SessionScreen({
       }
     }
 
+    const validToken = await validateUrlToken()
+    if (!validToken) {
+      setCheckingSession(false)
+      return
+    }
+
     const { data: tableSession } = await supabase
       .from('table_sessions').select('*')
       .eq('restaurant_id', restaurant.id)
@@ -140,11 +147,36 @@ export default function SessionScreen({
     setCheckingSession(false)
   }
 
+  async function validateUrlToken(): Promise<boolean> {
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlToken = urlParams.get('t')
+    const urlTableNumber = urlParams.get('table')
+
+    if (urlToken && urlTableNumber) {
+      const { data: activeTable } = await supabase
+        .from('active_tables')
+        .select('active_token')
+        .eq('restaurant_id', restaurant.id)
+        .eq('table_number', urlTableNumber)
+        .maybeSingle()
+
+      if (activeTable && activeTable.active_token !== urlToken) {
+        setSessionError('This table link has expired. Please scan the QR code at your table again.')
+        return false
+      }
+    }
+
+    return true
+  }
+
   async function handleNameSubmit() {
     if (!customerName.trim()) { setNameError('Please enter your name to continue'); return }
     if (customerName.trim().length < 2) { setNameError('Name must be at least 2 characters'); return }
     setLoading(true); setNameError('')
     try {
+      const validToken = await validateUrlToken()
+      if (!validToken) return
+
       const token = generateToken()
       resolvedName.current = customerName.trim()
 
@@ -314,6 +346,18 @@ export default function SessionScreen({
           <p className="nn-hint" style={{ marginBottom: 32 }}>
             We use your name to keep your order together and compile your final bill.
           </p>
+          {sessionError && (
+            <p
+              className="nn-error"
+              style={{
+                color: "var(--theme-accent)",
+                textAlign: "center",
+                marginBottom: 20,
+              }}
+            >
+              {sessionError}
+            </p>
+          )}
 
           <button
             className="btn-primary"
