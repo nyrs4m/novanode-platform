@@ -56,8 +56,8 @@ export default function LoginForm() {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        shouldCreateUser: false
-      }
+        shouldCreateUser: false,
+      },
     });
 
     await supabase.auth.signOut({ scope: "local" });
@@ -112,8 +112,8 @@ export default function LoginForm() {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        shouldCreateUser: false
-      }
+        shouldCreateUser: false,
+      },
     });
 
     if (otpError) {
@@ -276,7 +276,7 @@ export default function LoginForm() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={8}
+                maxLength={6}
                 autoComplete="one-time-code"
                 value={otpCode}
                 onChange={(e) => {
@@ -340,7 +340,8 @@ export default function LoginForm() {
                 background: "transparent",
                 border: "none",
                 color: "var(--theme-accent)",
-                cursor: resendIn > 0 || resendLoading ? "not-allowed" : "pointer",
+                cursor:
+                  resendIn > 0 || resendLoading ? "not-allowed" : "pointer",
                 fontFamily: "Inter, sans-serif",
                 fontSize: 14,
                 fontWeight: 700,
