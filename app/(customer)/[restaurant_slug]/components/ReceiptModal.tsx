@@ -26,6 +26,12 @@ interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  modifiers?: {
+    option: string;
+    price: number;
+  }[];
+  modifierTotal?: number;
+  specialInstructions?: string;
 }
 
 interface ReceiptOrder {
@@ -72,6 +78,18 @@ export default function ReceiptModal({
     Array.isArray(o.items) ? (o.items as OrderItem[]) : [],
   );
 
+  function itemModifierTotal(item: OrderItem) {
+    return (
+      item.modifierTotal ??
+      item.modifiers?.reduce((sum, modifier) => sum + modifier.price, 0) ??
+      0
+    );
+  }
+
+  function itemLineTotal(item: OrderItem) {
+    return (item.price + itemModifierTotal(item)) * item.quantity;
+  }
+
   async function downloadPDF() {
     setDownloading(true);
     try {
@@ -113,12 +131,37 @@ export default function ReceiptModal({
         doc.text(item.name.substring(0, 25), 10, y);
         doc.text(String(item.quantity), w - 40, y);
         doc.text(
-          `${restaurant.currency} ${(item.price * item.quantity).toFixed(2)}`,
+          `${restaurant.currency} ${itemLineTotal(item).toFixed(2)}`,
           w - 10,
           y,
           { align: "right" },
         );
         y += 6;
+        if (item.modifiers?.length) {
+          doc.setFontSize(6.5);
+          doc.setTextColor(90, 90, 90);
+          item.modifiers.forEach((mod) => {
+            doc.text(
+              `+ ${mod.option}${mod.price > 0 ? ` ${restaurant.currency} ${mod.price.toFixed(2)}` : ""}`.substring(
+                0,
+                34,
+              ),
+              13,
+              y,
+            );
+            y += 4;
+          });
+          doc.setFontSize(8);
+          doc.setTextColor(20, 20, 20);
+        }
+        if (item.specialInstructions) {
+          doc.setFontSize(6.5);
+          doc.setTextColor(217, 119, 6);
+          doc.text(`Note: ${item.specialInstructions}`.substring(0, 36), 13, y);
+          y += 4;
+          doc.setFontSize(8);
+          doc.setTextColor(20, 20, 20);
+        }
       });
 
       y += 4;
@@ -339,7 +382,14 @@ export default function ReceiptModal({
                           padding: "5px 0",
                         }}
                       >
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "flex-start",
+                            minWidth: 0,
+                          }}
+                        >
                           <span
                             style={{
                               color: "var(--gold-glow)",
@@ -349,13 +399,49 @@ export default function ReceiptModal({
                           >
                             ×{item.quantity}
                           </span>
-                          <span className="t-body" style={{ fontSize: 13 }}>
-                            {item.name}
+                          <span style={{ minWidth: 0 }}>
+                            <span
+                              className="t-body"
+                              style={{
+                                fontSize: 13,
+                                display: "block",
+                              }}
+                            >
+                              {item.name}
+                            </span>
+                            {item.modifiers?.map((mod, modIndex) => (
+                              <span
+                                key={modIndex}
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--theme-text-dim)",
+                                  display: "block",
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {mod.option}
+                                {mod.price > 0
+                                  ? ` +${restaurant.currency} ${mod.price.toFixed(2)}`
+                                  : ""}
+                              </span>
+                            ))}
+                            {item.specialInstructions && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--theme-accent)",
+                                  display: "block",
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                Note: {item.specialInstructions}
+                              </span>
+                            )}
                           </span>
                         </div>
                         <span className="t-body" style={{ fontSize: 13 }}>
                           {restaurant.currency}{" "}
-                          {(item.price * item.quantity).toFixed(2)}
+                          {itemLineTotal(item).toFixed(2)}
                         </span>
                       </div>
                     ))}

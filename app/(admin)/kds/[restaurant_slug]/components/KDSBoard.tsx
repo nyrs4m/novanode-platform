@@ -60,6 +60,29 @@ type KDSTab = "orders" | "signals" | "stock" | "tables" | "ledger";
 const STATUS_FLOW = ["Pending", "Preparing", "Ready", "Served"] as const;
 type OrderStatus = (typeof STATUS_FLOW)[number];
 
+interface OrderItemModifier {
+  option: string;
+  price: number;
+}
+
+interface OrderCardItem {
+  name: string;
+  quantity: number;
+  price: number;
+  modifiers?: OrderItemModifier[];
+  specialInstructions?: string;
+}
+
+function isOrderCardItem(item: unknown): item is OrderCardItem {
+  if (!item || typeof item !== "object") return false;
+  const candidate = item as Record<string, unknown>;
+  return (
+    typeof candidate.name === "string" &&
+    typeof candidate.quantity === "number" &&
+    typeof candidate.price === "number"
+  );
+}
+
 const STATUS_COLORS: Record<string, string> = {
   Pending: "rgba(245,158,11,0.15)",
   Preparing: "rgba(59,130,246,0.15)",
@@ -588,9 +611,6 @@ export default function KDSBoard({
         },
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          console.log("[KDS] Realtime channel connected");
-        }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn(
             "[KDS] Realtime channel error — will retry on next event",
@@ -876,7 +896,7 @@ export default function KDSBoard({
           display: "flex",
           gap: 8,
           borderBottom: "1px solid var(--gold-dim)",
-          background: "rgba(2,44,34,0.6)",
+          background: "color-mix(in srgb, var(--theme-bg) 60%, transparent)",
           position: "sticky",
           top: 73,
           zIndex: 40,
@@ -952,8 +972,12 @@ export default function KDSBoard({
                 style={{ display: "flex", flexDirection: "column", gap: 14 }}
               >
                 {activeOrders.map((order) => {
-                  const orderItems = Array.isArray(order.items)
-                    ? order.items
+                  const orderItems: OrderCardItem[] = Array.isArray(order.items)
+                    ? order.items.reduce<OrderCardItem[]>(
+                        (items, item) =>
+                          isOrderCardItem(item) ? [...items, item] : items,
+                        [],
+                      )
                     : [];
                   const currentIdx = STATUS_FLOW.indexOf(
                     order.status as OrderStatus,
@@ -1104,13 +1128,7 @@ export default function KDSBoard({
                           marginBottom: 14,
                         }}
                       >
-                        {(
-                          orderItems as {
-                            name: string;
-                            quantity: number;
-                            price: number;
-                          }[]
-                        ).map((item, i) => (
+                        {orderItems.map((item, i) => (
                           <div
                             key={i}
                             style={{
@@ -1125,8 +1143,9 @@ export default function KDSBoard({
                             <div
                               style={{
                                 display: "flex",
-                                alignItems: "center",
+                                alignItems: "flex-start",
                                 gap: 8,
+                                minWidth: 0,
                               }}
                             >
                               <span
@@ -1147,11 +1166,45 @@ export default function KDSBoard({
                               >
                                 {item.quantity}
                               </span>
-                              <span
-                                className="t-body"
-                                style={{ fontSize: 14, fontWeight: 600 }}
-                              >
-                                {item.name}
+                              <span style={{ minWidth: 0 }}>
+                                <span
+                                  className="t-body"
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    display: "block",
+                                  }}
+                                >
+                                  {item.name}
+                                </span>
+                                {item.modifiers?.map((mod, modIndex) => (
+                                  <span
+                                    key={modIndex}
+                                    style={{
+                                      fontSize: 11,
+                                      color: "var(--theme-text-dim)",
+                                      display: "block",
+                                      lineHeight: 1.35,
+                                    }}
+                                  >
+                                    {mod.option}
+                                    {mod.price > 0
+                                      ? ` +${restaurant.currency} ${mod.price.toFixed(2)}`
+                                      : ""}
+                                  </span>
+                                ))}
+                                {item.specialInstructions && (
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      color: "var(--theme-accent)",
+                                      display: "block",
+                                      lineHeight: 1.35,
+                                    }}
+                                  >
+                                    Note: {item.specialInstructions}
+                                  </span>
+                                )}
                               </span>
                             </div>
                             <span className="t-caption">
@@ -1870,7 +1923,7 @@ export default function KDSBoard({
             {unpaidLedgers.length > 0 && (
               <div
                 style={{
-                  background: "rgba(2, 44, 34, 0.95)",
+                  background: "color-mix(in srgb, var(--theme-bg) 95%, transparent)",
                   border: "1px solid rgba(239, 68, 68, 0.3)",
                   borderRadius: 20,
                   marginBottom: 12,

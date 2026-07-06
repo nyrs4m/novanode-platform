@@ -369,6 +369,137 @@ export type Database = {
           },
         ]
       }
+      modifier_groups: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_multi_select: boolean | null
+          is_required: boolean | null
+          max_selections: number | null
+          menu_item_id: string | null
+          min_selections: number | null
+          name: string
+          restaurant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_multi_select?: boolean | null
+          is_required?: boolean | null
+          max_selections?: number | null
+          menu_item_id?: string | null
+          min_selections?: number | null
+          name: string
+          restaurant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_multi_select?: boolean | null
+          is_required?: boolean | null
+          max_selections?: number | null
+          menu_item_id?: string | null
+          min_selections?: number | null
+          name?: string
+          restaurant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modifier_groups_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_stats"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "modifier_groups_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modifier_groups_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "modifier_groups_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "modifier_groups_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modifier_options: {
+        Row: {
+          created_at: string | null
+          group_id: string | null
+          id: string
+          is_available: boolean | null
+          name: string
+          price: number | null
+          restaurant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_available?: boolean | null
+          name: string
+          price?: number | null
+          restaurant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_available?: boolean | null
+          name?: string
+          price?: number | null
+          restaurant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modifier_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "modifier_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modifier_options_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "modifier_options_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "modifier_options_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       novanode_admins: {
         Row: {
           created_at: string | null

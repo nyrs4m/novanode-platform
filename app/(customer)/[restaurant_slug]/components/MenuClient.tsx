@@ -10,7 +10,7 @@ import {
   getRestaurantChannel,
   releaseRestaurantChannel,
 } from "@/lib/realtime-engine";
-import { Database, Tables } from "@/types/database.types";
+import { Database, Json, Tables } from "@/types/database.types";
 import {
   Phone,
   X,
@@ -34,6 +34,66 @@ type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
 type DailySpecial = Tables<"daily_specials">;
+
+type ModifierGroupRow = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  is_required?: boolean | null;
+  required?: boolean | null;
+  min_select?: number | null;
+  max_select?: number | null;
+  max_selections?: number | null;
+  selection_type?: string | null;
+  sort_order?: number | null;
+};
+
+type ModifierOptionRow = {
+  id: string;
+  group_id?: string | null;
+  modifier_group_id?: string | null;
+  name: string;
+  price: number;
+  is_available?: boolean | null;
+  sort_order?: number | null;
+};
+
+type ModifierDatabase = Omit<Database, "public"> & {
+  public: Omit<Database["public"], "Tables"> & {
+    Tables: Database["public"]["Tables"] & {
+      modifier_groups: {
+        Row: ModifierGroupRow;
+        Insert: ModifierGroupRow;
+        Update: Partial<ModifierGroupRow>;
+        Relationships: [];
+      };
+      modifier_options: {
+        Row: ModifierOptionRow;
+        Insert: ModifierOptionRow;
+        Update: Partial<ModifierOptionRow>;
+        Relationships: [];
+      };
+    };
+  };
+};
+
+type ModifierOption = ModifierOptionRow & {
+  groupId: string;
+};
+
+type ModifierGroup = ModifierGroupRow & {
+  required: boolean;
+  maxSelect: number;
+  minSelect: number;
+  options: ModifierOption[];
+};
+
+interface CartModifier {
+  [key: string]: Json;
+  group: string;
+  option: string;
+  price: number;
+}
 
 interface StaffMember {
   id: string;
@@ -148,6 +208,21 @@ const UI_TEXT = {
 interface CartItem {
   item: MenuItem;
   quantity: number;
+  modifiers?: CartModifier[];
+  modifierTotal?: number;
+  specialInstructions?: string;
+}
+
+interface OrderItemSnapshot {
+  [key: string]: Json | undefined;
+  id?: string;
+  menu_item_id?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  modifiers?: CartModifier[];
+  modifierTotal?: number;
+  specialInstructions?: string;
 }
 
 interface MenuClientProps {
@@ -298,6 +373,17 @@ export default function MenuClient({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [liveMenuItems, setLiveMenuItems] = useState<MenuItem[]>(menuItems);
+  const [modifierSheetItem, setModifierSheetItem] = useState<MenuItem | null>(
+    null,
+  );
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
+  const [modifierSelections, setModifierSelections] = useState<
+    Record<string, string[]>
+  >({});
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [modifierLoading, setModifierLoading] = useState(false);
+  const [modifierError, setModifierError] = useState("");
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [lang, setLang] = useState<"en" | "fr">(() => {
     if (typeof window === "undefined") return "en";
     return (localStorage.getItem("nn_lang") as "en" | "fr") ?? "en";
@@ -315,6 +401,7 @@ export default function MenuClient({
   const rafRef = useRef<number | null>(null);
   const [pillsExpanded, setPillsExpanded] = useState(false);
   const isMountedRef = useRef(true);
+  const modifierCacheRef = useRef<Record<string, ModifierGroup[]>>({});
 
   // Track mount state to prevent updates on unmounted component
   useEffect(() => {
@@ -322,6 +409,15 @@ export default function MenuClient({
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
   // Use refs to track values inside event listeners without re-binding
@@ -332,7 +428,7 @@ export default function MenuClient({
 
   // ── CRITICAL FIX: supabase client in a ref, never re-created ──
   const supabaseRef = useRef(
-    createClient<Database>(
+    createClient<ModifierDatabase>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -349,7 +445,10 @@ export default function MenuClient({
     ? liveMenuItems.filter((i) => i.category_id === activeCategory)
     : liveMenuItems;
 
-  const total = order.reduce((s, ci) => s + ci.item.price * ci.quantity, 0);
+  const total = order.reduce(
+    (s, ci) => s + (ci.item.price + (ci.modifierTotal ?? 0)) * ci.quantity,
+    0,
+  );
   const count = order.reduce((s, ci) => s + ci.quantity, 0);
 
   // ── Sync initial menuItems to live state ────────────────────────────────
@@ -556,7 +655,7 @@ export default function MenuClient({
     const setup = async () => {
       if (!sessionId || !accessToken || cancelled) return;
 
-      client.realtime.setAuth(accessToken);
+      client.realtime.setAuth(accessToken!);
       if (cancelled) return;
 
       channel = client
@@ -694,15 +793,230 @@ export default function MenuClient({
   }, []);
 
   // ── Cart helpers ───────────────────────────────────────────────────────
-  function addItem(item: MenuItem) {
+  function modifierSignature(modifiers: CartModifier[] = []) {
+    return modifiers
+      .map((modifier) => `${modifier.group}:${modifier.option}:${modifier.price}`)
+      .sort()
+      .join("|");
+  }
+
+  function isSameCartLine(
+    cartItem: CartItem,
+    item: MenuItem,
+    modifiers: CartModifier[] = [],
+    instructions = "",
+  ) {
+    return (
+      cartItem.item.id === item.id &&
+      modifierSignature(cartItem.modifiers) === modifierSignature(modifiers) &&
+      (cartItem.specialInstructions ?? "") === instructions.trim()
+    );
+  }
+
+  function addConfiguredItem(
+    item: MenuItem,
+    modifiers: CartModifier[] = [],
+    modifierTotal = 0,
+    instructions = "",
+  ) {
+    const specialInstructionsValue = instructions.trim();
     setOrder((prev) => {
-      const ex = prev.find((ci) => ci.item.id === item.id);
+      const ex = prev.find((ci) =>
+        isSameCartLine(ci, item, modifiers, specialInstructionsValue),
+      );
       if (ex)
         return prev.map((ci) =>
-          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci,
+          isSameCartLine(ci, item, modifiers, specialInstructionsValue)
+            ? { ...ci, quantity: ci.quantity + 1 }
+            : ci,
         );
-      return [...prev, { item, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          item,
+          quantity: 1,
+          modifiers,
+          modifierTotal,
+          specialInstructions: specialInstructionsValue || undefined,
+        },
+      ];
     });
+  }
+
+  function normalizeModifierGroups(
+    groups: ModifierGroupRow[],
+    options: ModifierOptionRow[],
+  ): ModifierGroup[] {
+    return groups
+      .map((group) => {
+        const groupOptions = options
+          .map((option) => ({
+            ...option,
+            groupId: option.group_id ?? option.modifier_group_id ?? "",
+          }))
+          .filter(
+            (option) =>
+              option.groupId === group.id && option.is_available !== false,
+          )
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        const minSelect = group.min_select ?? 0;
+        const maxSelect =
+          group.max_select ??
+          group.max_selections ??
+          (group.selection_type === "multi" ? groupOptions.length : 1);
+
+        return {
+          ...group,
+          options: groupOptions,
+          required: group.is_required ?? group.required ?? minSelect > 0,
+          minSelect,
+          maxSelect: Math.max(1, maxSelect),
+        };
+      })
+      .filter((group) => group.options.length > 0)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }
+
+  async function fetchModifierGroups(item: MenuItem) {
+    const cached = modifierCacheRef.current[item.id];
+    if (cached) return cached;
+
+    const supabase = supabaseRef.current;
+    const { data: groups, error: groupsError } = await supabase
+      .from("modifier_groups")
+      .select("*")
+      .eq("menu_item_id", item.id)
+      .order("sort_order", { ascending: true });
+
+    if (groupsError) throw groupsError;
+    if (!groups || groups.length === 0) {
+      modifierCacheRef.current[item.id] = [];
+      return [];
+    }
+
+    const groupIds = groups.map((group) => group.id);
+    let { data: options, error: optionsError } = await supabase
+      .from("modifier_options")
+      .select("*")
+      .in("group_id", groupIds)
+      .order("sort_order", { ascending: true });
+
+    if (optionsError) {
+      const fallback = await supabase
+        .from("modifier_options")
+        .select("*")
+        .in("modifier_group_id", groupIds)
+        .order("sort_order", { ascending: true });
+      options = fallback.data;
+      optionsError = fallback.error;
+    }
+
+    if (optionsError) throw optionsError;
+
+    const normalized = normalizeModifierGroups(groups, options ?? []);
+    modifierCacheRef.current[item.id] = normalized;
+    return normalized;
+  }
+
+  async function addItem(item: MenuItem) {
+    if (billLocked) return;
+
+    setModifierError("");
+    setModifierSheetItem(null);
+    setModifierGroups([]);
+    setModifierSelections({});
+    setSpecialInstructions("");
+    setModifierLoading(true);
+
+    try {
+      const groups = await fetchModifierGroups(item);
+      if (groups.length === 0) {
+        addConfiguredItem(item);
+        closeModifierSheet();
+        setModifierLoading(false);
+        return;
+      }
+
+      setModifierSheetItem(item);
+      setModifierGroups(groups);
+      setModifierSelections({});
+      setSpecialInstructions("");
+      setModifierLoading(false);
+    } catch (err) {
+      console.error("Modifier fetch error:", err);
+      setModifierError("Could not load options. Please try again.");
+      setModifierSheetItem(null);
+      setModifierGroups([]);
+      setModifierSelections({});
+      setSpecialInstructions("");
+      setModifierLoading(false);
+    }
+  }
+
+  function toggleModifierOption(group: ModifierGroup, optionId: string) {
+    setModifierSelections((prev) => {
+      const current = prev[group.id] ?? [];
+      const exists = current.includes(optionId);
+      const isSingleRequired = group.required && group.maxSelect === 1;
+      let nextGroupSelections: string[];
+
+      if (isSingleRequired) {
+        nextGroupSelections = [optionId];
+      } else if (exists) {
+        nextGroupSelections = current.filter((id) => id !== optionId);
+      } else {
+        nextGroupSelections =
+          current.length >= group.maxSelect
+            ? [...current.slice(1), optionId]
+            : [...current, optionId];
+      }
+
+      return { ...prev, [group.id]: nextGroupSelections };
+    });
+  }
+
+  function selectedCartModifiers() {
+    return modifierGroups.flatMap((group) => {
+      const selectedIds = modifierSelections[group.id] ?? [];
+      return group.options
+        .filter((option) => selectedIds.includes(option.id))
+        .map((option) => ({
+          group: group.name,
+          option: option.name,
+          price: Number(option.price),
+        }));
+    });
+  }
+
+  function modifierSelectionComplete() {
+    return modifierGroups.every((group) => {
+      if (!group.required) return true;
+      const selectedCount = modifierSelections[group.id]?.length ?? 0;
+      return selectedCount >= Math.max(1, group.minSelect);
+    });
+  }
+
+  function closeModifierSheet() {
+    setModifierSheetItem(null);
+    setModifierGroups([]);
+    setModifierSelections({});
+    setSpecialInstructions("");
+    setModifierError("");
+    setModifierLoading(false);
+  }
+
+  function confirmModifierSelection() {
+    if (!modifierSheetItem || !modifierSelectionComplete()) return;
+
+    const modifiers = selectedCartModifiers();
+    const modifierTotal = modifiers.reduce((sum, option) => sum + option.price, 0);
+    addConfiguredItem(
+      modifierSheetItem,
+      modifiers,
+      modifierTotal,
+      specialInstructions,
+    );
+    closeModifierSheet();
   }
 
   // ── Place Order ────────────────────────────────────────────────────────
@@ -744,6 +1058,9 @@ export default function MenuClient({
           name: ci.item.name_en,
           price: ci.item.price,
           quantity: ci.quantity,
+          modifiers: ci.modifiers ?? [],
+          modifierTotal: ci.modifierTotal ?? 0,
+          specialInstructions: ci.specialInstructions,
         })),
         total_amount: total,
         status: "Pending",
@@ -812,6 +1129,14 @@ export default function MenuClient({
   }
 
   const ui = UI_TEXT[lang];
+  const currentSheetModifiers = selectedCartModifiers();
+  const currentModifierTotal = currentSheetModifiers.reduce(
+    (sum, modifier) => sum + modifier.price,
+    0,
+  );
+  const currentSheetTotal = (modifierSheetItem?.price ?? 0) + currentModifierTotal;
+  const canAddConfiguredItem =
+    !modifierLoading && modifierGroups.length > 0 && modifierSelectionComplete();
   const signals: { type: Signal; icon: React.ReactNode; label: string }[] = [
     {
       type: "call_waiter",
@@ -830,11 +1155,21 @@ export default function MenuClient({
   const sessionFee = Math.min(Math.round(runningTotal * 0.01 * 100) / 100, 5);
   const grandTotal = runningTotal + sessionFee;
 
-  function removeItem(id: string) {
+  function removeItem(
+    id: string,
+    modifiers?: CartModifier[],
+    instructions?: string,
+  ) {
     setOrder((prev) =>
       prev
         .map((ci) =>
-          ci.item.id === id ? { ...ci, quantity: ci.quantity - 1 } : ci,
+          ci.item.id === id &&
+          (!modifiers ||
+            modifierSignature(ci.modifiers) === modifierSignature(modifiers)) &&
+          (instructions === undefined ||
+            (ci.specialInstructions ?? "") === instructions)
+            ? { ...ci, quantity: ci.quantity - 1 }
+            : ci,
         )
         .filter((ci) => ci.quantity > 0),
     );
@@ -1702,7 +2037,9 @@ export default function MenuClient({
           </div>
         ) : (
           filtered.map((item, index) => {
-            const inOrder = order.find((ci) => ci.item.id === item.id);
+            const inOrderCount = order
+              .filter((ci) => ci.item.id === item.id)
+              .reduce((sum, ci) => sum + ci.quantity, 0);
             const unavailable = item.is_available === false;
             const isHero = index === 0 && !activeCategory;
 
@@ -1752,7 +2089,7 @@ export default function MenuClient({
                         <p className="t-caption">{restaurant.currency}</p>
                       </div>
                     </div>
-                    {inOrder ? (
+                    {inOrderCount > 0 ? (
                       <div className="qty-control" style={{ marginTop: 14 }}>
                         <button
                           className="qty-btn"
@@ -1764,7 +2101,7 @@ export default function MenuClient({
                           className="qty-num"
                           style={{ flex: 1, textAlign: "center" }}
                         >
-                          {inOrder.quantity} {ui.inOrder}
+                          {inOrderCount} {ui.inOrder}
                         </span>
                         <button
                           className="qty-btn"
@@ -1850,7 +2187,7 @@ export default function MenuClient({
                     </p>
                     {unavailable ? (
                       <span className="t-caption">{ui.unavailable}</span>
-                    ) : inOrder ? (
+                    ) : inOrderCount > 0 ? (
                       <div
                         className="qty-control"
                         style={{ padding: "4px 10px" }}
@@ -1862,7 +2199,7 @@ export default function MenuClient({
                           <Minus size={13} />
                         </button>
                         <span className="qty-num" style={{ fontSize: 13 }}>
-                          {inOrder.quantity}
+                          {inOrderCount}
                         </span>
                         <button
                           className="qty-btn"
@@ -1907,6 +2244,346 @@ export default function MenuClient({
           >
             {ui.reviewOrder} <ChevronRight size={16} />
           </button>
+        </div>
+      )}
+
+      {/* ── MODIFIER SHEET ── */}
+      {modifierSheetItem && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 180,
+            background: "color-mix(in srgb, var(--theme-bg) 72%, transparent)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            animation: prefersReducedMotion ? "none" : "fadeIn 0.2s ease",
+          }}
+        >
+          <button
+            type="button"
+            aria-label={ui.close}
+            onClick={closeModifierSheet}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t(modifierSheetItem.name_en, modifierSheetItem.name_fr)}
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: 520,
+              maxHeight: "88vh",
+              background: "var(--theme-surface)",
+              border: "1px solid var(--gold-dim)",
+              borderBottom: "none",
+              borderRadius: "28px 28px 0 0",
+              boxShadow: "0 -8px 60px rgba(0,0,0,0.42)",
+              overflow: "hidden",
+              animation: prefersReducedMotion
+                ? "none"
+                : "slideUp 0.32s cubic-bezier(.34,1.56,.64,1)",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 999,
+                background: "var(--cream-20)",
+                margin: "12px auto",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                gap: 14,
+                alignItems: "center",
+                padding: "0 18px 18px",
+              }}
+            >
+              <img
+                src={modifierSheetItem.image_url}
+                alt={t(modifierSheetItem.name_en, modifierSheetItem.name_fr)}
+                style={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: 18,
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="t-eyebrow" style={{ marginBottom: 5 }}>
+                  Customize
+                </p>
+                <h2
+                  className="t-heading"
+                  style={{
+                    fontSize: 20,
+                    lineHeight: 1.15,
+                    marginBottom: 6,
+                  }}
+                >
+                  {t(modifierSheetItem.name_en, modifierSheetItem.name_fr)}
+                </h2>
+                <p className="t-price-sm">
+                  {restaurant.currency} {modifierSheetItem.price.toFixed(2)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={closeModifierSheet}
+                aria-label={ui.close}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                maxHeight: "calc(88vh - 244px)",
+                overflowY: "auto",
+                padding: "0 18px 18px",
+              }}
+            >
+              {modifierLoading ? (
+                <div
+                  style={{
+                    minHeight: 160,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    color: "var(--cream-75)",
+                  }}
+                >
+                  <Loader2 size={18} className="animate-spin" />
+                  <span className="t-body">Loading options...</span>
+                </div>
+              ) : modifierError ? (
+                <div
+                  style={{
+                    padding: 16,
+                    background:
+                      "color-mix(in srgb, var(--theme-danger) 12%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--theme-danger) 32%, transparent)",
+                    borderRadius: 16,
+                  }}
+                >
+                  <p className="nn-error" style={{ marginBottom: 12 }}>
+                    {modifierError}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => addItem(modifierSheetItem)}
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {modifierGroups.map((group) => {
+                    const selected = modifierSelections[group.id] ?? [];
+                    const singleRequired = group.required && group.maxSelect === 1;
+
+                    return (
+                      <section key={group.id}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            marginBottom: 10,
+                          }}
+                        >
+                          <div>
+                            <h3 className="t-title" style={{ fontSize: 15 }}>
+                              {group.name}
+                            </h3>
+                            <p className="t-caption" style={{ marginTop: 2 }}>
+                              {group.required ? "Required" : "Optional"}
+                              {group.maxSelect > 1
+                                ? ` · Choose up to ${group.maxSelect}`
+                                : ""}
+                            </p>
+                          </div>
+                          {group.required && selected.length === 0 && (
+                            <span
+                              className="t-caption"
+                              style={{ color: "var(--theme-accent)" }}
+                            >
+                              Pick one
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                          }}
+                        >
+                          {group.options.map((option) => {
+                            const checked = selected.includes(option.id);
+                            return (
+                              <label
+                                key={option.id}
+                                style={{
+                                  minHeight: 44,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 12,
+                                  padding: "10px 12px",
+                                  background: checked
+                                    ? "color-mix(in srgb, var(--theme-accent) 12%, transparent)"
+                                    : "color-mix(in srgb, var(--theme-bg) 40%, transparent)",
+                                  border: checked
+                                    ? "1px solid var(--theme-accent)"
+                                    : "1px solid var(--cream-15)",
+                                  borderRadius: 14,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  <input
+                                    type={singleRequired ? "radio" : "checkbox"}
+                                    name={`modifier-${group.id}`}
+                                    checked={checked}
+                                    onChange={() =>
+                                      toggleModifierOption(group, option.id)
+                                    }
+                                    style={{
+                                      width: 20,
+                                      height: 20,
+                                      accentColor: "var(--theme-accent)",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  <span className="t-body">{option.name}</span>
+                                </span>
+                                {Number(option.price) > 0 && (
+                                  <span
+                                    className="t-price-sm"
+                                    style={{
+                                      fontSize: 13,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    +{restaurant.currency}{" "}
+                                    {Number(option.price).toFixed(2)}
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: "14px 18px calc(18px + env(safe-area-inset-bottom))",
+                borderTop: "1px solid var(--cream-15)",
+                background: "var(--theme-surface)",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 12,
+                }}
+              >
+                <span
+                  className="t-body"
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    marginBottom: 6,
+                  }}
+                >
+                  Any special requests? (optional)
+                </span>
+                <input
+                  type="text"
+                  maxLength={150}
+                  placeholder={'e.g. "No onions", "Extra spicy"'}
+                  value={specialInstructions}
+                  onChange={(e) => setSpecialInstructions(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 44,
+                    background: "var(--theme-surface)",
+                    border: "1px solid var(--cream-15)",
+                    borderRadius: 12,
+                    color: "var(--cream)",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: 14,
+                    padding: "10px 12px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <span className="t-body">Modifiers</span>
+                <span className="t-price-sm">
+                  {restaurant.currency} {currentModifierTotal.toFixed(2)}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={confirmModifierSelection}
+                disabled={!canAddConfiguredItem}
+                style={{
+                  minHeight: 52,
+                  opacity: canAddConfiguredItem ? 1 : 0.55,
+                  cursor: canAddConfiguredItem ? "pointer" : "not-allowed",
+                }}
+              >
+                Add to cart — {restaurant.currency}{" "}
+                {currentSheetTotal.toFixed(2)}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1969,7 +2646,10 @@ export default function MenuClient({
                     Date.now() > new Date(estimatedReadyAt).getTime();
 
                   return (
-                    <div key={ci.item.id} className="drawer-item">
+                    <div
+                      key={`${ci.item.id}-${modifierSignature(ci.modifiers)}-${ci.specialInstructions ?? ""}`}
+                      className="drawer-item"
+                    >
                       <img
                         src={ci.item.image_url}
                         alt={t(ci.item.name_en, ci.item.name_fr)}
@@ -1996,8 +2676,38 @@ export default function MenuClient({
                         </p>
                         <p className="t-price-sm">
                           {restaurant.currency}{" "}
-                          {(ci.item.price * ci.quantity).toFixed(2)}
+                          {(
+                            (ci.item.price + (ci.modifierTotal ?? 0)) *
+                            ci.quantity
+                          ).toFixed(2)}
                         </p>
+                        {ci.modifiers && ci.modifiers.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                              marginTop: 5,
+                            }}
+                          >
+                            {ci.modifiers.map((modifier, index) => (
+                              <span
+                                key={`${modifier.group}-${modifier.option}-${index}`}
+                                className="t-caption"
+                                style={{
+                                  fontSize: 11,
+                                  lineHeight: 1.35,
+                                  color: "var(--cream-55)",
+                                }}
+                              >
+                                {modifier.group}: {modifier.option}
+                                {modifier.price > 0
+                                  ? ` +${restaurant.currency} ${modifier.price.toFixed(2)}`
+                                  : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Status label */}
                         {status && status !== "Pending" && (
@@ -2087,7 +2797,13 @@ export default function MenuClient({
                       >
                         <button
                           className="qty-btn"
-                          onClick={() => removeItem(ci.item.id)}
+                          onClick={() =>
+                            removeItem(
+                              ci.item.id,
+                              ci.modifiers,
+                              ci.specialInstructions ?? "",
+                            )
+                          }
                         >
                           <Minus size={13} />
                         </button>
@@ -2096,7 +2812,14 @@ export default function MenuClient({
                         </span>
                         <button
                           className="qty-btn"
-                          onClick={() => addItem(ci.item)}
+                          onClick={() =>
+                            addConfiguredItem(
+                              ci.item,
+                              ci.modifiers ?? [],
+                              ci.modifierTotal ?? 0,
+                              ci.specialInstructions ?? "",
+                            )
+                          }
                         >
                           <Plus size={13} />
                         </button>
@@ -2212,11 +2935,7 @@ export default function MenuClient({
             >
               {allOrders.map((o, i) => {
                 const items = Array.isArray(o.items)
-                  ? (o.items as {
-                      name: string;
-                      quantity: number;
-                      price: number;
-                    }[])
+                  ? (o.items as OrderItemSnapshot[])
                   : [];
                 return (
                   <div key={i}>
@@ -2241,26 +2960,51 @@ export default function MenuClient({
                         <div
                           style={{
                             display: "flex",
+                            flexDirection: "column",
                             gap: 8,
-                            alignItems: "center",
+                            alignItems: "flex-start",
                           }}
                         >
-                          <span
+                          <div
                             style={{
-                              color: "var(--gold-glow)",
-                              fontWeight: 800,
-                              fontSize: 12,
+                              display: "flex",
+                              gap: 8,
+                              alignItems: "center",
                             }}
                           >
-                            ×{item.quantity}
-                          </span>
-                          <span className="t-body" style={{ fontSize: 13 }}>
-                            {item.name}
-                          </span>
+                            <span
+                              style={{
+                                color: "var(--gold-glow)",
+                                fontWeight: 800,
+                                fontSize: 12,
+                              }}
+                            >
+                              ×{item.quantity}
+                            </span>
+                            <span className="t-body" style={{ fontSize: 13 }}>
+                              {item.name}
+                            </span>
+                          </div>
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <div style={{ paddingLeft: 24 }}>
+                              {item.modifiers.map((modifier, index) => (
+                                <p
+                                  key={`${modifier.group}-${modifier.option}-${index}`}
+                                  className="t-caption"
+                                  style={{ fontSize: 11, lineHeight: 1.35 }}
+                                >
+                                  {modifier.group}: {modifier.option}
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <span className="t-body" style={{ fontSize: 13 }}>
                           {restaurant.currency}{" "}
-                          {(item.price * item.quantity).toFixed(2)}
+                          {(
+                            (item.price + (item.modifierTotal ?? 0)) *
+                            item.quantity
+                          ).toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -2367,7 +3111,7 @@ export default function MenuClient({
           customerName={customerName}
           orders={allOrders.map((o) => ({
             items: Array.isArray(o.items)
-              ? (o.items as { name: string; quantity: number; price: number }[])
+              ? (o.items as OrderItemSnapshot[])
               : [],
             total_amount: Number(o.total_amount),
             is_starter_order: o.is_starter_order,
