@@ -55,6 +55,9 @@ export default function LoginForm() {
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
+      options: {
+        shouldCreateUser: false
+      }
     });
 
     await supabase.auth.signOut({ scope: "local" });
@@ -108,6 +111,9 @@ export default function LoginForm() {
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
+      options: {
+        shouldCreateUser: false
+      }
     });
 
     if (otpError) {
@@ -270,7 +276,7 @@ export default function LoginForm() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={6}
+                maxLength={8}
                 autoComplete="one-time-code"
                 value={otpCode}
                 onChange={(e) => {
