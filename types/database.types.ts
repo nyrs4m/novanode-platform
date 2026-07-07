@@ -380,6 +380,7 @@ export type Database = {
           min_selections: number | null
           name: string
           restaurant_id: string | null
+          sort_order: number | null
         }
         Insert: {
           created_at?: string | null
@@ -391,6 +392,7 @@ export type Database = {
           min_selections?: number | null
           name: string
           restaurant_id?: string | null
+          sort_order?: number | null
         }
         Update: {
           created_at?: string | null
@@ -402,6 +404,7 @@ export type Database = {
           min_selections?: number | null
           name?: string
           restaurant_id?: string | null
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -450,6 +453,7 @@ export type Database = {
           name: string
           price: number | null
           restaurant_id: string | null
+          sort_order: number | null
         }
         Insert: {
           created_at?: string | null
@@ -459,6 +463,7 @@ export type Database = {
           name: string
           price?: number | null
           restaurant_id?: string | null
+          sort_order?: number | null
         }
         Update: {
           created_at?: string | null
@@ -468,6 +473,7 @@ export type Database = {
           name?: string
           price?: number | null
           restaurant_id?: string | null
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -1451,7 +1457,6 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
 export type RestaurantStats = {
   total_revenue: number
   total_orders: number
