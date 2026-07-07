@@ -28,6 +28,7 @@ import {
   DollarSign,
   UtensilsCrossed,
   ShoppingBag,
+  Pencil,
 } from "lucide-react";
 
 type Restaurant = Tables<"restaurants">;
@@ -46,6 +47,7 @@ type ModifierGroupRow = {
   max_selections?: number | null;
   selection_type?: string | null;
   sort_order?: number | null;
+  is_multi_select?: boolean | null;
 };
 
 type ModifierOptionRow = {
@@ -337,7 +339,7 @@ function BillSplitter({
           border: "1px solid var(--gold-dim)",
           borderRadius: 12,
           padding: "12px 16px",
-        }}
+                }}
       >
         <span className="t-caption">
           {ui.each} {ui.perPerson}
@@ -389,6 +391,7 @@ export default function MenuClient({
     return (localStorage.getItem("nn_lang") as "en" | "fr") ?? "en";
   });
   const [allOrders, setAllOrders] = useState<SessionOrder[]>([]);
+  const [editingNoteItemKey, setEditingNoteItemKey] = useState<string | null>(null);
 
   const [promos, setPromos] = useState<
     { title: string; description: string | null; image_url: string | null }[]
@@ -953,26 +956,27 @@ export default function MenuClient({
     }
   }
 
-  function toggleModifierOption(group: ModifierGroup, optionId: string) {
-    setModifierSelections((prev) => {
-      const current = prev[group.id] ?? [];
-      const exists = current.includes(optionId);
-      const isSingleRequired = group.required && group.maxSelect === 1;
-      let nextGroupSelections: string[];
-
-      if (isSingleRequired) {
-        nextGroupSelections = [optionId];
-      } else if (exists) {
-        nextGroupSelections = current.filter((id) => id !== optionId);
+  const toggleModifierOption = (group: ModifierGroup, optionId: string) => {
+    setModifierSelections(prev => {
+      const existing = prev[group.id] ?? []
+      
+      if (group.is_multi_select) {
+        // Multi-select: toggle independently — add if not present, remove if already selected
+        const alreadySelected = existing.includes(optionId)
+        return {
+          ...prev,
+          [group.id]: alreadySelected
+            ? existing.filter((id: string) => id !== optionId)
+            : [...existing, optionId]
+        }
       } else {
-        nextGroupSelections =
-          current.length >= group.maxSelect
-            ? [...current.slice(1), optionId]
-            : [...current, optionId];
+        // Single-select: always replace with just this one option
+        return {
+          ...prev,
+          [group.id]: [optionId]
+        }
       }
-
-      return { ...prev, [group.id]: nextGroupSelections };
-    });
+    })
   }
 
   function selectedCartModifiers() {
@@ -1018,6 +1022,17 @@ export default function MenuClient({
     );
     closeModifierSheet();
   }
+
+  const updateCartItemNote = (itemKey: string, note: string) => {
+    setOrder((prev) =>
+      prev.map((ci) => {
+        const currentKey = `${ci.item.id}-${modifierSignature(ci.modifiers)}-${ci.specialInstructions ?? ""}`;
+        return currentKey === itemKey
+          ? { ...ci, specialInstructions: note.trim() || undefined }
+          : ci;
+      })
+    );
+  };
 
   // ── Place Order ────────────────────────────────────────────────────────
   async function placeOrder() {
@@ -2295,6 +2310,8 @@ export default function MenuClient({
               animation: prefersReducedMotion
                 ? "none"
                 : "slideUp 0.32s cubic-bezier(.34,1.56,.64,1)",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <div
@@ -2401,7 +2418,6 @@ export default function MenuClient({
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                   {modifierGroups.map((group) => {
                     const selected = modifierSelections[group.id] ?? [];
-                    const singleRequired = group.required && group.maxSelect === 1;
 
                     return (
                       <section key={group.id}>
@@ -2472,7 +2488,7 @@ export default function MenuClient({
                                   }}
                                 >
                                   <input
-                                    type={singleRequired ? "radio" : "checkbox"}
+                                    type={group.is_multi_select === true ? "checkbox" : "radio"}
                                     name={`modifier-${group.id}`}
                                     checked={checked}
                                     onChange={() =>
@@ -2512,7 +2528,10 @@ export default function MenuClient({
 
             <div
               style={{
-                padding: "14px 18px calc(18px + env(safe-area-inset-bottom))",
+                position: "sticky",
+                bottom: 0,
+                zIndex: 10,
+                padding: "14px 18px calc(24px + env(safe-area-inset-bottom))",
                 borderTop: "1px solid var(--cream-15)",
                 background: "var(--theme-surface)",
               }}
@@ -2645,9 +2664,11 @@ export default function MenuClient({
                     status === "Preparing" &&
                     Date.now() > new Date(estimatedReadyAt).getTime();
 
+                  const itemKey = `${ci.item.id}-${modifierSignature(ci.modifiers)}-${ci.specialInstructions ?? ""}`;
+
                   return (
                     <div
-                      key={`${ci.item.id}-${modifierSignature(ci.modifiers)}-${ci.specialInstructions ?? ""}`}
+                      key={itemKey}
                       className="drawer-item"
                     >
                       <img
@@ -2706,6 +2727,61 @@ export default function MenuClient({
                                   : ""}
                               </span>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Note button */}
+                        {ci.specialInstructions ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--theme-accent)', fontStyle: 'italic', flex: 1 }}>
+                              "{ci.specialInstructions}"
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingNoteItemKey(itemKey)}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--cream-35)', cursor: 'pointer', padding: 2, minHeight: 28, minWidth: 28 }}
+                            >
+                              <Pencil size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setEditingNoteItemKey(itemKey)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--cream-35)', cursor: 'pointer', fontSize: 11, padding: '2px 0', textAlign: 'left', minHeight: 28 }}
+                          >
+                            + Add note
+                          </button>
+                        )}
+
+                        {/* Inline note input */}
+                        {editingNoteItemKey === itemKey && (
+                          <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                            <input
+                              type="text"
+                              maxLength={150}
+                              placeholder='e.g. "No onions, extra spicy"'
+                              defaultValue={ci.specialInstructions ?? ''}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  updateCartItemNote(itemKey, (e.target as HTMLInputElement).value);
+                                  setEditingNoteItemKey(null);
+                                }
+                              }}
+                              autoFocus
+                              style={{ flex: 1, background: 'var(--theme-surface)', border: '1px solid var(--cream-15)', borderRadius: 8, color: 'var(--cream)', padding: '6px 10px', fontSize: 12, minHeight: 36, outline: 'none' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                                updateCartItemNote(itemKey, input.value);
+                                setEditingNoteItemKey(null);
+                              }}
+                              style={{ background: 'var(--theme-accent)', color: '#022c22', border: 'none', borderRadius: 8, padding: '0 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 36 }}
+                            >
+                              Save
+                            </button>
                           </div>
                         )}
 

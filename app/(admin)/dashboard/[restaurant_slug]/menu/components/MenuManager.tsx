@@ -50,6 +50,14 @@ export default function MenuManager({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [modifierGroups, setModifierGroups] = useState<any[]>([]);
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupRequired, setNewGroupRequired] = useState(false);
+  const [newGroupMulti, setNewGroupMulti] = useState(false);
+  const [addingOptionForGroup, setAddingOptionForGroup] = useState<string | null>(null);
+  const [newOptionName, setNewOptionName] = useState('');
+  const [newOptionPrice, setNewOptionPrice] = useState('0');
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabaseRef = useRef(createClient());
@@ -104,6 +112,14 @@ export default function MenuManager({
       is_starter: false,
     });
     setEditingItem(null);
+    setModifierGroups([]);
+    setShowAddGroup(false);
+    setNewGroupName('');
+    setNewGroupRequired(false);
+    setNewGroupMulti(false);
+    setAddingOptionForGroup(null);
+    setNewOptionName('');
+    setNewOptionPrice('0');
   }
 
   function openAddItem() {
@@ -125,7 +141,17 @@ export default function MenuManager({
     });
     setEditingItem(item);
     setView("edit-item");
+    fetchModifierGroups(item.id);
   }
+
+  const fetchModifierGroups = async (itemId: string) => {
+    const { data } = await supabaseRef.current
+      .from('modifier_groups')
+      .select('*, modifier_options(*)')
+      .eq('menu_item_id', itemId)
+      .order('sort_order');
+    setModifierGroups(data ?? []);
+  };
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -608,6 +634,7 @@ export default function MenuManager({
           {/* Toggles */}
           <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
             <button
+              type="button"
               onClick={() =>
                 setForm((f) => ({ ...f, is_available: !f.is_available }))
               }
@@ -639,6 +666,7 @@ export default function MenuManager({
               {form.is_available ? "Available" : "Unavailable"}
             </button>
             <button
+              type="button"
               onClick={() =>
                 setForm((f) => ({ ...f, is_starter: !f.is_starter }))
               }
@@ -666,6 +694,102 @@ export default function MenuManager({
               {form.is_starter ? "Is a Starter" : "Not a Starter"}
             </button>
           </div>
+
+          {/* ── MODIFIERS ── */}
+          {(view === 'edit-item') && (
+            <div style={{ marginTop: 24, marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text)', letterSpacing: 1, textTransform: 'uppercase' }}>Modifiers</span>
+                <button type="button" onClick={() => setShowAddGroup(true)} style={{ background: 'var(--theme-accent)', color: 'var(--theme-bg)', border: 'none', borderRadius: 999, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, minHeight: 36 }}>
+                  <Plus size={14} /> Add Group
+                </button>
+              </div>
+
+              {showAddGroup && (
+                <div style={{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <input type="text" placeholder="Group name (e.g. Spice Level)" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} style={{ width: '100%', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8, color: 'var(--theme-text)', padding: '10px 12px', fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }} />
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button type="button" onClick={() => setNewGroupRequired(r => !r)} style={{ flex: 1, minHeight: 36, borderRadius: 8, border: '1px solid var(--theme-border)', background: newGroupRequired ? 'var(--theme-accent)' : 'var(--theme-surface)', color: newGroupRequired ? 'var(--theme-bg)' : 'var(--theme-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {newGroupRequired ? 'Required ✓' : 'Optional'}
+                    </button>
+                    <button type="button" onClick={() => setNewGroupMulti(m => !m)} style={{ flex: 1, minHeight: 36, borderRadius: 8, border: '1px solid var(--theme-border)', background: newGroupMulti ? 'var(--theme-accent)' : 'var(--theme-surface)', color: newGroupMulti ? 'var(--theme-bg)' : 'var(--theme-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {newGroupMulti ? 'Multi-select ✓' : 'Single select'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={async () => {
+                      if (!newGroupName.trim() || !editingItem) return
+                      const res = await fetch('/api/admin/save-modifier-group', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ 
+                          menu_item_id: editingItem.id, 
+                          restaurant_id: restaurant.id, 
+                          name: newGroupName.trim(), 
+                          is_required: newGroupRequired, 
+                          required: newGroupRequired, 
+                          is_multi_select: newGroupMulti 
+                        }) 
+                      })
+                      if (res.ok) { await fetchModifierGroups(editingItem.id); setShowAddGroup(false); setNewGroupName(''); setNewGroupRequired(false); setNewGroupMulti(false) }
+                    }} style={{ flex: 1, minHeight: 40, background: 'var(--theme-accent)', color: 'var(--theme-bg)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Save Group</button>
+                    <button type="button" onClick={() => setShowAddGroup(false)} style={{ minHeight: 40, padding: '0 16px', background: 'transparent', color: 'var(--theme-text)', border: '1px solid var(--theme-border)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {modifierGroups.map(group => (
+                <div key={group.id} style={{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--theme-text)' }}>{group.name}</span>
+                      <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: (group.is_required ?? group.required) ? 'var(--theme-accent)' : 'var(--theme-text-dim)', background: 'color-mix(in srgb, var(--theme-accent) 15%, transparent)', borderRadius: 999, padding: '2px 8px' }}>{(group.is_required ?? group.required) ? 'Required' : 'Optional'}</span>
+                      <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--theme-text-dim)', background: 'color-mix(in srgb, var(--theme-bg) 60%, transparent)', borderRadius: 999, padding: '2px 8px' }}>{group.is_multi_select ? 'Multi' : 'Single'}</span>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      await fetch('/api/admin/delete-modifier-group', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: group.id }) })
+                      if (editingItem) fetchModifierGroups(editingItem.id)
+                    }} style={{ background: 'transparent', border: 'none', color: 'var(--theme-text-dim)', cursor: 'pointer', padding: 4 }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  {(group.modifier_options ?? []).map((opt: any) => (
+                    <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid color-mix(in srgb, var(--theme-border) 40%, transparent)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--theme-text)' }}>{opt.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--theme-accent)' }}>{opt.price > 0 ? `+GHS ${Number(opt.price).toFixed(2)}` : 'Free'}</span>
+                        <button type="button" onClick={async () => {
+                          await fetch('/api/admin/delete-modifier-option', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: opt.id }) })
+                          if (editingItem) fetchModifierGroups(editingItem.id)
+                        }} style={{ background: 'transparent', border: 'none', color: 'var(--theme-text-dim)', cursor: 'pointer', padding: 4 }}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {addingOptionForGroup === group.id ? (
+                    <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <input type="text" placeholder="Option name" value={newOptionName} onChange={e => setNewOptionName(e.target.value)} style={{ flex: 2, minWidth: 120, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8, color: 'var(--theme-text)', padding: '8px 10px', fontSize: 13 }} />
+                      <input type="number" placeholder="Price" value={newOptionPrice} onChange={e => setNewOptionPrice(e.target.value)} style={{ flex: 1, minWidth: 70, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8, color: 'var(--theme-text)', padding: '8px 10px', fontSize: 13 }} />
+                      <button type="button" onClick={async () => {
+                        if (!newOptionName.trim()) return
+                        await fetch('/api/admin/save-modifier-option', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ group_id: group.id, restaurant_id: restaurant.id, name: newOptionName.trim(), price: parseFloat(newOptionPrice) || 0 }) })
+                        setNewOptionName(''); setNewOptionPrice('0'); setAddingOptionForGroup(null)
+                        if (editingItem) fetchModifierGroups(editingItem.id)
+                      }} style={{ minHeight: 36, padding: '0 12px', background: 'var(--theme-accent)', color: 'var(--theme-bg)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Save</button>
+                      <button type="button" onClick={() => setAddingOptionForGroup(null)} style={{ minHeight: 40, padding: '0 12px', background: 'transparent', color: 'var(--theme-text-dim)', border: '1px solid var(--theme-border)', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setAddingOptionForGroup(group.id)} style={{ marginTop: 8, background: 'transparent', border: '1px dashed var(--theme-border)', borderRadius: 8, color: 'var(--theme-text-dim)', padding: '6px 12px', fontSize: 12, cursor: 'pointer', width: '100%', minHeight: 36 }}>
+                      + Add Option
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <button className="btn-primary" onClick={saveItem} disabled={saving}>
             {saving ? (
