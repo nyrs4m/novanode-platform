@@ -39,6 +39,9 @@ const features = [
 export default function Home() {
   return (
     <main className="landing-page" data-theme="default">
+      <header style={{ padding: "24px 24px 0", display: "flex", justifyContent: "flex-start" }}>
+        <img src="/novalogo.png" alt="NovaNode" className="h-9 w-auto md:h-11" />
+      </header>
       <section className="landing-hero" aria-labelledby="hero-title">
         <div className="ambient-gold motion-orb-1 landing-orb landing-orb-one" />
         <div className="ambient-emerald motion-orb-2 landing-orb landing-orb-two" />
@@ -139,7 +142,7 @@ export default function Home() {
 
       <footer className="landing-footer">
         <span>NovaNode &copy; 2026</span>
-        <a href="https://wa.me/0246902056">WhatsApp contact</a>
+        <a href="https://wa.me/233246902056">WhatsApp contact</a>
       </footer>
 
       <style>{`
