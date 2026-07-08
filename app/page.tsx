@@ -59,7 +59,7 @@ export default function Home() {
           <div className="landing-actions" aria-label="Primary actions">
             <a
               className="landing-cta landing-cta-primary"
-              href="https://wa.me/0246902056"
+              href="https://wa.me/233246902056"
             >
               Get your restaurant on NovaNode
             </a>
