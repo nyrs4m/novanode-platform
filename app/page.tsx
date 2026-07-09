@@ -1,3 +1,4 @@
+import { Space_Grotesk } from "next/font/google";
 import {
   BarChart3,
   ChefHat,
@@ -8,6 +9,12 @@ import {
   Table2,
   TimerReset,
 } from "lucide-react";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-space-grotesk",
+});
 
 const steps = [
   {
@@ -39,8 +46,9 @@ const features = [
 export default function Home() {
   return (
     <main className="landing-page" data-theme="default">
-      <header style={{ padding: "24px 24px 0", display: "flex", justifyContent: "flex-start" }}>
-        <img src="/novalogo.png" alt="NovaNode" className="h-9 w-auto md:h-11" />
+      <header style={{ padding: "24px 24px 0", display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
+        <img src="/novalogo.png" alt="NovaNode" className="h-12 w-auto md:h-14" />
+        <span className="text-xl md:text-2xl font-bold text-[var(--theme-accent)]">NovaNode Inc</span>
       </header>
       <section className="landing-hero" aria-labelledby="hero-title">
         <div className="ambient-gold motion-orb-1 landing-orb landing-orb-one" />
@@ -48,9 +56,11 @@ export default function Home() {
         <div className="motion-scan landing-scan" />
 
         <div className="landing-hero-content">
-          <p className="landing-wordmark">NovaNode</p>
-          <h1 id="hero-title" className="landing-title">
-            Feast the Gen-Z way
+          <p className="text-xs md:text-sm font-medium tracking-widest uppercase text-[var(--theme-accent)] mb-4">
+            POWERED BY NOVANODE
+          </p>
+          <h1 id="hero-title" className={`${spaceGrotesk.className} text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[var(--theme-text)] max-w-[900px] mx-auto leading-[0.98]`}>
+            Feast the <span className="text-[var(--theme-accent)] underline decoration-4 underline-offset-8">Gen-Z</span> way
           </h1>
           <p className="landing-subtitle">
             The QR-based digital menu and ordering platform built for modern
