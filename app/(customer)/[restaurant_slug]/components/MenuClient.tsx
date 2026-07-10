@@ -1167,7 +1167,8 @@ export default function MenuClient({
     (s, o) => s + Number(o.total_amount),
     0,
   );
-  const sessionFee = Math.min(Math.round(runningTotal * 0.01 * 100) / 100, 5);
+  const rawFee = Math.round(runningTotal * 0.01 * 100) / 100;
+  const sessionFee = runningTotal > 0 ? Math.min(Math.max(rawFee, 1), 15) : 0;
   const grandTotal = runningTotal + sessionFee;
 
   function removeItem(

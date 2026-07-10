@@ -71,7 +71,8 @@ export default function ReceiptModal({
   const supabaseRef = useRef(createClient());
 
   const subtotal = orders.reduce((s, o) => s + Number(o.total_amount), 0);
-  const sessionFee = Math.min(Math.round(subtotal * 0.01 * 100) / 100, 5);
+  const rawFee = Math.round(subtotal * 0.01 * 100) / 100;
+  const sessionFee = subtotal > 0 ? Math.min(Math.max(rawFee, 1), 15) : 0;
   const grandTotal = subtotal + sessionFee;
 
   const allItems = orders.flatMap((o) =>

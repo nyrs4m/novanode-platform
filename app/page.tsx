@@ -128,7 +128,7 @@ export default function Home() {
           <article className="landing-panel pricing-card">
             <h2 id="pricing-title">Free to get started</h2>
             <p className="pricing-rate">
-              1% per completed session, capped at GHS 5.00
+              1% per completed session, capped at GHS 15.00
             </p>
             <p>
               No monthly fees. No setup costs. You only pay when customers

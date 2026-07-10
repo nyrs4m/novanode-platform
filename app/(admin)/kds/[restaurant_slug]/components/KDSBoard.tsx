@@ -436,7 +436,8 @@ export default function KDSBoard({
     );
     const orderData = [...sessionOrders];
     const foodTotal = orderData.reduce((s, o) => s + Number(o.total_amount), 0);
-    const dynamicFee = Math.min(Math.round(foodTotal * 0.01 * 100) / 100, 5);
+    const rawFee = Math.round(foodTotal * 0.01 * 100) / 100;
+    const dynamicFee = foodTotal > 0 ? Math.min(Math.max(rawFee, 1), 15) : 0;
 
     await supabaseRef.current
       .from("table_sessions")
@@ -1583,15 +1584,15 @@ export default function KDSBoard({
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             onClick={async () => {
-                              const pendingForTable = orders.filter(
+                              const unservedForTable = orders.filter(
                                 (o) =>
                                   o.session_token === session.session_token &&
-                                  (o.status === "Pending" ||
-                                    o.status === "Preparing"),
+                                  o.status !== "Cancelled" &&
+                                  o.status !== "Served",
                               );
-                              if (pendingForTable.length > 0) {
+                              if (unservedForTable.length > 0) {
                                 alert(
-                                  `${pendingForTable.length} order${pendingForTable.length > 1 ? "s are" : " is"} still being processed. Mark them as Served or Cancelled before presenting the bill.`,
+                                  `${unservedForTable.length} order${unservedForTable.length > 1 ? "s are" : " is"} not served yet. Mark all orders as Served or Cancelled before presenting the bill.`,
                                 );
                                 return;
                               }
@@ -1702,14 +1703,27 @@ export default function KDSBoard({
                           </div>
                           <button
                             onClick={() => closeTable(session.id)}
+                            disabled={closingTable === session.id}
                             style={{
                               width: "100%",
                               padding: "11px 16px",
-                              background: "rgba(239,68,68,0.1)",
-                              border: "1px solid rgba(239,68,68,0.3)",
+                              background:
+                                closingTable === session.id
+                                  ? "var(--cream-06)"
+                                  : "rgba(239,68,68,0.1)",
+                              border:
+                                closingTable === session.id
+                                  ? "none"
+                                  : "1px solid rgba(239,68,68,0.3)",
                               borderRadius: 12,
-                              cursor: "pointer",
-                              color: "#f87171",
+                              cursor:
+                                closingTable === session.id
+                                  ? "not-allowed"
+                                  : "pointer",
+                              color:
+                                closingTable === session.id
+                                  ? "var(--cream-35)"
+                                  : "#f87171",
                               fontSize: 13,
                               fontWeight: 800,
                               fontFamily: "Inter, sans-serif",
@@ -1720,7 +1734,16 @@ export default function KDSBoard({
                               transition: "all 0.2s",
                             }}
                           >
-                            <LogOut size={15} /> Close Table
+                            {closingTable === session.id ? (
+                              <>
+                                <RefreshCw size={15} className="animate-spin" />{" "}
+                                Closing...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut size={15} /> Close Table
+                              </>
+                            )}
                           </button>
                         </div>
                       ) : null}
@@ -1797,7 +1820,7 @@ export default function KDSBoard({
               </p>
               <p className="t-caption">
                 {ledger?.completed_sessions ?? 0} closed sessions · 1% per
-                session (max {restaurant.currency} 5.00)
+                session (max {restaurant.currency} 15.00)
               </p>
 
               {Number(ledger?.platform_fees_paid ?? 0) > 0 && (
