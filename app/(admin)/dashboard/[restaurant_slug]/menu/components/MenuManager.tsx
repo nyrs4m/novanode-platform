@@ -27,6 +27,7 @@ import {
 type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
+type MenuItemWithChefsPick = MenuItem & { is_chefs_pick?: boolean | null };
 
 interface MenuManagerProps {
   restaurant: Restaurant;
@@ -74,6 +75,7 @@ export default function MenuManager({
     image_url: "",
     is_available: true,
     is_starter: false,
+    is_chefs_pick: false,
   });
   const [catName, setCatName] = useState({ en: "", fr: "" });
 
@@ -110,6 +112,7 @@ export default function MenuManager({
       image_url: "",
       is_available: true,
       is_starter: false,
+      is_chefs_pick: false,
     });
     setEditingItem(null);
     setModifierGroups([]);
@@ -138,6 +141,7 @@ export default function MenuManager({
       image_url: item.image_url,
       is_available: item.is_available ?? true,
       is_starter: item.is_starter ?? false,
+      is_chefs_pick: (item as MenuItemWithChefsPick).is_chefs_pick ?? false,
     });
     setEditingItem(item);
     setView("edit-item");
@@ -194,20 +198,37 @@ export default function MenuManager({
     setSaving(true);
     try {
       const supabase = getSupabase();
+      if (form.is_chefs_pick) {
+        // TODO: remove cast after regenerating database.types.ts with menu_items.is_chefs_pick
+        const clearChefsPickUpdate = { is_chefs_pick: false } as never;
+        let clearQuery = supabase
+          .from("menu_items")
+          .update(clearChefsPickUpdate)
+          .eq("restaurant_id", restaurant.id);
+
+        if (editingItem) clearQuery = clearQuery.neq("id", editingItem.id);
+
+        const { error: clearError } = await clearQuery;
+        if (clearError) throw clearError;
+      }
+
       if (editingItem) {
+        // TODO: remove cast after regenerating database.types.ts with menu_items.is_chefs_pick
+        const updatePayload = {
+          name_en: form.name_en.trim(),
+          name_fr: form.name_fr.trim() || null,
+          description_en: form.description_en.trim() || null,
+          description_fr: form.description_fr.trim() || null,
+          price: Number(form.price),
+          category_id: form.category_id || null,
+          image_url: form.image_url,
+          is_available: form.is_available,
+          is_starter: form.is_starter,
+          is_chefs_pick: form.is_chefs_pick,
+        } as never;
         const { data, error } = await supabase
           .from("menu_items")
-          .update({
-            name_en: form.name_en.trim(),
-            name_fr: form.name_fr.trim() || null,
-            description_en: form.description_en.trim() || null,
-            description_fr: form.description_fr.trim() || null,
-            price: Number(form.price),
-            category_id: form.category_id || null,
-            image_url: form.image_url,
-            is_available: form.is_available,
-            is_starter: form.is_starter,
-          })
+          .update(updatePayload)
           .eq("id", editingItem.id)
           .select()
           .single();
@@ -215,20 +236,23 @@ export default function MenuManager({
         if (data)
           setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
       } else {
+        // TODO: remove cast after regenerating database.types.ts with menu_items.is_chefs_pick
+        const insertPayload = {
+          restaurant_id: restaurant.id,
+          name_en: form.name_en.trim(),
+          name_fr: form.name_fr.trim() || null,
+          description_en: form.description_en.trim() || null,
+          description_fr: form.description_fr.trim() || null,
+          price: Number(form.price),
+          category_id: form.category_id || null,
+          image_url: form.image_url,
+          is_available: form.is_available,
+          is_starter: form.is_starter,
+          is_chefs_pick: form.is_chefs_pick,
+        } as never;
         const { data, error } = await supabase
           .from("menu_items")
-          .insert({
-            restaurant_id: restaurant.id,
-            name_en: form.name_en.trim(),
-            name_fr: form.name_fr.trim() || null,
-            description_en: form.description_en.trim() || null,
-            description_fr: form.description_fr.trim() || null,
-            price: Number(form.price),
-            category_id: form.category_id || null,
-            image_url: form.image_url,
-            is_available: form.is_available,
-            is_starter: form.is_starter,
-          })
+          .insert(insertPayload)
           .select()
           .single();
         if (error) throw error;
@@ -632,7 +656,14 @@ export default function MenuManager({
           </div>
 
           {/* Toggles */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              marginBottom: 32,
+              flexWrap: "wrap",
+            }}
+          >
             <button
               type="button"
               onClick={() =>
@@ -692,6 +723,34 @@ export default function MenuManager({
             >
               <Zap size={16} />
               {form.is_starter ? "Is a Starter" : "Not a Starter"}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setForm((f) => ({ ...f, is_chefs_pick: !f.is_chefs_pick }))
+              }
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: form.is_chefs_pick
+                  ? "var(--gold-faint)"
+                  : "var(--cream-06)",
+                border: `1px solid ${form.is_chefs_pick ? "var(--gold-dim)" : "var(--cream-15)"}`,
+                borderRadius: 12,
+                cursor: "pointer",
+                color: form.is_chefs_pick ? "var(--gold-glow)" : "var(--cream-35)",
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: "Inter, sans-serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                transition: "all 0.2s",
+              }}
+            >
+              <Star size={16} />
+              {form.is_chefs_pick ? "Chef's Pick" : "Not Chef's Pick"}
             </button>
           </div>
 

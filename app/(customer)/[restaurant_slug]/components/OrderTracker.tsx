@@ -25,6 +25,7 @@ type Restaurant = Tables<"restaurants">;
 
 interface OrderTrackerProps {
   sessionToken: string;
+  accessToken: string | null;
   restaurant: Restaurant;
   customerName: string;
   tableNumber: string;
@@ -87,6 +88,7 @@ function formatCountdown(seconds: number): string {
 
 export default function OrderTracker({
   sessionToken,
+  accessToken,
   restaurant,
   customerName,
   tableNumber,
@@ -106,7 +108,7 @@ export default function OrderTracker({
 
   // ── Fetch orders for this session ──────────────────────────────────────
   const fetchOrders = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!sessionToken || !accessToken) return;
     const { data } = await supabase
       .from("orders")
       .select("*")
@@ -122,11 +124,11 @@ export default function OrderTracker({
         prevStatusRef.current[o.id] = o.status ?? "";
       });
     }
-  }, [sessionToken, supabase]);
+  }, [sessionToken, accessToken, supabase]);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, [fetchOrders, accessToken]);
 
   useEffect(() => {
     if (!sessionToken || !restaurant?.id) {

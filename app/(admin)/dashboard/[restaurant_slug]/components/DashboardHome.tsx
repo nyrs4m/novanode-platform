@@ -32,6 +32,7 @@ import type { Tables } from "@/types/database.types";
 
 type Restaurant = Tables<"restaurants">;
 type Order = Tables<"orders">;
+type TableSession = Tables<"table_sessions">;
 
 type RestaurantStats = {
   gross_revenue?: number | null;
@@ -67,7 +68,13 @@ interface Props {
   todayRevenueOverride: number;
 }
 
-type Tab = "overview" | "stats" | "menu" | "analytics" | "profile";
+type Tab =
+  | "overview"
+  | "stats"
+  | "menu"
+  | "analytics"
+  | "settlements"
+  | "profile";
 
 function StatusIcon({ status }: { status: string }) {
   if (status === "Cancelled")
@@ -84,6 +91,8 @@ function StatusLabel({ status }: { status: string }) {
 }
 
 type LedgerRow = {
+  id?: string;
+  ledger_date?: string;
   total_owed: number | null;
   completed_sessions: number | null;
   is_paid: boolean | null;
@@ -153,6 +162,18 @@ export default function DashboardHome({
   const [showAllRevDays, setShowAllRevDays] = useState(false);
   const [showAllOrdDays, setShowAllOrdDays] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [settlementRows, setSettlementRows] = useState<LedgerRow[]>([]);
+  const [settlementsLoading, setSettlementsLoading] = useState(false);
+  const [settlementsError, setSettlementsError] = useState("");
+  const [expandedLedgerDate, setExpandedLedgerDate] = useState<string | null>(
+    null,
+  );
+  const [settlementSessions, setSettlementSessions] = useState<
+    Record<string, TableSession[]>
+  >({});
+  const [settlementSessionsLoading, setSettlementSessionsLoading] = useState<
+    Record<string, boolean>
+  >({});
 
   // Profile & Settings state
   const [profileForm, setProfileForm] = useState({
@@ -239,6 +260,12 @@ export default function DashboardHome({
       fetchAnalytics();
     }
   }, [tab, analyticsData, analyticsLoading, restaurant.id]);
+
+  useEffect(() => {
+    if (tab === "settlements" && settlementRows.length === 0) {
+      fetchSettlementHistory();
+    }
+  }, [tab, settlementRows.length, restaurant.id]);
 
   useEffect(() => {
     async function refreshTodayRevenue() {
@@ -418,6 +445,72 @@ export default function DashboardHome({
     }
   }
 
+  async function fetchSettlementHistory() {
+    setSettlementsLoading(true);
+    setSettlementsError("");
+    try {
+      const { data, error } = await supabaseRef.current
+        .from("daily_ledger")
+        .select(
+          "id, ledger_date, completed_sessions, total_owed, is_paid, session_fees_collected, platform_fees_owed, platform_fees_paid",
+        )
+        .eq("restaurant_id", restaurant.id)
+        .order("ledger_date", { ascending: false })
+        .limit(30);
+
+      if (error) {
+        setSettlementsError("Could not load settlement history.");
+        return;
+      }
+
+      setSettlementRows((data ?? []) as LedgerRow[]);
+    } catch {
+      setSettlementsError("Could not load settlement history.");
+    } finally {
+      setSettlementsLoading(false);
+    }
+  }
+
+  async function toggleLedgerDate(ledgerDate: string) {
+    setExpandedLedgerDate((current) =>
+      current === ledgerDate ? null : ledgerDate,
+    );
+
+    if (settlementSessions[ledgerDate]) return;
+
+    setSettlementSessionsLoading((current) => ({
+      ...current,
+      [ledgerDate]: true,
+    }));
+
+    const dayStart = `${ledgerDate}T00:00:00.000Z`;
+    const nextDay = new Date(dayStart);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    try {
+      const { data } = await supabaseRef.current
+        .from("table_sessions")
+        .select(
+          "id, table_number, closed_at, session_total, platform_fee_charged, status",
+        )
+        .eq("restaurant_id", restaurant.id)
+        .eq("status", "completed")
+        .gte("closed_at", dayStart)
+        .lt("closed_at", nextDay.toISOString())
+        .order("closed_at", { ascending: false });
+
+      setSettlementSessions((current) => ({
+        ...current,
+        [ledgerDate]: (data ?? []) as TableSession[],
+      }));
+    } finally {
+      setSettlementSessionsLoading((current) => ({
+        ...current,
+        [ledgerDate]: false,
+      }));
+    }
+  }
+
   // ── Static computed values from server-rendered props ─────────────────
   const mRevenue = monthRevenue;
   const today = new Date().toISOString().split("T")[0];
@@ -429,6 +522,20 @@ export default function DashboardHome({
   const mFees = 0;
   const dRevenue = todayRevenue ?? dailyStats?.gross_revenue ?? 0;
   const dTables = dailyStats?.tables_served ?? 0;
+  const formatLedgerDate = (date: string) =>
+    new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  const formatSessionTime = (value: string | null) =>
+    value
+      ? new Date(value).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
 
   const maxQty = topItems[0]?.total_quantity ?? 1;
   const maxPeak = peakHours[0]?.order_count ?? 1;
@@ -859,6 +966,11 @@ export default function DashboardHome({
               id: "analytics",
               label: "Analytics",
               icon: <BarChart2 size={16} />,
+            },
+            {
+              id: "settlements",
+              label: "Settlement History",
+              icon: <DollarSign size={16} />,
             },
             {
               id: "profile",
@@ -1919,6 +2031,217 @@ export default function DashboardHome({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── SETTLEMENT HISTORY TAB ── */}
+        {tab === "settlements" && (
+          <div>
+            <div className="dash-section">
+              <div className="dash-section-head">
+                <DollarSign size={17} color="var(--gold-glow)" />
+                <span className="t-title" style={{ fontSize: 15 }}>
+                  Settlement History
+                </span>
+              </div>
+
+              {settlementsLoading && (
+                <div className="dash-empty">Loading settlement history...</div>
+              )}
+
+              {!settlementsLoading && settlementsError && (
+                <div className="dash-empty">{settlementsError}</div>
+              )}
+
+              {!settlementsLoading &&
+                !settlementsError &&
+                settlementRows.length === 0 && (
+                  <div className="dash-empty">
+                    No settlement history recorded yet
+                  </div>
+                )}
+
+              {!settlementsLoading &&
+                !settlementsError &&
+                settlementRows.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {settlementRows.map((ledger) => {
+                      const ledgerDate = ledger.ledger_date ?? "";
+                      const isExpanded = expandedLedgerDate === ledgerDate;
+                      const sessions = settlementSessions[ledgerDate] ?? [];
+                      const sessionsLoading =
+                        settlementSessionsLoading[ledgerDate] ?? false;
+
+                      return (
+                        <div
+                          key={ledger.id ?? ledgerDate}
+                          style={{
+                            background: "var(--surface-2)",
+                            border: "1px solid var(--cream-06)",
+                            borderRadius: 14,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleLedgerDate(ledgerDate)}
+                            style={{
+                              width: "100%",
+                              minHeight: 64,
+                              display: "grid",
+                              gridTemplateColumns: "1fr auto",
+                              gap: 12,
+                              alignItems: "center",
+                              padding: "14px 16px",
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              fontFamily: "Inter, sans-serif",
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <p
+                                className="t-title"
+                                style={{ fontSize: 14, marginBottom: 6 }}
+                              >
+                                {formatLedgerDate(ledgerDate)}
+                              </p>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 8,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <span className="t-caption">
+                                  {ledger.completed_sessions ?? 0} completed
+                                  sessions
+                                </span>
+                                <span
+                                  className={
+                                    ledger.is_paid
+                                      ? "status-done"
+                                      : "status-pending"
+                                  }
+                                >
+                                  {ledger.is_paid ? "Paid" : "Unpaid"}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <p
+                                className="t-price-sm"
+                                style={{ fontVariantNumeric: "tabular-nums" }}
+                              >
+                                {restaurant.currency}{" "}
+                                {Number(ledger.total_owed ?? 0).toFixed(2)}
+                              </p>
+                              <p className="t-caption" style={{ marginTop: 4 }}>
+                                {isExpanded ? "Hide" : "View"} sessions
+                              </p>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div
+                              style={{
+                                borderTop: "1px solid var(--cream-06)",
+                                padding: "12px 16px 16px",
+                              }}
+                            >
+                              {sessionsLoading ? (
+                                <div className="dash-empty">
+                                  Loading sessions...
+                                </div>
+                              ) : sessions.length === 0 ? (
+                                <div className="dash-empty">
+                                  No completed sessions found for this day
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 10,
+                                  }}
+                                >
+                                  {sessions.map((session) => (
+                                    <div
+                                      key={session.id}
+                                      style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr auto",
+                                        gap: 12,
+                                        alignItems: "center",
+                                        padding: "12px 14px",
+                                        background: "var(--cream-06)",
+                                        border:
+                                          "1px solid var(--cream-15)",
+                                        borderRadius: 12,
+                                      }}
+                                    >
+                                      <div style={{ minWidth: 0 }}>
+                                        <p
+                                          className="t-title"
+                                          style={{
+                                            fontSize: 13,
+                                            marginBottom: 4,
+                                          }}
+                                        >
+                                          Table {session.table_number}
+                                        </p>
+                                        <p className="t-caption">
+                                          Closed{" "}
+                                          {formatSessionTime(
+                                            session.closed_at,
+                                          )}
+                                        </p>
+                                      </div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: 4,
+                                          textAlign: "right",
+                                          fontVariantNumeric: "tabular-nums",
+                                        }}
+                                      >
+                                        <span className="t-price-sm">
+                                          {restaurant.currency}{" "}
+                                          {Number(
+                                            session.session_total ?? 0,
+                                          ).toFixed(2)}
+                                        </span>
+                                        <span
+                                          className="t-caption"
+                                          style={{ color: "var(--gold-glow)" }}
+                                        >
+                                          Fee {restaurant.currency}{" "}
+                                          {Number(
+                                            session.platform_fee_charged ?? 0,
+                                          ).toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+            </div>
           </div>
         )}
 

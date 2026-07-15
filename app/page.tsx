@@ -1,4 +1,5 @@
 import { Space_Grotesk } from "next/font/google";
+import Link from "next/link";
 import {
   BarChart3,
   ChefHat,
@@ -46,9 +47,23 @@ const features = [
 export default function Home() {
   return (
     <main className="landing-page" data-theme="default">
-      <header style={{ padding: "24px 24px 0", display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "12px" }}>
-        <img src="/novalogo.png" alt="NovaNode" className="h-12 w-auto md:h-14" />
-        <span className="text-xl md:text-2xl font-bold text-[var(--theme-accent)]">NovaNode Inc</span>
+      <header
+        style={{
+          padding: "24px 24px 0",
+          display: "flex",
+          justifyContent: "flex-start",
+          alignItems: "center",
+          gap: "12px",
+        }}
+      >
+        <img
+          src="/novalogo.png"
+          alt="NovaNode"
+          className="h-12 w-auto md:h-14"
+        />
+        <span className="text-xl md:text-2xl font-bold text-[var(--theme-accent)]">
+          NovaNode Inc
+        </span>
       </header>
       <section className="landing-hero" aria-labelledby="hero-title">
         <div className="ambient-gold motion-orb-1 landing-orb landing-orb-one" />
@@ -59,8 +74,15 @@ export default function Home() {
           <p className="text-xs md:text-sm font-medium tracking-widest uppercase text-[var(--theme-accent)] mb-4">
             POWERED BY NOVANODE
           </p>
-          <h1 id="hero-title" className={`${spaceGrotesk.className} text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[var(--theme-text)] max-w-[900px] mx-auto leading-[0.98]`}>
-            Feast the <span className="text-[var(--theme-accent)] underline decoration-4 underline-offset-8">Gen-Z</span> way
+          <h1
+            id="hero-title"
+            className={`${spaceGrotesk.className} text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[var(--theme-text)] max-w-[900px] mx-auto leading-[0.98]`}
+          >
+            Feast the{" "}
+            <span className="text-[var(--theme-accent)] underline decoration-4 underline-offset-8">
+              Gen-Z
+            </span>{" "}
+            way
           </h1>
           <p className="landing-subtitle">
             The QR-based digital menu and ordering platform built for modern
@@ -112,7 +134,10 @@ export default function Home() {
             {features.map((feature) => {
               const Icon = feature.icon;
               return (
-                <article className="landing-panel feature-panel" key={feature.title}>
+                <article
+                  className="landing-panel feature-panel"
+                  key={feature.title}
+                >
                   <Icon className="landing-icon" size={24} strokeWidth={2.2} />
                   <h3>{feature.title}</h3>
                 </article>
@@ -130,10 +155,7 @@ export default function Home() {
             <p className="pricing-rate">
               1% per completed session, capped at GHS 15.00
             </p>
-            <p>
-              No monthly fees. No setup costs. You only pay when customers
-              order.
-            </p>
+            <p>No monthly fees. You only pay when customers order.</p>
           </article>
         </div>
       </section>
@@ -144,7 +166,10 @@ export default function Home() {
           <h2 id="demo-title" className="landing-section-title">
             See what guests see
           </h2>
-          <a className="landing-cta landing-cta-primary" href="/starbite?table=1">
+          <a
+            className="landing-cta landing-cta-primary"
+            href="/starbite?table=1"
+          >
             Try it as a customer
           </a>
         </div>
@@ -152,6 +177,10 @@ export default function Home() {
 
       <footer className="landing-footer">
         <span>NovaNode &copy; 2026</span>
+        <div className="landing-footer-links" aria-label="Legal links">
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+        </div>
         <a href="https://wa.me/233246902056">WhatsApp contact</a>
       </footer>
 
@@ -419,6 +448,13 @@ export default function Home() {
           color: var(--theme-accent);
           text-decoration: none;
           font-weight: 800;
+        }
+
+        .landing-footer-links {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 14px;
+          justify-content: center;
         }
 
         @media (min-width: 768px) {

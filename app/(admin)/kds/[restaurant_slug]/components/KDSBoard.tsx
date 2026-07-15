@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Tables } from "@/types/database.types";
 import {
@@ -445,6 +446,8 @@ export default function KDSBoard({
         is_active: false,
         status: "completed",
         closed_at: new Date().toISOString(),
+        session_total: foodTotal as never,
+        platform_fee_charged: dynamicFee as never,
       })
       .eq("id", sessionId);
     if (foodTotal >= 0) {
@@ -2137,6 +2140,19 @@ export default function KDSBoard({
             >
               Payments processed via Paystack. Ledger resets daily at midnight.
             </p>
+            <div style={{ textAlign: "center", marginTop: 10 }}>
+              <Link
+                href={`/dashboard/${restaurant.slug}?tab=settlements`}
+                className="t-caption"
+                style={{
+                  color: "var(--gold-glow)",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                View full settlement history
+              </Link>
+            </div>
           </div>
         )}
       </div>

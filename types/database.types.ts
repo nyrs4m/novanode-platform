@@ -302,6 +302,7 @@ export type Database = {
           id: string
           image_url: string
           is_available: boolean | null
+          is_chefs_pick: boolean | null
           is_starter: boolean | null
           name_en: string
           name_fr: string | null
@@ -317,6 +318,7 @@ export type Database = {
           id?: string
           image_url: string
           is_available?: boolean | null
+          is_chefs_pick?: boolean | null
           is_starter?: boolean | null
           name_en: string
           name_fr?: string | null
@@ -332,6 +334,7 @@ export type Database = {
           id?: string
           image_url?: string
           is_available?: boolean | null
+          is_chefs_pick?: boolean | null
           is_starter?: boolean | null
           name_en?: string
           name_fr?: string | null
@@ -1045,9 +1048,11 @@ export type Database = {
           is_active: boolean | null
           last_seen_at: string | null
           opened_at: string | null
+          platform_fee_charged: number | null
           restaurant_id: string | null
           session_fee_applied: number | null
           session_token: string
+          session_total: number | null
           status: string | null
           table_number: string
         }
@@ -1061,9 +1066,11 @@ export type Database = {
           is_active?: boolean | null
           last_seen_at?: string | null
           opened_at?: string | null
+          platform_fee_charged?: number | null
           restaurant_id?: string | null
           session_fee_applied?: number | null
           session_token: string
+          session_total?: number | null
           status?: string | null
           table_number: string
         }
@@ -1077,9 +1084,11 @@ export type Database = {
           is_active?: boolean | null
           last_seen_at?: string | null
           opened_at?: string | null
+          platform_fee_charged?: number | null
           restaurant_id?: string | null
           session_fee_applied?: number | null
           session_token?: string
+          session_total?: number | null
           status?: string | null
           table_number?: string
         }
@@ -1457,6 +1466,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 export type RestaurantStats = {
   total_revenue: number
   total_orders: number

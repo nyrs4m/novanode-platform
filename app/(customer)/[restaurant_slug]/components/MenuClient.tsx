@@ -34,6 +34,7 @@ import {
 type Restaurant = Tables<"restaurants">;
 type Category = Tables<"categories">;
 type MenuItem = Tables<"menu_items">;
+type MenuItemWithChefsPick = MenuItem & { is_chefs_pick?: boolean | null };
 type DailySpecial = Tables<"daily_specials">;
 
 type ModifierGroupRow = {
@@ -446,7 +447,19 @@ export default function MenuClient({
 
   const filtered = activeCategory
     ? liveMenuItems.filter((i) => i.category_id === activeCategory)
-    : liveMenuItems;
+    : (() => {
+        const chefsPickIndex = liveMenuItems.findIndex(
+          (item) => (item as MenuItemWithChefsPick).is_chefs_pick === true,
+        );
+        if (chefsPickIndex <= 0) return liveMenuItems;
+
+        const chefsPick = liveMenuItems[chefsPickIndex];
+        return [
+          chefsPick,
+          ...liveMenuItems.slice(0, chefsPickIndex),
+          ...liveMenuItems.slice(chefsPickIndex + 1),
+        ];
+      })();
 
   const total = order.reduce(
     (s, ci) => s + (ci.item.price + (ci.modifierTotal ?? 0)) * ci.quantity,
@@ -1721,6 +1734,7 @@ export default function MenuClient({
       {/* ── ORDER TRACKER ── */}
       <OrderTracker
         sessionToken={sessionToken}
+        accessToken={accessToken}
         restaurant={restaurant}
         customerName={customerName}
         tableNumber={tableNumber}
@@ -2052,12 +2066,14 @@ export default function MenuClient({
             <p className="t-body">{ui.noItems}</p>
           </div>
         ) : (
-          filtered.map((item, index) => {
+          filtered.map((item) => {
             const inOrderCount = order
               .filter((ci) => ci.item.id === item.id)
               .reduce((sum, ci) => sum + ci.quantity, 0);
             const unavailable = item.is_available === false;
-            const isHero = index === 0 && !activeCategory;
+            const isHero =
+              (item as MenuItemWithChefsPick).is_chefs_pick === true &&
+              !activeCategory;
 
             if (isHero)
               return (
