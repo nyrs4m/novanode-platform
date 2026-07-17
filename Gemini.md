@@ -7,7 +7,7 @@ _Last updated: 2026-06-05_
 - **Name:** NovaNode Inc.
 - **Product:** Multi-tenant QR-based digital menu and order routing SaaS
 - **Clients:** Restaurants, hotels, lounges
-- **Tagline:** "Feast the Gen-Z way"
+- **Tagline:** "Skip the Wait, Start the Feast"
 - **Live repo:** GitHub (public), deployed on Vercel free tier
 
 ---

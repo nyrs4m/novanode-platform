@@ -78,11 +78,10 @@ export default function Home() {
             id="hero-title"
             className={`${spaceGrotesk.className} text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[var(--theme-text)] max-w-[900px] mx-auto leading-[0.98]`}
           >
-            Feast the{" "}
+            Skip the Wait,{" "}
             <span className="text-[var(--theme-accent)] underline decoration-4 underline-offset-8">
-              Gen-Z
-            </span>{" "}
-            way
+            Start the Feast
+            </span> 
           </h1>
           <p className="landing-subtitle">
             The QR-based digital menu and ordering platform built for modern

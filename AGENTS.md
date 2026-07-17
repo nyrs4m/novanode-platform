@@ -10,7 +10,7 @@ You are the elite Lead Full-Stack Architect for NovaNode (NovaNode Inc.), a mult
 - All card/section backgrounds use `var(--theme-surface)` or `color-mix(in srgb, var(--theme-bg) X%, transparent)` for opacity variants — never hardcoded rgba/hex
 - Burnished Gold accents (`var(--theme-accent)`) reserved strictly for key data (currency, counts, CTAs) — never used as decoration
 - Typography: Inter font, tabular-nums (`font-variant-numeric: tabular-nums`) on all currency and numeric displays
-- Platform slogan: "Feast the Gen-Z way"
+- Platform slogan: "Skip the Wait, Start the Feast"
 - All UI is mobile-first, targeting 375px as primary viewport, scaling to 768px (tablet) and 1280px+ (desktop) via responsive breakpoints
 - Minimum touch target size: 44×44px on all interactive elements
 - Respect `prefers-reduced-motion` on all animations

@@ -78,7 +78,7 @@ export default function QRGenerator({ restaurant, baseUrl }: QRGeneratorProps) {
     // Tagline
     ctx.fillStyle = "rgba(253,251,247,0.4)";
     ctx.font = "11px Inter, sans-serif";
-    ctx.fillText("Scan to order - Feast the Gen-Z way", downloadCanvas.width / 2, qrSize + 50 + 42);
+    ctx.fillText("Scan to order - Skip the Wait, Start the Feast", downloadCanvas.width / 2, qrSize + 50 + 42);
 
     const link = document.createElement("a");
     link.download = `${restaurant.slug}-table-${table.tableNumber}-qr.png`;
@@ -205,7 +205,7 @@ export default function QRGenerator({ restaurant, baseUrl }: QRGeneratorProps) {
                 Table {table.tableNumber}
               </p>
               <p className="t-caption qr-table-subtitle">
-                Feast the Gen-Z way
+              Skip the Wait, Start the Feast
               </p>
             </div>
 

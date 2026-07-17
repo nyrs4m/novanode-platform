@@ -1010,7 +1010,7 @@ button:not(:disabled):active svg {
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 260;
   display: flex;
   animation: fadeIn 0.2s ease;
 }

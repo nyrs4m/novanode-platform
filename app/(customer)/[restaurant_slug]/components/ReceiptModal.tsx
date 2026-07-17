@@ -107,7 +107,7 @@ export default function ReceiptModal({
       doc.text(restaurant.name, w / 2, 15, { align: "center" });
       doc.setFontSize(8);
       doc.setTextColor(253, 251, 247);
-      doc.text("Feast the Gen-Z way", w / 2, 22, { align: "center" });
+      doc.text("Skip the Wait, Start the Feast", w / 2, 22, { align: "center" });
       doc.setFontSize(9);
       doc.text(`Table ${tableNumber} • ${customerName}`, w / 2, 30, {
         align: "center",
