@@ -1151,6 +1151,7 @@ export default function MenuClient({
     });
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────
   function t(en: string | null, fr: string | null | undefined): string {
     if (lang === "fr" && fr) return fr;
     return en ?? "";
@@ -1204,7 +1205,6 @@ export default function MenuClient({
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div
       className="menu-page"
@@ -2253,6 +2253,19 @@ export default function MenuClient({
             );
           })
         )}
+      </div>
+
+      {/* ── Powered by NovaNode Inc. ── */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: "var(--cream-35)",
+          marginTop: 24,
+          marginBottom: 16,
+        }}
+      >
+        Powered by NovaNode Inc.
       </div>
 
       {/* Knife nav spacer — prevents content hiding behind fixed nav */}

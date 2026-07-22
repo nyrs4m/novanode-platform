@@ -3319,6 +3319,20 @@ export default function DashboardHome({
           </div>
         )}
       </div>
+
+      {/* Powered by NovaNode Inc. */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: "rgba(253,251,247,0.4)",
+          marginTop: 16,
+          paddingBottom: 24,
+          opacity: 0.7,
+        }}
+      >
+        Powered by NovaNode Inc.
+      </div>
     </div>
   );
 }

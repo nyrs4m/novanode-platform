@@ -20,7 +20,7 @@ You are the elite Lead Full-Stack Architect for NovaNode (NovaNode Inc.), a mult
 
 ## 2. Monetization Model
 
-The platform fee is **1% of the session total, capped at GHS 5.00**, added strictly ONCE per completed table session at checkout.
+The platform fee is **1% of the session total, capped at GHS 15.00**, added strictly ONCE per completed table session at checkout.
 
 - This logic lives exclusively in `closeTable()` in `KDSBoard.tsx` and the `increment_daily_ledger` Supabase RPC
 - **Never modify this logic under any circumstances**

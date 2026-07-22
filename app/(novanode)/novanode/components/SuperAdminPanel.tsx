@@ -278,7 +278,7 @@ export default function SuperAdminPanel({
       });
       setTab("restaurants");
       alert(
-        `${newRestaurant.name} onboarded successfully! Platform fee: 1% per session (max GHS 5.00)`,
+        `${newRestaurant.name} onboarded successfully! Platform fee: 1% per session (max GHS 15.00)`,
       );
     } catch (err) {
       console.error(err);
@@ -749,7 +749,7 @@ export default function SuperAdminPanel({
                   >
                     <div style={{ flex: 1 }}>
                       <p className="t-caption" style={{ marginBottom: 6 }}>
-                        Platform fee: 1% per session (max {r.currency} 5.00)
+                        Platform fee: 1% per session (max {r.currency} 15.00)
                       </p>
                       <div
                         style={{
@@ -1027,7 +1027,7 @@ export default function SuperAdminPanel({
                   className="t-caption"
                   style={{ color: "var(--gold-glow)", fontWeight: 700 }}
                 >
-                  Platform Fee: 1% of each session total (max GHS 5.00 per
+                  Platform Fee: 1% of each session total (max GHS 15.00 per
                   session)
                 </p>
                 <p className="t-caption" style={{ marginTop: 4, opacity: 0.7 }}>

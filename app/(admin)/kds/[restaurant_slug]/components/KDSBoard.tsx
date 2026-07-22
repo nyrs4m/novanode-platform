@@ -2156,6 +2156,20 @@ export default function KDSBoard({
           </div>
         )}
       </div>
+
+      {/* Powered by NovaNode Inc. */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: "var(--cream-35)",
+          marginTop: 16,
+          paddingBottom: 24,
+          opacity: 0.7,
+        }}
+      >
+        Powered by NovaNode Inc.
+      </div>
     </div>
   );
 }

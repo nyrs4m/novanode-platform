@@ -175,12 +175,17 @@ export default function Home() {
       </section>
 
       <footer className="landing-footer">
-        <span>NovaNode &copy; 2026</span>
-        <div className="landing-footer-links" aria-label="Legal links">
-          <Link href="/terms">Terms of Service</Link>
-          <Link href="/privacy">Privacy Policy</Link>
+        <div className="landing-footer-main">
+          <span>NovaNode &copy; 2026</span>
+          <div className="landing-footer-links" aria-label="Legal links">
+            <Link href="/terms">Terms of Service</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+          </div>
+          <a href="https://wa.me/233246902056">WhatsApp contact</a>
         </div>
-        <a href="https://wa.me/233246902056">WhatsApp contact</a>
+        <div className="landing-footer-powered">
+          Powered by NovaNode Inc.
+        </div>
       </footer>
 
       <style>{`
@@ -434,13 +439,22 @@ export default function Home() {
         .landing-footer {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 16px;
           align-items: center;
           justify-content: center;
           padding: 28px 18px 36px;
           color: var(--theme-text-dim);
           border-top: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
           font-size: 14px;
+        }
+
+        .landing-footer-main {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
         }
 
         .landing-footer a {
@@ -454,6 +468,13 @@ export default function Home() {
           flex-wrap: wrap;
           gap: 14px;
           justify-content: center;
+        }
+
+        .landing-footer-powered {
+          font-size: 12px;
+          color: var(--theme-text-dim);
+          opacity: 0.75;
+          text-align: center;
         }
 
         @media (min-width: 768px) {
@@ -481,9 +502,12 @@ export default function Home() {
           }
 
           .landing-footer {
+            padding-inline: max(28px, calc((100vw - 1120px) / 2));
+          }
+
+          .landing-footer-main {
             flex-direction: row;
             justify-content: space-between;
-            padding-inline: max(28px, calc((100vw - 1120px) / 2));
           }
         }
 
